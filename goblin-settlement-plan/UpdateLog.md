@@ -1,0 +1,152 @@
+## [2026-09-24 18:27:40 +08:00 – 2026-09-24 18:27:40 +08:00] 开发日志规则
+- [2026-09-24 18:27:40 +08:00] 本文件只允许在末尾追加内容；不得修改、覆盖、重排或删除任何已有文字，包括本规则。
+- [2026-09-24 18:27:40 +08:00] 每轮开发记录使用带时区的起止时间段作为标题；每条动作在行首记录带时区的时间。
+- [2026-09-24 18:27:40 +08:00] 每次创建或修改文件、调整设计决定、运行重要验证，都追加记录具体动作、结果与涉及路径。
+- [2026-09-24 18:27:40 +08:00] 每轮结束时追加本轮已完成、验证结果、仍未完成的任务及下一步；没有完成的工作也须如实记录。
+- [2026-09-24 18:27:40 +08:00] 如果旧记录有误，只能在末尾追加更正说明并指向原记录，不得回写旧内容。
+
+## [2026-09-24 18:27:40 +08:00 – 2026-09-24 18:31:47 +08:00] 第一轮：工程建立
+- [2026-09-24 18:31:47 +08:00] 创建独立工程 goblin-settlement-mod，新增 .gitignore、settings.gradle、gradle.properties、build.gradle、src/main/resources/fabric.mod.json、主入口 GoblinSettlement.java 和客户端入口 GoblinSettlementClient.java；版本固定为 Minecraft 1.21.11、Loader 0.19.2、Fabric API 0.141.4+1.21.11、Loom 1.14.10。
+- [2026-09-24 18:31:47 +08:00] 从现有 ai-chat-mod 复制 Gradle Wrapper 四个文件到 goblin-settlement-mod；原工程未修改。
+
+
+## [2026-09-24 18:52:43 +08:00 – 2026-09-24 18:52:43 +08:00] 补记：上一轮中断前的开发与验证
+- [2026-09-24 18:52:43 +08:00] 补记已发生动作：新增 goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/colony/PopulationRules.java 及 src/test/java/dev/local/goblinsettlement/colony/PopulationRulesCheck.java，实现人口占用、孕育名额计数、成人领地额度、扩张额度与繁衍进度的独立规则；这些规则尚未接入游戏。
+- [2026-09-24 18:52:43 +08:00] 补记构建结果：Gradle Wrapper 9.2.1 首次下载受网络限制；随后获准执行的在线下载连接超时。本机 Gradle 9.4.1 可以启动，但离线构建缺少 net.fabricmc.fabric-loom-remap:1.14.10 插件，完整模组构建未通过。
+- [2026-09-24 18:52:43 +08:00] 补记验证结果：上一轮使用本机 JDK 25、--release 21 编译上述两个纯 Java 文件，运行 PopulationRulesCheck 输出 passed；只验证了该规则的现有断言，未验证 Minecraft 启动、实体、存档或玩法。
+- [2026-09-24 18:52:43 +08:00] 上一轮结束状态：任务因用户转向上下文接续与低成本函数协作而中断；模组工程骨架和人口规则已存在，可安装 JAR、哥布林实体、存档与施工均未完成。本条为中断后的补记，时间是补记时间。
+
+## [2026-09-24 18:52:03 +08:00 – 2026-09-24 18:59:45 +08:00] 第二轮：跨对话接续与独立函数任务库
+- [2026-09-24 18:59:45 +08:00] 新增实例目录 AGENTS.md 与 goblin-settlement-mod/AGENTS.md：记录当前项目位置、按需读取接续文件、独立函数验收流程以及 UpdateLog.md 仅可追加的约定，便于同目录新对话恢复工作。
+- [2026-09-24 18:59:45 +08:00] 新增 goblin-settlement-plan/CURRENT_STATUS.md，记录已实现/已验证/未完成状态、上轮构建问题和下一步；更新 README.md、TECH_DESIGN.md 的过时状态与导航。摘要可正常更新，历史日志仍只能追加。
+- [2026-09-24 18:59:45 +08:00] 新增 goblin-settlement-mod/function-bank/README.md、submissions/README.md、accepted/README.md；建立待实现、待验收、需返工、已验收、已接入的登记规则。现有 PopulationRules 不重复派发。
+- [2026-09-24 18:59:45 +08:00] 新增 function-bank/tasks/F001-plot-coordinates.md、F002-material-shortages.md、F003-road-step-cost.md；每张卡独立说明 Java 21 接口、输入输出、异常、边界、验收例子及交付位置。道路合法性、库存实际转移和世界权限由集成层负责；示例权重不是已确定的玩法数值。
+- [2026-09-24 18:59:45 +08:00] 完成一项只读子任务审查，用于核对函数拆分边界；主代理编写最终规格。未调用外部低成本模型，未产生这三项函数实现，没有新增游戏功能。
+- [2026-09-24 18:59:45 +08:00] 验证：检查最初10份新增或更新接续/任务文档的本地链接，均可解析；核对三个登记条目与实际任务卡对应。官方 AGENTS.md 文档支持项目目录指导文件机制；本轮没有创建新对话做加载实验。
+- [2026-09-24 18:59:45 +08:00] 本轮已完成：接续入口、当前状态摘要、三张可转交任务卡和结果存放目录。待完成：收取并验收函数实现、解决 Fabric 构建依赖、完成最小存档与权限以及首个居民施工闭环。下一步由用户选择继续主线或交付某张任务卡。
+- [2026-09-24 19:00:02 +08:00] 追加式日志完整性检查：本轮开始前的 1436 字节前缀 SHA-256 与原值一致，既有内容未改动。
+
+## [2026-09-24 19:46:29 +08:00 – 2026-09-24 19:46:29 +08:00] 第三轮补记：主线构建与最小聚落存档
+
+- [2026-09-24 19:46:29 +08:00] 读取 CURRENT_STATUS.md、TECH_DESIGN.md 当前相关阶段及工程现状，按用户本轮继续哥布林主线开发；未修改 ai-chat-mod 或常用存档。
+- [2026-09-24 19:46:29 +08:00] 官方 Fabric 文档与仓库核对 MC 1.21.11 所用 fabric-loom-remap 1.14.10、Saved Data 和命令 API。Wrapper 9.2.1 下载在约九成处连接重置；本机 Gradle 9.4.1 在获准联网环境加载固定 Loom/Fabric 依赖。首次依赖解析遇到 Fabric 仓库 TLS 握手中断，重试后完成编译与 JAR 重映射。
+- [2026-09-24 19:46:29 +08:00] 修改 goblin-settlement-mod/build.gradle：将现有 PopulationRulesCheck 普通 Java 断言接入 Gradle check，并允许无 JUnit 测试时 test 任务正常结束。
+- [2026-09-24 19:46:29 +08:00] 新增 goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/colony/SettlementSavedData.java：每维度最多一个聚落，保存版本号、稳定 UUID 字符串和锚点，创建时标记脏数据。
+- [2026-09-24 19:46:29 +08:00] 新增 goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/interaction/WorldModificationPermission.java：为规划与执行预留统一权限入口；尚无领地认领，全部自动编辑拒绝，且检查聚落 ID 与区块活动状态。
+- [2026-09-24 19:46:29 +08:00] 修改 goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/GoblinSettlement.java：注册管理员建立聚落及查询状态的服务端命令；按目标版本 API 修正管理员权限判断。
+- [2026-09-24 19:46:29 +08:00] 验证：JDK 25 配合 Java 21 编译目标、本机 Gradle 9.4.1 执行 build 成功，PopulationRulesCheck passed，产出 build/libs/goblin-settlement-0.1.0.jar。尚未运行 Minecraft 测试世界或验证保存后重载，不能声称 JAR 可安装或阶段 1 验收完成。
+- [2026-09-24 19:46:29 +08:00] 更新 goblin-settlement-plan/CURRENT_STATUS.md 为本轮进展与下一步。待做：测试世界启动和重载、领地及玩家保护、首个居民与真实箱子取料/施工。F001–F003 函数任务卡仍未实现或接入。
+
+
+## [2026-09-24 19:57:31 +08:00 – 2026-09-24 19:57:31 +08:00] 第四轮补记：用户级共享构建环境
+
+- [2026-09-24 19:57:31 +08:00] 用户要求一次性在本机共享安装构建环境，避免后续重复拉取。核对原有全局 JDK 17/25、Gradle 9.4.1、用户级 C:\Users\27700\.gradle 缓存及 Wrapper 9.2.1 未完成的 118685547 字节临时文件。
+- [2026-09-24 19:57:31 +08:00] 从 Eclipse Adoptium 官方下载 Temurin JDK 21.0.12.1+1 ZIP，按官方 SHA-256 f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e 校验，安装到 C:\Users\27700\AppData\Local\Programs\Java\jdk-21.0.12.1+1；java 和 javac 均报告 21.0.12.1。设置当前用户持久 JAVA_HOME 指向该目录；未移除原有 JDK 17/25。
+- [2026-09-24 19:57:31 +08:00] 续传 Gradle 9.2.1 官方分发包到用户级 Wrapper 缓存，按官方 SHA-256 72f44c9f8ebcb1af43838f45ee5c4aa9c5444898b3468ab3f4af7b6076c5bc3f 校验；Wrapper 本地解压并报告 Gradle 9.2.1。
+- [2026-09-24 19:57:31 +08:00] 修改 goblin-settlement-mod/gradle.properties，设置 org.gradle.java.home 为用户级 Java 21 路径，让当前继承旧 JAVA_HOME 的进程也能使用 Java 21 构建。
+- [2026-09-24 19:57:31 +08:00] 在获准访问用户级共享缓存的环境执行 .\gradlew.bat build --offline --no-daemon 成功，PopulationRulesCheck passed，无网络下载。普通 Codex 受限沙箱无法写用户级 Wrapper 缓存，仍会错误地尝试下载；后续 Codex 构建应使用获准访问共享缓存的环境。本机普通终端可直接复用。
+- [2026-09-24 19:57:31 +08:00] 实测安装占用：Java 21 为 343823876 字节（327.9 MiB），Gradle 9.2.1 Wrapper 为 150266320 字节（143.3 MiB）；C:\Users\27700\.gradle 整体含其他 Gradle 版本与共用依赖共 3200463382 字节（3052.2 MiB）。已删除临时 JDK ZIP，未删除其他既有工具和缓存。
+- [2026-09-24 19:57:31 +08:00] 更新 goblin-settlement-plan/CURRENT_STATUS.md 的构建状态与后续用法。模组游戏启动、存档重载和玩法仍未验证；下一步继续独立测试世界验证。
+
+
+## [2026-09-24 20:46:35 +08:00 – 2026-09-24 20:46:35 +08:00] 第五轮补记：固定目录安装 Gradle
+
+- [2026-09-24 20:46:35 +08:00] 用户指出此前 Gradle 9.2.1 仅在 Wrapper 缓存中，要求真正安装到固定本地目录。将已校验的 Gradle 9.2.1 复制到 C:\Users\27700\AppData\Local\Programs\Gradle\gradle-9.2.1，实测文件占用 150266320 字节（143.3 MiB）。
+- [2026-09-24 20:46:35 +08:00] 持久设置当前用户 GRADLE_HOME 和 PATH 指向固定目录；JAVA_HOME 仍指向上轮正式安装的 Temurin 21。保留 Wrapper 缓存作为旧调用兼容，但以后构建可直接执行固定安装目录的 gradle.bat。
+- [2026-09-24 20:46:35 +08:00] 验证：直接从 C:\Users\27700\AppData\Local\Programs\Gradle\gradle-9.2.1\bin\gradle.bat 启动，版本 9.2.1、Launcher JVM 21.0.12.1；执行 build --offline --no-daemon 成功，PopulationRulesCheck passed。未通过 Wrapper 启动且没有下载。
+- [2026-09-24 20:46:35 +08:00] 更新 goblin-settlement-plan/CURRENT_STATUS.md，说明后续直接用固定安装的 gradle；Fabric 依赖仍按 Gradle 机制保存在用户级共享缓存中。尚待独立测试世界验证游戏存档行为。
+
+
+## [2026-09-24 20:46:35 +08:00 – 2026-09-24 21:02:13 +08:00] 第六轮：起始地块、玩家保护区与开发客户端加载
+
+- [2026-09-24 21:02:13 +08:00] 按本轮继续主线的请求读取 GAME_DESIGN.md 中人口领地和玩家宅地章节、F001 坐标任务卡及现有源码；未调用外部模型，未修改 ai-chat-mod 或常用存档。
+- [2026-09-24 21:02:13 +08:00] 新增 goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/planning/math/PlotCoordinates.java 与对应 PlotCoordinatesCheck.java；按 F001 v1 用 floorDiv/floorMod 处理 8×8 地块、负坐标和 int 极值。修改 build.gradle 接入 Gradle check；更新 function-bank/README.md，登记 F001 由主线直接实现并接入，无外部 accepted 快照。
+- [2026-09-24 21:02:13 +08:00] 新增 interaction/ProtectedRectangle.java 与对应 ProtectedRectangleCheck.java：两角生成矩形、覆盖全部高度、边缘缓冲两格，以 long 边界计算避免 int 溢出。
+- [2026-09-24 21:02:13 +08:00] 修改 colony/SettlementSavedData.java：保留 schema v1 并添加可选 claimed_plots/player_areas 字段，创建聚落时认领一个起始地块，避免与已有保护区重叠；保护区登记、查询和存档变更标脏。新增 SettlementSavedDataCheck.java，覆盖稳定 ID、锚点、地块、保护区编码往返和旧字段缺省加载。
+- [2026-09-24 21:02:13 +08:00] 修改 interaction/WorldModificationPermission.java：统一检查聚落身份、玩家保护区、活动区块与已认领地块；修改 GoblinSettlement.java 增加开发用 check、protect 命令并更新 found/status。当前 protect 命令仅管理员可用，正式界桩物品、扩张及旧建筑识别未实现。
+- [2026-09-24 21:02:13 +08:00] 直接从固定安装的 Gradle 9.2.1 执行 build --offline --no-daemon 成功，PopulationRulesCheck、PlotCoordinatesCheck、ProtectedRectangleCheck、SettlementSavedDataCheck 均通过；这是纯计算、编解码和打包验证，尚非世界保存重载验证。
+- [2026-09-24 21:02:13 +08:00] 首次 runClient --offline 因开发资源未齐失败；联网下载同样中断。比对 MC 1.21.11 资源索引后，将本机已有的 3764 个资源对象复制到共享开发资源目录，逐项核对 4591 个必需对象 SHA-1 均正确。再次 runClient --offline 启动，日志确认 Minecraft 1.21.11、Loader 0.19.2、goblin_settlement 0.1.0 加载和界面/声音初始化；Mojang 会话与 Realms 请求超时，未进入测试世界。已关闭开发客户端，未留后台游戏进程。
+- [2026-09-24 21:02:13 +08:00] 更新 goblin-settlement-plan/CURRENT_STATUS.md。待做：独立测试世界执行命令并关闭重载验证存档；实际施工接入权限入口；界桩交互、已有玩家建筑避让、居民与真实箱子取料/施工。
+
+
+## [2026-09-24 21:02:14 +08:00 – 2026-09-24 21:21:19 +08:00] 第七轮：专用服务端重载验收与首个居民实体
+
+- [2026-09-24 21:21:19 +08:00] 在 goblin-settlement-mod/run 下建立仅供此模组使用的 goblin-dev-world 专用服务端世界，绑定 127.0.0.1:25595；修改 GoblinSettlement.java 允许测试服务端控制台使用管理员命令。未改 ai-chat-mod 或常用存档。
+- [2026-09-24 21:21:19 +08:00] 实际服务端执行 status、protect、found、check：建立稳定 ID 为 b3685de9-0987-4485-8497-dd7cb9f03c3b0 的主世界聚落，起始地块 1、保护区 1；验证保护区拒绝、非活动区块暂停、临时加载的已认领地块允许及未认领地块拒绝。关闭并重启后，ID、锚点、地块及保护区不变；重复 found/protect 被拒绝，下界独立保护区与起始地块冲突被拒绝。临时强加载已撤销。
+- [2026-09-24 21:21:19 +08:00] 新增 citizen/GoblinCitizenEntity.java 与 ModEntities.java，并在 GoblinSettlement.java 注册实体和属性；新增客户端 GoblinRenderState.java、GoblinModel.java、GoblinRenderer.java，修改 GoblinSettlementClient.java 注册模型层和渲染器。当前使用临时原版僵尸纹理，尚未接聚落身份、职业、背包和工作任务。
+- [2026-09-24 21:21:19 +08:00] 固定安装的 Gradle 9.2.1 离线 build 成功，现有四项检查通过。专用服务端召唤 goblin_settlement:goblin，在 96 67 17 附近查询到 UUID [I; 864237483, 279072137, -1634914506, 915600158]；保存停服重启后查到相同 UUID，证实实体从世界存档恢复。测试完成后撤销临时强加载并停服。
+- [2026-09-24 21:21:19 +08:00] 离线开发客户端加载至资源图集和渲染线程初始化，未见新增实体注册或模型异常；Mojang 会话与 Realms 网络连接仍超时。未进入客户端测试世界目测实体外观，客户端进程已关闭。
+- [2026-09-24 21:21:19 +08:00] 更新 goblin-settlement-plan/CURRENT_STATUS.md。待做：居民聚落身份与背包、真实箱子取料/搬运/施工闭环、调用权限入口的实际方块改动和中断恢复验收；现阶段不能宣称阶段 2 完成。
+
+## [2026-09-24 22:01:27 +08:00 – 2026-09-24 22:01:27 +08:00] 第八轮补记：真实箱子取料与单格施工
+
+- [2026-09-24 22:01:27 +08:00] 按用户继续阶段 2 的要求，读取 CURRENT_STATUS.md、TECH_DESIGN.md 的阶段及模块边界、GAME_DESIGN.md 的真实库存规则，以及 function-bank/README.md。使用本地 1.21.11 映射 API 确认实体存档、导航、箱子容器和方块放置接口。未修改 ai-chat-mod 或常用存档。
+- [2026-09-24 22:01:27 +08:00] 修改 GoblinCitizenEntity.java：增加聚落 ID、供料与工地坐标、取料/送达/完成阶段、单格随身材料及实体存档；在服务端导航到真实容器取 1 块橡木板，放置前复查区块活动、领地权限、工地空位和地基；缺料、权限变化或占位时等待；死亡时尝试掉落随身材料。修改 GoblinSettlement.java：增加管理员 assign 命令与附近居民 work 状态命令。新增中英文居民名称资源。
+- [2026-09-24 22:01:27 +08:00] 在项目专用 goblin-dev-world 中创建 8×8 测试平台、真实箱子和单格工地。箱内放入 1 块橡木板，指派居民；服务端命令确认居民 COMPLETE、箱子 Items 为 []、目标成为 minecraft:oak_planks，说明单格真实库存到实际方块的流程运行。
+- [2026-09-24 22:01:27 +08:00] 第二轮放入 1 块橡木板，居民取料后用石头暂占工地，确认 DELIVERING、carrying=1、箱子 Items 为 []；save-all flush 后停服重启，同一 UUID 仍显示 DELIVERING、carrying=1。清空工地后确认 COMPLETE、目标成为橡木板且箱子仍空。移除临时强加载并保存停服。
+- [2026-09-24 22:01:27 +08:00] 固定目录 Gradle 9.2.1 离线 build 再次成功，PopulationRulesCheck、PlotCoordinatesCheck、ProtectedRectangleCheck、SettlementSavedDataCheck 通过。更新 CURRENT_STATUS.md。待做：自主派工、公共仓储登记、多材料蓝图、偷料与居民死亡等情境；客户端画面外观和突发断电的一致性尚未验证，不能把当前单格命令样例称为完整聚落自治施工。
+
+## [2026-09-24 22:01:28 +08:00 – 2026-09-24 22:22:54 +08:00] 第九轮：公共箱子、两格工程与自动派工
+
+- [2026-09-24 22:22:54 +08:00] 按用户继续主线的请求读取 CURRENT_STATUS.md、TECH_DESIGN.md 中真实库存/任务/保存/阶段边界和当前居民源码，选取一条向东两格的橡木板工程作为下一步。未修改 ai-chat-mod 或常用存档。
+- [2026-09-24 22:22:54 +08:00] 新增 construction/ConstructionPlan.java、ConstructionCoordinator.java、ConstructionCommands.java 和 economy/PublicWarehouseInventory.java；修改 SettlementSavedData.java、GoblinCitizenEntity.java、GoblinSettlement.java。Saved Data 可选字段保存公共箱子位置与两格工程进度，兼容旧数据；箱子物品数量始终来自当前真实容器，没有保存库存副本。服务端每秒仅在活动的已认领区块检查并指派一个居民，放置前再次通过权限入口。
+- [2026-09-24 22:22:54 +08:00] 增加管理员 warehouse/plan 命令及 project 查询命令；保留上一轮的手动单格 assign 调试命令。死亡居民掉落携带材料并释放未完成工程的工人占用；坏格式工人 UUID 不使调度器抛异常。补充 SettlementSavedDataCheck 对重复登记、工程顺序、工人占用/释放、旧存档兼容和编码往返的断言。新增断言在实现前因缺少方法编译失败，随后检查通过。一次构建授权自动审核超时后重试成功，未改变项目内容。
+- [2026-09-24 22:22:54 +08:00] 在项目专用 goblin-dev-world 用真实箱子放入 1 块橡木板，登记公共箱子并建立两格工程。服务端确认第一格完工、箱子 Items=[]、工程 1/2 和缺口 1；停服重启后仍为 1/2，第二格空置；补入第二块橡木板后无需再次指派，工程自动达到 2/2、第二格成为橡木板且箱子 Items=[]。
+- [2026-09-24 22:22:54 +08:00] 另建测试工程，在居民携带 1 块橡木板而尚未放置时执行死亡命令，服务端确认地上掉落物为 minecraft:oak_planks count 1，工程仍为 0/2、工人占用清除且箱子库存 0。该专用测试世界目前保留待补料的 0/2 工程和掉落物，用于下一轮恢复检查；已撤销临时强加载并停服。
+- [2026-09-24 22:22:54 +08:00] 固定目录 Gradle 9.2.1 执行完整离线 build 成功，四项现有检查通过并生成 JAR。更新 CURRENT_STATUS.md。待做：自选公共仓库/工地、材料与蓝图扩展、多居民协调、死亡后真实掉落物回收、客户端画面验证和突然断电时跨存储一致性。
+
+## [2026-09-24 22:22:55 +08:00 – 2026-09-24 22:44:09 +08:00] 第十轮：居民死亡后的材料回收与施工接续
+
+- [2026-09-24 22:38:10 +08:00] 按继续主线的请求读取 CURRENT_STATUS.md 及相关设计，选取上轮待做的死亡掉落材料回收；只修改哥布林模组、项目专用测试世界和接续文档。先扩充 SettlementSavedDataCheck，验证掉落物记录、工人释放、回收入库后的状态清除及实体合并后的 ID 更新；新增断言在实现前失败，随后通过。
+- [2026-09-24 22:38:10 +08:00] 修改 ConstructionPlan.java、SettlementSavedData.java，使工程持久记录可回收的物品实体 ID 与位置；修改 GoblinCitizenEntity.java、ConstructionCoordinator.java、PublicWarehouseInventory.java，居民死亡时记录真实掉落物，替补寻找地上木板、每次只拾取 1 块、放回实际公共容器，完成后恢复自动派工。新增 DroppedMaterialLookup.java；旧实体 ID 因原版物品合并消失时，在记录位置附近只考虑同类且数量大于 1 的堆叠，降低误认无关单块木板的概率。修改 ConstructionCommands.java，在 project 输出中显示掉落材料是否被追踪。
+- [2026-09-24 22:40:16 +08:00] 项目专用 goblin-dev-world 验证：工程 0/2、箱内剩 1 块、居民携带 1 块时死亡，工程保留且显示 dropped material=tracked；新居民回收后继续施工，工程到 2/2，箱内 0，两处目标确认为橡木板。
+- [2026-09-24 22:42:55 +08:00] 复现原版物品实体合并：预先放置 1 块木板，居民携带 1 块死亡后地上合并为 count 2；替补回收其中 1 块并完成工程 2/2，地上剩余 count 1，两处目标均确认橡木板。测试服务端空闲暂停曾阻碍一次派工，已将本项目专用 run/server.properties 的 pause-when-empty-seconds 改为 -1 并重启后继续验证。
+- [2026-09-24 22:43:05 +08:00] 撤销临时强加载、保存并正常停止专用服务端。测试世界最后工程已完成。没有改动 ai-chat-mod 或常用存档。
+- [2026-09-24 22:44:09 +08:00] 固定安装的 Gradle 9.2.1 执行完整离线 build 成功；PopulationRulesCheck、PlotCoordinatesCheck、ProtectedRectangleCheck、SettlementSavedDataCheck 均通过，重新生成 JAR。更新 CURRENT_STATUS.md。待做：死亡后停服重载再回收的游戏内核验、来源模糊的附近同类堆叠处理、更多材料/蓝图与仓储自治；客户端外观和突然断电一致性仍未验证。
+
+## [2026-09-24 22:44:10 +08:00 – 2026-09-24 22:46:49 +08:00] 第十一轮补记：死亡回收的停服重载验收
+
+- [2026-09-24 22:45:42 +08:00] 在项目专用世界新建两格工程；哥布林从真实箱子取 1 块木板后死亡，服务端确认工程 0/2、箱内 1、地上木板 count 1、dropped material=tracked。执行 save-all flush，正常停服。
+- [2026-09-24 22:46:30 +08:00] 重启专用服务端后，工程仍为 0/2、箱内 1、地上木板 count 1、dropped material=tracked；召唤替补居民，回收后自动继续施工。
+- [2026-09-24 22:46:40 +08:00] 工程达到 2/2，箱内 0、携带 0、追踪标记清除；两个目标方块均通过服务端命令确认为橡木板。
+- [2026-09-24 22:46:49 +08:00] 撤销临时强加载、保存并关闭服务端，更新 CURRENT_STATUS.md。上一节列出的“死亡后停服重载再回收尚未验证”已由本轮验证完成；其余待做事项仍有效。
+
+## [2026-09-24 22:57:33 +08:00 – 2026-09-24 23:03:15 +08:00] 第十二轮：材料被移走后的接续与死亡派工竞态
+
+- [2026-09-24 22:57:33 +08:00] 按用户继续推进第 3 阶段的请求，读取 CURRENT_STATUS.md、相关技术与真实库存设计，检查调度器、居民和 Saved Data 现有实现。在 goblin-dev-world 准备测试时，同一服务端批次杀死旧居民并新建工程后，新工程误将尚未移除的死亡实体登记为工人，造成 worker ID 占用、活着的替补无法接单；保留该测试存档作为旧错误状态样例。
+- [2026-09-24 22:58:49 +08:00] 修改 GoblinCitizenEntity.isAvailableForConstruction，要求实体仍存活且未被移除才可候选派工；停止旧服务端。此修复针对新派工，尚未实现既有失踪工人记录的自动安全清理。
+- [2026-09-24 23:01:14 +08:00] 使用新项目专用 goblin-theft-world 验证：同一批次杀死居民、创建新工程，数秒后仍为 0/2、worker=none，死亡实体没有占用工地。该世界已建立测试地块、真实箱子和一名替补居民；run/server.properties 的 level-name 指向此世界。
+- [2026-09-24 23:01:38 +08:00] 通过服务端命令从已立项的公共箱移走全部 2 块木板，工程保持 0/2 并显示缺 2；召唤新居民后仍不施工；补入 1 块后自动完成第一格，工程 1/2、缺 1。
+- [2026-09-24 23:02:21 +08:00] 第二格材料被居民携带时使其死亡，地上出现 count 1 木板和 tracked 标记；通过服务端命令移走地上物品，调度器清除追踪、保持工程 1/2 和缺 1。补入 1 块后替补完成 2/2，箱内 0，两处目标经服务端命令确认为橡木板。此次模拟材料被取走，未实际操作客户端玩家界面。
+- [2026-09-24 23:02:40 +08:00] 撤销新测试世界临时强加载、保存并停止服务端。固定目录 Gradle 9.2.1 完整离线 build 成功，四项现有检查通过并生成 JAR。
+- [2026-09-24 23:03:15 +08:00] 更新 CURRENT_STATUS.md，明确当前测试世界、已验证边界及旧世界的失踪工人记录。待做：旧存档工人失踪的安全恢复、任务取消、多居民工地协调、玩家实际开箱验收及仓储蓝图扩展。
+
+## [2026-09-24 23:47:56 +08:00 – 2026-09-24 23:55:44 +08:00] 第十三轮：工程取消与旧任务恢复
+
+- [2026-09-24 23:47:56 +08:00] 按用户继续第 3 阶段且可自然使用本项目文件的说明，读取 CURRENT_STATUS.md、上轮日志及现有居民、工程命令和存档实现。设计取消时保留已建方块与真实物品，对暂时卸载的工人持久记录取消，避免重载后继续旧任务。
+- [2026-09-24 23:49:00 +08:00] 先扩充 SettlementSavedDataCheck：要求取消后工程清除、旧工人取消记录保存重载、工人确认后清除记录并可再立项；实现前编译按预期因缺少 cancelPlan 等方法失败。随后修改 SettlementSavedData.java，增加兼容旧存档的 cancelled_workers 可选字段与取消/确认方法，检查通过。
+- [2026-09-24 23:51:00 +08:00] 修改 GoblinCitizenEntity.java：工人接到取消记录时停止旧任务，携带材料以真实物品掉落，再回到空闲；实体死亡也清理对应记录，尚未处理的记录禁止再次派工。修改 ConstructionCommands.java，增加管理员 cancel 命令；当前加载的工人立即执行取消，卸载的工人留待重载后执行。完整离线 build 通过四项现有检查。
+- [2026-09-24 23:52:49 +08:00] 在项目专用 goblin-dev-world 读取到修复前残留的 0/2、worker=b39c0696-ba10-437c-bd79-86f9bd90cf67；执行 cancel 后无活动工程。重新立项并用原有真实箱子和存活居民完成到 2/2、箱内 0，确认旧记录不再阻挡施工。
+- [2026-09-24 23:53:12 +08:00] 另立工程，在工人携带 1 块木板时取消；服务端确认工程消失、目标仍为空、地上真实橡木板 count 1。随后再立同址工程，工人取走 1 块后撤销测试区块强加载，确认居民从已加载实体列表消失；执行 cancel、保存停服。
+- [2026-09-24 23:54:49 +08:00] 重启服务端加载区块，确认无工程，原工人恢复为 IDLE、携带 0，地上木板 count 1，目标方块仍为空。撤销临时强加载、保存并停服，run/server.properties 重新指向 goblin-dev-world。
+- [2026-09-24 23:55:44 +08:00] 补充待处理取消记录的派工排除判断，防止工人刚加载、尚未清理旧任务时又被指派；最终 Gradle 9.2.1 完整离线 build 通过，四项检查均通过，更新 CURRENT_STATUS.md。待做：多居民共享工地、仓储蓝图、玩家实际开箱；已死亡且永不加载的工人取消记录可在后续维护流程中清理。
+
+## [2026-09-24 23:57:00 +08:00 – 2026-09-25 00:05:19 +08:00] 第十四轮：两名居民依次接力施工
+
+- [2026-09-24 23:57:00 +08:00] 按用户继续推进并点名 Superpowers 的请求，读取该插件的使用与完成前验证指引，复核 CURRENT_STATUS.md、技术阶段、职业任务规则及现有调度代码。选取两格工程的顺序接力作为当前可验收小步；尚不宣称多工地并行。
+- [2026-09-25 00:00:00 +08:00] 先扩充 SettlementSavedDataCheck，要求第一格完工后记录工人 ID，编码重载仍保留；实现前测试因缺少 lastWorkerId 方法按预期编译失败。读取 function-bank/README.md，确认此项属于主线调度与存档集成。
+- [2026-09-25 00:02:00 +08:00] 修改 ConstructionPlan.java 和 SettlementSavedData.java：增加可选 last_worker_id 字段，兼容旧记录；完成一步后保存实际工人。修改 ConstructionCoordinator.java：有其他空闲居民时优先选上一格以外的人，只有原工人时仍允许接单；先保存工人登记，实体接单失败则释放登记。修改 ConstructionCommands.java，让 project 输出上一格工人。SettlementSavedDataCheck 通过。
+- [2026-09-25 00:03:35 +08:00] 在 goblin-dev-world 两名居民共享同一公共箱，先放入 1 块并完成第一格，project 显示 last worker=48d7294c-d51a-4e11-b2fe-5dc170722f27；补入第 2 块后，第二格由不同居民 4d93d346-14ef-4673-b828-dc924980462d 完成。工程 2/2、两格均为橡木板、箱子 Items=[]、两人 carrying=0。
+- [2026-09-25 00:03:51 +08:00] 只保留一名居民再立两格工程，确认单人仍能完成 2/2、箱内 2 块真实木板耗尽、两个目标均成为橡木板。
+- [2026-09-25 00:04:01 +08:00] 撤销临时强加载、保存并正常关闭专用服务端。固定安装的 Gradle 9.2.1 完整离线 build 成功，四项现有检查通过并生成 JAR。
+- [2026-09-25 00:05:19 +08:00] 更新 CURRENT_STATUS.md，明确当前只是两名居民按两格顺序接力；后续仍需并行工地、共享库存抢占及多居民重载测试。
+
+## [2026-09-25 10:49:31 +08:00 – 2026-09-25 10:59:15 +08:00] 第十五轮：并行工地验收与 GitHub 仓库整理
+
+- [2026-09-25 10:49:31 +08:00] 按用户继续主线并连接新建 GitHub 仓库的请求读取 CURRENT_STATUS.md、并行工程计划、相关源码和已有检查。发现工作区已有尚未写入状态日志的多工程代码、存档检查和专用 goblin-multi-world 测试世界；本轮接续验证，不把已有代码误记为本轮新写。
+- [2026-09-25 10:52:05 +08:00] 固定 Gradle 9.2.1 + Java 21 完整离线 build 成功，人口、坐标、保护区和 Saved Data 四项检查通过。Saved Data 检查涵盖多工程、工人独占、重叠拒绝、定向取消、编码往返及旧单工程字段迁移。
+- [2026-09-25 10:53:08 +08:00] 在项目专用 goblin-multi-world，两处已分别为 1/2 的工程共用真实公共箱。投入 1 块橡木板后只有一处到 2/2，另一处保持 1/2；箱内 Items=[]，未完成目标仍为空。执行 save-all flush 并正常停服。
+- [2026-09-25 10:54:06 +08:00] 重启后确认两处进度和未完工程工人记录保留；再补 1 块，另一处自动完成 2/2，目标方块为橡木板，箱内 Items=[]。撤销测试区块强加载，保存并停服。
+- [2026-09-25 10:55:29 +08:00] 再建立两处从 0/2 开始、不重叠的工地，2 块共享库存使两名不同 UUID 居民分别完成第一格，两处第二格仍为空、箱内 Items=[]；补入 2 块后两处均为 2/2，四个目标方块均确认橡木板且箱内再次为空。撤销强加载，保存并正常停服。此项验证的是正常运行和停服重载，未模拟突然断电。
+- [2026-09-25 10:56:29 +08:00] 新增仓库根 README.md、根 .gitignore，只纳入哥布林模组与规划文档；模组 .gitignore 排除运行日志和 function-bank/.workbuddy 私有记忆。移除 gradle.properties 中本机专属 Java 路径；更新模组 AGENTS.md、规划 README.md、CURRENT_STATUS.md 与并行实施计划。未改 ai-chat-mod 或常用存档。
+- [2026-09-25 10:58:00 +08:00] 用显式 Java 21 路径执行最终离线 build 成功，四项检查通过。初始化本地 main Git 仓库；待完成提交、推送与远端核验。下一步继续自主选址、真实仓储和蓝图；多工地死亡回收、取消与卸载交错仍需游戏内边界验证。

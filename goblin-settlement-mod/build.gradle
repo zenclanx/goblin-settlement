@@ -1,0 +1,101 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = 'goblin-settlement'
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        goblin_settlement {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+def localMinecraftLibraries = file('../../../libraries')
+if (localMinecraftLibraries.isDirectory()) {
+    repositories {
+        maven {
+            url = localMinecraftLibraries.toURI()
+            metadataSources {
+                mavenPom()
+                artifact()
+            }
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.named('test', Test) {
+    failOnNoDiscoveredTests = false
+}
+
+tasks.register('populationRulesCheck', JavaExec) {
+    group = 'verification'
+    description = 'Runs the standalone population rule assertions.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.colony.PopulationRulesCheck'
+}
+
+tasks.register('plotCoordinatesCheck', JavaExec) {
+    group = 'verification'
+    description = 'Runs the standalone plot coordinate assertions.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.planning.math.PlotCoordinatesCheck'
+}
+
+tasks.register('protectedRectangleCheck', JavaExec) {
+    group = 'verification'
+    description = 'Runs the standalone player area boundary assertions.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.interaction.ProtectedRectangleCheck'
+}
+
+tasks.register('settlementSavedDataCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks settlement state and codec round trips.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.colony.SettlementSavedDataCheck'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('populationRulesCheck')
+    dependsOn tasks.named('plotCoordinatesCheck')
+    dependsOn tasks.named('protectedRectangleCheck')
+    dependsOn tasks.named('settlementSavedDataCheck')
+}

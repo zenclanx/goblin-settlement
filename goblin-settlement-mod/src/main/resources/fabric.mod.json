@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "goblin_settlement",
+  "version": "${version}",
+  "name": "Goblin Settlement",
+  "description": "A self-growing goblin settlement.",
+  "authors": ["Local player"],
+  "license": "ARR",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.local.goblinsettlement.GoblinSettlement"],
+    "client": ["dev.local.goblinsettlement.client.GoblinSettlementClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": "1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
