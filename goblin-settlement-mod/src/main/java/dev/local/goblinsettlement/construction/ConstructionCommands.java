@@ -42,7 +42,7 @@ public final class ConstructionCommands {
                                         return 0;
                                     }
                                     if (!data.registerWarehouse(pos)) {
-                                        source.sendFailure(Component.literal("Container already registered"));
+                                        source.sendFailure(Component.literal("Container already registered or sixteen-container limit reached"));
                                         return 0;
                                     }
                                     source.sendSuccess(() -> Component.literal("Public container registered at "
@@ -142,7 +142,7 @@ public final class ConstructionCommands {
         ServerLevel level = source.getLevel();
         var data = SettlementSavedData.get(level);
         int stock = PublicWarehouseInventory.countOakPlanks(level, data);
-        boolean stockIncomplete = data.warehouses().stream().anyMatch(pos -> !level.shouldTickBlocksAt(pos));
+        boolean stockIncomplete = !PublicWarehouseInventory.snapshot(level, data).complete();
         int remaining = plans.stream().filter(plan -> !plan.isComplete())
                 .mapToInt(plan -> ConstructionPlan.LENGTH - plan.completed()).sum();
         int carried = 0;
@@ -158,7 +158,7 @@ public final class ConstructionCommands {
             }
         }
         int shortage = Math.max(0, remaining - stock - carried);
-        String stockText = stockIncomplete ? ">=" + stock + " (some warehouses inactive)" : String.valueOf(stock);
+        String stockText = stockIncomplete ? ">=" + stock + " (some warehouses unavailable)" : String.valueOf(stock);
         String carriedText = workersIncomplete ? ">=" + carried + " (some workers unloaded)" : String.valueOf(carried);
         String shortageText = remaining > 0 && (stockIncomplete || workersIncomplete) ? "unknown (at most " + shortage + ")"
                 : String.valueOf(shortage);

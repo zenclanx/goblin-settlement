@@ -1,6 +1,7 @@
 package dev.local.goblinsettlement.farming;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.colony.SettlementDemand;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -27,6 +28,31 @@ public final class FarmingCoordinator {
         if (settlement.isEmpty()) {
             return;
         }
+
+        var supply = PublicWarehouseInventory.snapshot(level, data);
+        long seedTarget = SettlementDemand.assess(data.adultCount(), data.childCount(), supply, false).seedTarget();
+        boolean allFarmSitesKnown = true;
+        boolean hasGrowingCrop = false;
+        int assignedPlantings = 0;
+        for (var site : data.farmSites()) {
+            BlockPos crop = site.cropPos();
+            if (!level.shouldTickBlocksAt(crop)) {
+                allFarmSitesKnown = false;
+                continue;
+            }
+            var state = level.getBlockState(crop);
+            if (state.is(Blocks.WHEAT)
+                    && WorldModificationPermission.check(level, settlement.get().id(), crop)
+                    == WorldModificationPermission.Decision.ALLOWED
+                    && WorldModificationPermission.check(level, settlement.get().id(), crop.below())
+                    == WorldModificationPermission.Decision.ALLOWED) {
+                hasGrowingCrop = true;
+            }
+            if (state.isAir() && site.workerId().isPresent()) {
+                assignedPlantings++;
+            }
+        }
+
         for (var site : data.farmSites()) {
             BlockPos crop = site.cropPos();
             if (site.workerId().isPresent()) {
@@ -60,6 +86,10 @@ public final class FarmingCoordinator {
             if (!plant && !harvest) {
                 continue;
             }
+            if (plant && !SeedReserve.canAssignPlanting(supply.wheatSeeds(), assignedPlantings,
+                    seedTarget, hasGrowingCrop, supply.complete() && allFarmSitesKnown)) {
+                continue;
+            }
             var warehouse = plant
                     ? PublicWarehouseInventory.firstWithWheatSeeds(level, data)
                     : PublicWarehouseInventory.firstAccessible(level, data);
@@ -77,8 +107,14 @@ public final class FarmingCoordinator {
             boolean assigned = plant
                     ? goblin.assignFarmPlanting(settlement.get().id(), warehouse.get(), crop)
                     : goblin.assignFarmHarvest(settlement.get().id(), warehouse.get(), crop);
-            if (assigned && !data.assignFarmWorker(crop, workerId)) {
-                goblin.cancelUnreservedFarmWork();
+            if (assigned) {
+                if (data.assignFarmWorker(crop, workerId)) {
+                    if (plant) {
+                        assignedPlantings++;
+                    }
+                } else {
+                    goblin.cancelUnreservedFarmWork();
+                }
             }
         }
     }

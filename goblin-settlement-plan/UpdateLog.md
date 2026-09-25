@@ -254,3 +254,28 @@
 ## [2026-09-25 17:56:28 +08:00 – 2026-09-25 17:56:28 +08:00] 第二十五轮补记：远端同步
 
 - [2026-09-25 17:56:28 +08:00] 本轮农业验收记录已本地提交为 4cfadca；向既有 origin/main 推送时，自动审批因未从可信证据确认该具体 GitHub 目的地的发布授权而拒绝。没有绕过审批；远端尚未同步，当前成果保留在本地。后续需要用户明确授权向 https://github.com/zenclanx/goblin-settlement 推送。
+
+## [2026-09-25 22:52:00 +08:00 – 2026-09-25 22:52:00 +08:00] 第二十六轮补记：先完成初版再统一测试
+
+- [2026-09-25 22:52:00 +08:00] 用户再次明确要求：先完成七阶段计划的最基本初版，开发期间只进行代码静态审查，不运行构建、单元测试、GameTest、客户端或服务端；整套流程完成后统一测试并集中修复。已将约定写入 CURRENT_STATUS.md。
+- [2026-09-25 22:52:00 +08:00] 上次中断前已修改 GoblinSettlement.java、GoblinCitizenEntity.java、ResidentRecord.java、SettlementSavedData.java、FarmingCoordinator.java；新增 ExpansionCoordinator.java、colony/family/*.java、economy/food/*.java、economy/tools/*.java、FarmDiscoveryCoordinator.java、SeedReserve.java、forestry/*.java、housing/*.java、social/*.java、planning/road/*.java、planning/bridge/*.java、construction/transport/*.java、defense/*.java 及客户端 defense/*.java。这些均为未测试的候选代码，当前仍有主初始化接线、接口审查及阶段7收尾；旧版已验证结果不自动适用于新增代码。
+- [2026-09-25 22:52:00 +08:00] 上次尝试接入傀儡主初始化时，自动审批检查因用量上限未完成，操作未执行；本轮恢复后先核对工作区，再继续接线。GitHub 远端未同步，不涉及相邻模组或常用存档。
+
+## [2026-09-26 00:17:00 +08:00 – 2026-09-26 00:18:00 +08:00] 第二十七轮补记：候选流程静态审查与长期循环修复
+
+- [2026-09-26 00:17:00 +08:00] 按已记录的用户要求继续推进七阶段初版；本段记录汇总此前本轮实现及本次复核，整个开发阶段未运行构建、单元测试、GameTest、客户端或服务端，也未修改常用存档。
+- [2026-09-26 00:17:10 +08:00] 阶段 4—6 候选新增/修改 GoblinSettlement.java、GoblinSettlementClient.java、GoblinCitizenEntity.java、ResidentRecord.java、SettlementSavedData.java、FarmingCoordinator.java、PublicWarehouseInventory.java、ConstructionCommands.java，并新增 colony/ExpansionCoordinator.java、colony/family、economy/food、economy/tools、farming/FarmDiscoveryCoordinator.java 与 SeedReserve.java、forestry、housing、social、planning/road、planning/bridge、construction/transport、defense、客户端 defense 及 WarehouseRecoveryCommands.java。服务端统一接入经济、农业、林业、交通、家庭、住房、傀儡和关系等协调器，所有新增功能目前均为未验证候选。
+- [2026-09-26 00:17:20 +08:00] 静态审查后补上聚落中心活动区块门控、仓库数量上限、住房/床位/道路/桥梁的分批处理和受保护地块复核。FamilyCoordinator.java 与 GolemWorkshop.java 在出生或造傀儡前检查真实床位和实体占位；HousingCoordinator.java 增加 mobGriefing 检查。相关代码仅作源文件与本地映射 API 审查。
+- [2026-09-26 00:17:30 +08:00] 修改 SettlementSavedData.java 与 FarmDiscoveryCoordinator.java：每轮发现先移除活动区块中失效且无工人预约的农田登记，解除 16 格上限永久卡住的问题；工人占用及未活动区块暂保留。修改 ExpansionCoordinator.java：相邻适宜地块扩张前从真实公共仓库扣除两块橡木板，扣料不完整或地块认领失败时恢复原箱槽位；仍需在统一测试中核验实际行为。
+- [2026-09-26 00:17:40 +08:00] ForestryCoordinator.java 与 GoblinCitizenEntity.java 增加标记橡树附近真实树苗回收、无斧且无木板时有限徒手采伐、原木库存及仓库容量边界；已有原木加工失败不再直接阻断伐木。死亡掉落实体创建失败时保留字段并告警，但死亡实体最终消失仍可能丢失物品，须后续持久化恢复设计。
+- [2026-09-26 00:17:50 +08:00] 更新 CURRENT_STATUS.md，区分旧版已验证基线与新增候选，继续写明先做完初版再统一测试。静态 `git diff --check` 曾报告 GoblinCitizenEntity.java 末尾多空行；该文件随后由林业修改代理继续编辑，需再次检查。GitHub 远端未同步，本轮未推送；不涉及 ai-chat-mod。
+- [2026-09-26 00:18:00 +08:00] 未完成：阶段 7 资源表现、长时间性能和异常恢复初版收尾，以及全部候选代码的统一构建与游戏验证；跨实体、箱子、方块和 Saved Data 的断电一致性尚无保证，仓库取物目击只覆盖保守单槽情形。
+## [2026-09-26 00:19:40 +08:00 – 2026-09-26 00:19:40 +08:00] 第二十七轮补正：静态格式结果
+
+- [2026-09-26 00:19:40 +08:00] 林业代理完成 GoblinCitizenEntity.java 后再次运行 `git diff --check`，无空白字符错误；仅有 Git 对 LF/CRLF 的提示。仍未运行构建、测试或游戏，新增未跟踪文件的运行有效性未知。
+## [2026-09-26 01:11:00 +08:00 – 2026-09-26 01:12:00 +08:00] 第二十八轮：外部函数提交核对与节省额度任务卡
+
+- [2026-09-26 01:11:00 +08:00] 读取 function-bank/README.md、F001—F003 任务卡、三份 submissions/r1 的源码、检查文件和 NOTES；F001 主线已单独实现并较早验证，外部同等版本不重复接入。F002、F003 源码静态上符合核心接口与边界要求，但主程序未独立运行检查，按当前约定保留“待正式验收”；提交者自报的运行结果不算主程序验收。
+- [2026-09-26 01:11:20 +08:00] 新增 function-bank/tasks/F004-warehouse-withdrawal-plan.md 和 F005-building-plot-ranker.md：分别外包跨公共仓库的确定性取料方案、建筑地块排序；两者限定纯 Java 21 和完整输入边界，实际仓库扣料、权限及世界安全留在主程序。任务卡要求交付代码、独立检查与来源说明，按用户约定暂不执行检查。
+- [2026-09-26 01:11:40 +08:00] 更新 function-bank/README.md 登记 F001—F005 的真实状态，更新 CURRENT_STATUS.md 的接续摘要。使用 GitHub 插件只读核对 origin 对应 zenclanx/goblin-settlement、当前认证用户为 zenclanx；本条时点尚未推送。未运行构建、测试或游戏。
+- [2026-09-26 01:12:00 +08:00] 下一步对本轮代码和任务卡做静态格式检查，按用户“Git 一下”的要求提交本地候选成果并处理与 GitHub 的同步；未测试代码仍明确标为候选。

@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.client;
 
 import dev.local.goblinsettlement.GoblinSettlement;
 import dev.local.goblinsettlement.citizen.ModEntities;
+import dev.local.goblinsettlement.defense.GolemRenderer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
 import net.minecraft.client.model.geom.ModelLayerLocation;
@@ -16,5 +17,6 @@ public final class GoblinSettlementClient implements ClientModInitializer {
     public void onInitializeClient() {
         EntityModelLayerRegistry.registerModelLayer(GOBLIN_LAYER, GoblinModel::createLayer);
         EntityRenderers.register(ModEntities.GOBLIN, GoblinRenderer::new);
+        GolemRenderer.initializeClient();
     }
 }

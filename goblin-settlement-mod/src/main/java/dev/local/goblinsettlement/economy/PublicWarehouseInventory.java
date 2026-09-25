@@ -53,6 +53,7 @@ public final class PublicWarehouseInventory {
                 continue;
             }
             if (!isAccessible(level, data, pos)) {
+                complete = false;
                 continue;
             }
             containers++;
