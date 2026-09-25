@@ -93,7 +93,16 @@ tasks.register('settlementSavedDataCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.colony.SettlementSavedDataCheck'
 }
 
+tasks.register('settlementDemandCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks live-stock priority decisions.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.colony.SettlementDemandCheck'
+}
+
 tasks.named('check') {
+    dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
     dependsOn tasks.named('plotCoordinatesCheck')
     dependsOn tasks.named('protectedRectangleCheck')

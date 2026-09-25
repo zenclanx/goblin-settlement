@@ -4,6 +4,8 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.PopulationRules;
+import dev.local.goblinsettlement.colony.SettlementDemand;
+import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.construction.ConstructionCommands;
 import dev.local.goblinsettlement.construction.ConstructionCoordinator;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
@@ -49,6 +51,19 @@ public final class GoblinSettlement implements ModInitializer {
                                             + "/" + PopulationRules.maximumPlots(data.adultCount())
                                             + ", player areas=" + data.playerAreas().size())
                                     .orElse("No settlement in this dimension")), false);
+                            if (settlement.isPresent()) {
+                                var supply = PublicWarehouseInventory.snapshot(level, data);
+                                var demand = SettlementDemand.assess(data.adultCount(), data.childCount(),
+                                        supply, data.plans().stream().anyMatch(plan -> !plan.isComplete()));
+                                context.getSource().sendSuccess(() -> Component.literal("Known public stock: food="
+                                        + supply.food() + "/" + demand.foodTarget()
+                                        + ", wheat seeds=" + supply.wheatSeeds() + "/" + demand.seedTarget()
+                                        + ", hoes/axes/pickaxes=" + supply.hoes() + "/" + supply.axes()
+                                        + "/" + supply.pickaxes()
+                                        + ", containers=" + supply.accessibleContainers()
+                                        + ", stock " + (supply.complete() ? "complete" : "incomplete")
+                                        + ", next priority=" + demand.priority()), false);
+                            }
                             return Command.SINGLE_SUCCESS;
                         }))
                         .then(Commands.literal("found")
