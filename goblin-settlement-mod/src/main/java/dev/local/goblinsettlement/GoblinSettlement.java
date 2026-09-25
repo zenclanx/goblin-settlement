@@ -3,6 +3,7 @@ package dev.local.goblinsettlement;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.PopulationRules;
 import dev.local.goblinsettlement.construction.ConstructionCommands;
 import dev.local.goblinsettlement.construction.ConstructionCoordinator;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
@@ -40,7 +41,12 @@ public final class GoblinSettlement implements ModInitializer {
                             var settlement = data.settlement();
                             context.getSource().sendSuccess(() -> Component.literal(settlement
                                     .map(value -> "Settlement " + value.id() + " at " + value.anchor().toShortString()
+                                            + ", adults=" + data.adultCount()
+                                            + ", children=" + data.childCount()
+                                            + ", population slots=" + data.occupiedPopulationSlots()
+                                            + "/" + PopulationRules.MAX_RESIDENTS
                                             + ", plots=" + data.claimedPlots().size()
+                                            + "/" + PopulationRules.maximumPlots(data.adultCount())
                                             + ", player areas=" + data.playerAreas().size())
                                     .orElse("No settlement in this dimension")), false);
                             return Command.SINGLE_SUCCESS;

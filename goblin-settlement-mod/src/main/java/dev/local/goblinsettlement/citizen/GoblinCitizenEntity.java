@@ -46,6 +46,14 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     }
 
     @Override
+    public void die(DamageSource source) {
+        if (level() instanceof ServerLevel serverLevel) {
+            SettlementSavedData.get(serverLevel).markResidentDead(getUUID().toString());
+        }
+        super.die(source);
+    }
+
+    @Override
     protected void registerGoals() {
         goalSelector.addGoal(0, new LookAtPlayerGoal(this, Player.class, 6.0F));
         goalSelector.addGoal(1, new RandomLookAroundGoal(this));
@@ -141,7 +149,11 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         if (tickCount % 10 != 0) {
             return;
         }
-        if (SettlementSavedData.get(level).isCancelledWorker(getUUID().toString())) {
+        var settlementData = SettlementSavedData.get(level);
+        if (settlementData.settlement().isPresent() && settlementData.isClaimed(blockPosition())) {
+            settlementData.registerAdult(getUUID().toString());
+        }
+        if (settlementData.isCancelledWorker(getUUID().toString())) {
             applyProjectCancellation(level);
             return;
         }

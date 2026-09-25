@@ -19,6 +19,16 @@ public final class SettlementSavedDataCheck {
         require(!data.isClaimed(new BlockPos(16, 70, 15)), "adjacent plot remains unclaimed");
         require(data.found(new BlockPos(24, 70, 24)) == SettlementSavedData.FoundResult.ALREADY_EXISTS,
                 "founding twice preserves identity");
+        require(data.registerAdult("resident-adult"), "resident joins the founded settlement");
+        require(!data.registerAdult("resident-adult"), "repeated entity ticks do not duplicate residents");
+        require(data.adultCount() == 1 && data.childCount() == 0, "only living adults count for land");
+        var rosterJson = SettlementSavedData.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow();
+        var rosterReloaded = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, rosterJson).getOrThrow();
+        require(rosterReloaded.residents().equals(data.residents()), "unloaded roster survives reload");
+        require(data.markResidentDead("resident-adult"), "death updates the resident record");
+        require(!data.markResidentDead("resident-adult"), "repeat death does not change population twice");
+        require(data.adultCount() == 0 && data.residents().size() == 1,
+                "deceased resident remains in family history without granting land");
 
         BlockPos chest = new BlockPos(9, 71, 9);
         BlockPos site = new BlockPos(11, 71, 11);
@@ -88,6 +98,9 @@ public final class SettlementSavedDataCheck {
         require(loadedOld.claimedPlots().isEmpty(), "old data does not gain automatic claims");
         require(loadedOld.warehouses().isEmpty(), "old data has no registered public chest");
         require(loadedOld.plan().isEmpty(), "old data has no project");
+        oldSchema.remove("residents");
+        var beforeRoster = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, oldSchema).getOrThrow();
+        require(beforeRoster.residents().isEmpty(), "pre-roster saves load without invented residents");
 
         var cancellation = new SettlementSavedData();
         require(cancellation.found(new BlockPos(0, 70, 0)) == SettlementSavedData.FoundResult.FOUNDED,

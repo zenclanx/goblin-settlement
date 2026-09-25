@@ -67,7 +67,9 @@ public final class SettlementSavedData extends SavedData {
             ConstructionPlan.CODEC.listOf().optionalFieldOf("plans", List.of())
                     .forGetter(data -> data.plans),
             Codec.STRING.listOf().optionalFieldOf("cancelled_workers", List.of())
-                    .forGetter(data -> data.cancelledWorkers)
+                    .forGetter(data -> data.cancelledWorkers),
+            ResidentRecord.CODEC.listOf().optionalFieldOf("residents", List.of())
+                    .forGetter(data -> data.residents)
     ).apply(instance, SettlementSavedData::new));
 
     private static final SavedDataType<SettlementSavedData> TYPE = new SavedDataType<>(
@@ -80,17 +82,18 @@ public final class SettlementSavedData extends SavedData {
     private List<BlockPos> warehouses;
     private List<ConstructionPlan> plans;
     private List<String> cancelledWorkers;
+    private List<ResidentRecord> residents;
 
     public SettlementSavedData() {
         this(SCHEMA_VERSION, Optional.empty(), List.of(), List.of(), List.of(),
-                Optional.empty(), List.of(), List.of());
+                Optional.empty(), List.of(), List.of(), List.of());
     }
 
     private SettlementSavedData(int schemaVersion, Optional<Settlement> settlement,
                                 List<Plot> claimedPlots, List<PlayerArea> playerAreas,
                                 List<BlockPos> warehouses, Optional<ConstructionPlan> legacyPlan,
                                 List<ConstructionPlan> plans,
-                                List<String> cancelledWorkers) {
+                                List<String> cancelledWorkers, List<ResidentRecord> residents) {
         if (schemaVersion != SCHEMA_VERSION) {
             throw new IllegalArgumentException("Unsupported settlement data version: " + schemaVersion);
         }
@@ -102,6 +105,7 @@ public final class SettlementSavedData extends SavedData {
         this.plans = plans.isEmpty() && legacyPlan.isPresent()
                 ? List.of(legacyPlan.get()) : List.copyOf(plans);
         this.cancelledWorkers = List.copyOf(cancelledWorkers);
+        this.residents = List.copyOf(residents);
     }
 
     public static SettlementSavedData get(ServerLevel level) {
@@ -122,6 +126,47 @@ public final class SettlementSavedData extends SavedData {
 
     public List<BlockPos> warehouses() {
         return warehouses;
+    }
+
+    public List<ResidentRecord> residents() {
+        return residents;
+    }
+
+    public int adultCount() {
+        return (int) residents.stream().filter(record -> record.stage() == ResidentRecord.LifeStage.ADULT).count();
+    }
+
+    public int childCount() {
+        return (int) residents.stream().filter(record -> record.stage() == ResidentRecord.LifeStage.CHILD).count();
+    }
+
+    public int occupiedPopulationSlots() {
+        return PopulationRules.occupiedSlots(adultCount(), childCount(), 0);
+    }
+
+    public boolean registerAdult(String residentId) {
+        if (settlement.isEmpty() || residents.stream().anyMatch(record -> record.id().equals(residentId))) {
+            return false;
+        }
+        var updated = new ArrayList<>(residents);
+        updated.add(ResidentRecord.adult(residentId));
+        residents = List.copyOf(updated);
+        setDirty();
+        return true;
+    }
+
+    public boolean markResidentDead(String residentId) {
+        for (int index = 0; index < residents.size(); index++) {
+            var current = residents.get(index);
+            if (current.id().equals(residentId) && current.stage() != ResidentRecord.LifeStage.DECEASED) {
+                var updated = new ArrayList<>(residents);
+                updated.set(index, current.deceased());
+                residents = List.copyOf(updated);
+                setDirty();
+                return true;
+            }
+        }
+        return false;
     }
 
     public Optional<ConstructionPlan> plan() {
