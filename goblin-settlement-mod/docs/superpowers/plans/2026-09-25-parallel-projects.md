@@ -35,4 +35,5 @@
 - [x] Confirm both projects progress independently, no duplicate material appears, and a shortage pauses only unfinished work.
 - [x] Save, stop, restart, replenish, and confirm both projects finish with correct blocks and inventory.
 - [x] Remove temporary force-loading and stop the server.
-- [ ] Run the final offline build, update project status and append-only history, and push the project repository.
+- [x] Run the final offline build, update project status and append-only history, and push the project repository.
+
