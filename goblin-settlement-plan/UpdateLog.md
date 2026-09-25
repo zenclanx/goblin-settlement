@@ -279,3 +279,7 @@
 - [2026-09-26 01:11:20 +08:00] 新增 function-bank/tasks/F004-warehouse-withdrawal-plan.md 和 F005-building-plot-ranker.md：分别外包跨公共仓库的确定性取料方案、建筑地块排序；两者限定纯 Java 21 和完整输入边界，实际仓库扣料、权限及世界安全留在主程序。任务卡要求交付代码、独立检查与来源说明，按用户约定暂不执行检查。
 - [2026-09-26 01:11:40 +08:00] 更新 function-bank/README.md 登记 F001—F005 的真实状态，更新 CURRENT_STATUS.md 的接续摘要。使用 GitHub 插件只读核对 origin 对应 zenclanx/goblin-settlement、当前认证用户为 zenclanx；本条时点尚未推送。未运行构建、测试或游戏。
 - [2026-09-26 01:12:00 +08:00] 下一步对本轮代码和任务卡做静态格式检查，按用户“Git 一下”的要求提交本地候选成果并处理与 GitHub 的同步；未测试代码仍明确标为候选。
+## [2026-09-26 01:14:00 +08:00 – 2026-09-26 01:14:00 +08:00] 第二十八轮补记：Git 保存与分支同步
+
+- [2026-09-26 01:14:00 +08:00] 暂存仅含 goblin-settlement-mod 的候选源码与 F004/F005 任务卡，以及 goblin-settlement-plan 的状态和日志；静态 `git diff --cached --check` 清洁。提交为 2ea2d53（Checkpoint settlement first-pass systems and function cards）。按用户要求未运行构建、测试或游戏。
+- [2026-09-26 01:14:00 +08:00] 核对 GitHub 仓库为 zenclanx/goblin-settlement、认证账号为 zenclanx 后，成功推送本地 codex/settlement-v1 到 origin 同名新分支；未改动远端 main，未创建 PR。更新 CURRENT_STATUS.md 记录实际同步状态。
