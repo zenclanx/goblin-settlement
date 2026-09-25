@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.forestry;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.Comparator;
@@ -38,9 +39,7 @@ public final class ForestryCoordinator {
         if (!stock.complete() || stock.accessibleContainers() == 0) {
             return;
         }
-        if (!level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                new AABB(settlement.get().anchor()).inflate(256.0),
-                goblin -> goblin.hasForestryWork(id)).isEmpty()) {
+        if (ResidentWorkLookup.anyLoaded(level, data, goblin -> goblin.hasForestryWork(id))) {
             return;
         }
         // Recover real sapling drops from marked trees, even when planks are plentiful.

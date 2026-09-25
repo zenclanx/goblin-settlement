@@ -3,6 +3,7 @@ package dev.local.goblinsettlement.economy.food;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementDemand;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseSupply;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -35,9 +36,7 @@ public final class FoodCraftingCoordinator {
             return;
         }
         String settlementId = settlement.get().id();
-        if (!level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                new AABB(settlement.get().anchor()).inflate(256.0),
-                goblin -> goblin.hasFoodWork(settlementId)).isEmpty()) {
+        if (ResidentWorkLookup.anyLoaded(level, data, goblin -> goblin.hasFoodWork(settlementId))) {
             return;
         }
         for (BlockPos warehouse : data.warehouses()) {

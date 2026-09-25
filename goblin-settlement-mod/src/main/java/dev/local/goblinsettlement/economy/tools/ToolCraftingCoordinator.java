@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.economy.tools;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseSupply;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -36,9 +37,7 @@ public final class ToolCraftingCoordinator {
         }
         // Loaded workers retain their assignment on the entity. Do not start another
         // tool job while one is still fetching, crafting, or returning its output.
-        if (!level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                new AABB(settlement.get().anchor()).inflate(256.0),
-                goblin -> goblin.hasToolWork(settlementId)).isEmpty()) {
+        if (ResidentWorkLookup.anyLoaded(level, data, goblin -> goblin.hasToolWork(settlementId))) {
             return;
         }
         for (WoodToolKind kind : WoodToolKind.values()) {

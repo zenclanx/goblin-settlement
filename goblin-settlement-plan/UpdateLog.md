@@ -283,3 +283,10 @@
 
 - [2026-09-26 01:14:00 +08:00] 暂存仅含 goblin-settlement-mod 的候选源码与 F004/F005 任务卡，以及 goblin-settlement-plan 的状态和日志；静态 `git diff --cached --check` 清洁。提交为 2ea2d53（Checkpoint settlement first-pass systems and function cards）。按用户要求未运行构建、测试或游戏。
 - [2026-09-26 01:14:00 +08:00] 核对 GitHub 仓库为 zenclanx/goblin-settlement、认证账号为 zenclanx 后，成功推送本地 codex/settlement-v1 到 origin 同名新分支；未改动远端 main，未创建 PR。更新 CURRENT_STATUS.md 记录实际同步状态。
+## [2026-09-26 01:36:00 +08:00 – 2026-09-26 01:37:00 +08:00] 第二十九轮：新函数提交静态审查与在岗查找收敛
+
+- [2026-09-26 01:36:00 +08:00] 读取 CURRENT_STATUS.md、function-bank/README.md 和 F004/F005 r1 的源码、检查文件、NOTES。两项提交均按约定未编译或运行；主程序只做接口、输入边界、排序和依赖的静态初审，不将其放入 accepted，也不接入游戏代码。
+- [2026-09-26 01:36:15 +08:00] F005 检查程序在全 MAX 同分且逆序输入时误将 X=1 的候选作为预期；修正为 X=0 的候选，并新增 submissions/F005/r1/REVIEW.md 记录审查修正及未正式验收状态。F004 纯函数源码静态初审未发现需立即返工的问题。
+- [2026-09-26 01:36:30 +08:00] 新增 colony/ResidentWorkLookup.java，修改 FoodCraftingCoordinator.java、ToolCraftingCoordinator.java、ForestryCoordinator.java：三处每秒对中心周围 256 格范围做实体搜索的在岗检查，改为遍历持久居民名册并直接按 UUID 查找已加载居民；局部 16 格派工搜索仍保留。第一次编辑脚本报错使三份原本干净的文件暂时为空，立即仅从 HEAD 恢复指定三文件，然后以逐文件匹配确认方式重新写入；后续静态读取确认查找调用存在。
+- [2026-09-26 01:36:45 +08:00] 更新 function-bank/README.md 与 CURRENT_STATUS.md；继续保持 F001 主线已验证，F002—F005 外部提交未正式验收。按用户要求本轮未运行构建、单元检查、GameTest、客户端或服务端。
+- [2026-09-26 01:37:00 +08:00] 待做：七阶段初版剩余的资源表现和异常恢复；随后统一验证这些候选流程，特别是名册与实体加载边界、外部纯函数检查以及长时间性能。
