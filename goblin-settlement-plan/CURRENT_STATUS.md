@@ -44,4 +44,4 @@
 
 ## Git 仓库
 
-项目源码与规划文档跟踪在 https://github.com/zenclanx/goblin-settlement 的 main；本地 origin 已连接，测试世界和相邻模组不入库。
+项目源码与规划文档跟踪在 https://github.com/zenclanx/goblin-settlement 的 main；本地 origin 已连接，测试世界和相邻模组不入库。本轮农业验收记录已本地提交，GitHub 推送被自动审批拒绝，远端尚未同步。
