@@ -7,6 +7,7 @@ import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -141,14 +142,29 @@ public final class ConstructionCommands {
         ServerLevel level = source.getLevel();
         var data = SettlementSavedData.get(level);
         int stock = PublicWarehouseInventory.countOakPlanks(level, data);
+        boolean stockIncomplete = data.warehouses().stream().anyMatch(pos -> !level.shouldTickBlocksAt(pos));
         int remaining = plans.stream().filter(plan -> !plan.isComplete())
                 .mapToInt(plan -> ConstructionPlan.LENGTH - plan.completed()).sum();
-        int carried = plans.stream().mapToInt(plan -> plan.workerId()
-                .map(id -> carriedBy(level, id)).orElse(0)).sum();
+        int carried = 0;
+        boolean workersIncomplete = false;
+        for (var plan : plans) {
+            if (plan.workerId().isPresent()) {
+                var loadedCarried = carriedBy(level, plan.workerId().orElseThrow());
+                if (loadedCarried.isPresent()) {
+                    carried += loadedCarried.orElseThrow();
+                } else {
+                    workersIncomplete = true;
+                }
+            }
+        }
         int shortage = Math.max(0, remaining - stock - carried);
+        String stockText = stockIncomplete ? ">=" + stock + " (some warehouses inactive)" : String.valueOf(stock);
+        String carriedText = workersIncomplete ? ">=" + carried + " (some workers unloaded)" : String.valueOf(carried);
+        String shortageText = remaining > 0 && (stockIncomplete || workersIncomplete) ? "unknown (at most " + shortage + ")"
+                : String.valueOf(shortage);
         source.sendSuccess(() -> Component.literal("Projects=" + plans.size()
-                + ", public chest stock=" + stock + ", worker carrying=" + carried
-                + ", total still needed=" + shortage), false);
+                + ", public chest stock=" + stockText + ", worker carrying=" + carriedText
+                + ", total still needed=" + shortageText), false);
         for (var plan : plans) {
             source.sendSuccess(() -> Component.literal("Project at " + plan.start().toShortString()
                     + " " + plan.completed() + "/" + ConstructionPlan.LENGTH
@@ -159,12 +175,13 @@ public final class ConstructionCommands {
         return Command.SINGLE_SUCCESS;
     }
 
-    private static int carriedBy(ServerLevel level, String workerId) {
+    private static Optional<Integer> carriedBy(ServerLevel level, String workerId) {
         try {
             var entity = level.getEntity(UUID.fromString(workerId));
-            return entity instanceof GoblinCitizenEntity goblin ? goblin.carriedOakPlanks() : 0;
+            return entity instanceof GoblinCitizenEntity goblin
+                    ? Optional.of(goblin.carriedOakPlanks()) : Optional.empty();
         } catch (IllegalArgumentException ignored) {
-            return 0;
+            return Optional.empty();
         }
     }
 }

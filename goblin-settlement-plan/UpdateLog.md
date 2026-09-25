@@ -193,3 +193,11 @@
 ## [2026-09-25 11:26:36 +08:00 – 2026-09-25 11:27:28 +08:00] 第十八轮补记：提交前构建
 
 - [2026-09-25 11:27:28 +08:00] 固定 Gradle 9.2.1 + Java 21 完整离线 build 成功，PopulationRulesCheck、PlotCoordinatesCheck、ProtectedRectangleCheck、SettlementSavedDataCheck 均通过；运行代码未改。
+
+## [2026-09-25 11:31:00 +08:00 – 2026-09-25 11:36:00 +08:00] 第十九轮：卸载库存诊断提示
+
+- [2026-09-25 11:32:00 +08:00] 客户端桌面操作工具连续两次启动失败，本轮不能代替真实玩家点击箱子；服务端与本地项目工作继续进行。
+- [2026-09-25 11:33:00 +08:00] 修改 goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionCommands.java：project 查询将未加载公共箱和未加载工人的库存显示为已知下界，将缺口显示为未知及上界；已完成工程仍显示明确缺口 0。没有更改库存扣料或工人行为。
+- [2026-09-25 11:34:21 +08:00] 在专用 goblin-multi-world 服务端验证：测试区块未加载时公共箱显示 >=0 与库存不完整；临时加载后显示精确 0。测试结束撤销强加载并正常停服。本次实际游戏验证未覆盖携料工人卸载分支。
+- [2026-09-25 11:35:00 +08:00] 固定 Gradle 9.2.1 + Java 21 的完整离线 build 成功；PopulationRulesCheck、PlotCoordinatesCheck、ProtectedRectangleCheck、SettlementSavedDataCheck 均通过。检查仅验证编译与既有独立规则，不能代替玩家实际开箱取料。
+- [2026-09-25 11:36:00 +08:00] 更新 goblin-settlement-plan/CURRENT_STATUS.md。阶段 3 待做：玩家客户端真实开箱取料、同类掉落物合并来源判断、携料工人卸载时的诊断复核、突然断电一致性。未改 ai-chat-mod 或常用存档。
