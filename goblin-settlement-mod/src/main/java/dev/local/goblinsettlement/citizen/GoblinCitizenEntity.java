@@ -3,6 +3,8 @@ package dev.local.goblinsettlement.citizen;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.economy.DroppedMaterialLookup;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -20,18 +22,22 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
 /** A resident with a persisted single-item construction or recovery task. */
 public final class GoblinCitizenEntity extends PathfinderMob {
-    private enum WorkStage { IDLE, FETCHING, DELIVERING, COMPLETE, RECOVERING, RETURNING, RECOVERED, ABORTED }
+    private enum WorkStage { IDLE, FETCHING, DELIVERING, COMPLETE, RECOVERING, RETURNING, RECOVERED, ABORTED,
+        FARM_FETCHING_SEED, FARM_PLANTING, FARM_HARVESTING, FARM_RETURNING, FARM_COMPLETE }
 
     private WorkStage workStage = WorkStage.IDLE;
     private String settlementId = "";
     private BlockPos supplyPos = BlockPos.ZERO;
     private BlockPos buildPos = BlockPos.ZERO;
     private ItemStack carried = ItemStack.EMPTY;
+    private List<ItemStack> farmGoods = new ArrayList<>();
     private String pickupItemId = "";
     private String waitReason = "";
 
@@ -84,15 +90,57 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         return true;
     }
 
+    public boolean assignFarmPlanting(String id, BlockPos warehouse, BlockPos crop) {
+        return assignFarm(id, warehouse, crop, WorkStage.FARM_FETCHING_SEED);
+    }
+
+    public boolean assignFarmHarvest(String id, BlockPos warehouse, BlockPos crop) {
+        return assignFarm(id, warehouse, crop, WorkStage.FARM_HARVESTING);
+    }
+
+    private boolean assignFarm(String id, BlockPos warehouse, BlockPos crop, WorkStage stage) {
+        if (!isAvailableForConstruction()) {
+            return false;
+        }
+        settlementId = id;
+        supplyPos = warehouse.immutable();
+        buildPos = crop.immutable();
+        farmGoods.clear();
+        workStage = stage;
+        waitReason = "";
+        return true;
+    }
+
+    public boolean farmWorkComplete(String id, BlockPos crop) {
+        return workStage == WorkStage.FARM_COMPLETE && settlementId.equals(id) && buildPos.equals(crop);
+    }
+
+    public void acknowledgeFarmWork() {
+        if (workStage == WorkStage.FARM_COMPLETE && carried.isEmpty() && farmGoods.isEmpty()) {
+            workStage = WorkStage.IDLE;
+            waitReason = "";
+        }
+    }
+
+    public void cancelUnreservedFarmWork() {
+        if (workStage == WorkStage.FARM_FETCHING_SEED || workStage == WorkStage.FARM_HARVESTING) {
+            workStage = WorkStage.IDLE;
+            waitReason = "";
+        }
+    }
+
     public String workSummary() {
+        int goods = farmGoods.stream().mapToInt(ItemStack::getCount).sum();
         return workStage + (waitReason.isEmpty() ? "" : " (" + waitReason + ")")
-                + ", carrying=" + carried.getCount();
+                + ", carrying=" + (carried.getCount() + goods);
     }
 
     public boolean isAvailableForConstruction() {
-        if (level() instanceof ServerLevel serverLevel
-                && SettlementSavedData.get(serverLevel).isCancelledWorker(getUUID().toString())) {
-            return false;
+        if (level() instanceof ServerLevel serverLevel) {
+            var data = SettlementSavedData.get(serverLevel);
+            if (data.isCancelledWorker(getUUID().toString()) || data.isFarmWorker(getUUID().toString())) {
+                return false;
+            }
         }
         return isAlive() && !isRemoved()
                 && (workStage == WorkStage.IDLE || workStage == WorkStage.COMPLETE) && carried.isEmpty();
@@ -161,6 +209,14 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 || workStage == WorkStage.RECOVERED || workStage == WorkStage.ABORTED) {
             return;
         }
+        if (workStage == WorkStage.FARM_FETCHING_SEED || workStage == WorkStage.FARM_PLANTING
+                || workStage == WorkStage.FARM_HARVESTING || workStage == WorkStage.FARM_RETURNING) {
+            tickFarmWork(level);
+            return;
+        }
+        if (workStage == WorkStage.FARM_COMPLETE) {
+            return;
+        }
         if (workStage == WorkStage.RECOVERING) {
             recoverDroppedItem(level);
             return;
@@ -196,6 +252,142 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
     }
 
+    private void tickFarmWork(ServerLevel level) {
+        BlockPos target = workStage == WorkStage.FARM_FETCHING_SEED || workStage == WorkStage.FARM_RETURNING
+                ? supplyPos : buildPos;
+        if (WorldModificationPermission.check(level, settlementId, target)
+                != WorldModificationPermission.Decision.ALLOWED
+                || WorldModificationPermission.check(level, settlementId, buildPos.below())
+                != WorldModificationPermission.Decision.ALLOWED) {
+            waitReason = "farm or warehouse inactive or protected";
+            getNavigation().stop();
+            return;
+        }
+        if (distanceToSqr(target.getX() + 0.5, target.getY() + 0.5, target.getZ() + 0.5) > 8.0) {
+            waitReason = "walking";
+            getNavigation().moveTo(target.getX() + 0.5, target.getY(), target.getZ() + 0.5, 1.0);
+            return;
+        }
+        getNavigation().stop();
+        switch (workStage) {
+            case FARM_FETCHING_SEED -> fetchFarmSeed(level);
+            case FARM_PLANTING -> plantFarmSeed(level);
+            case FARM_HARVESTING -> harvestFarmCrop(level);
+            case FARM_RETURNING -> returnFarmGoods(level);
+            default -> { }
+        }
+    }
+
+    private void fetchFarmSeed(ServerLevel level) {
+        if (!carried.isEmpty()) {
+            workStage = WorkStage.FARM_PLANTING;
+            return;
+        }
+        if (!(level.getBlockEntity(supplyPos) instanceof Container container)) {
+            waitReason = "warehouse missing";
+            return;
+        }
+        for (int slot = 0; slot < container.getContainerSize(); slot++) {
+            if (container.getItem(slot).is(Items.WHEAT_SEEDS)) {
+                ItemStack seed = container.removeItem(slot, 1);
+                if (!seed.isEmpty()) {
+                    carried = seed;
+                    container.setChanged();
+                    workStage = WorkStage.FARM_PLANTING;
+                    waitReason = "";
+                }
+                return;
+            }
+        }
+        waitReason = "wheat seeds missing";
+    }
+
+    private void plantFarmSeed(ServerLevel level) {
+        if (!carried.is(Items.WHEAT_SEEDS)) {
+            workStage = WorkStage.FARM_COMPLETE;
+            waitReason = "seed missing";
+            return;
+        }
+        if (!level.getBlockState(buildPos.below()).is(Blocks.FARMLAND)) {
+            waitReason = "farmland missing";
+            return;
+        }
+        if (!level.getBlockState(buildPos).isAir()) {
+            farmGoods.add(carried);
+            carried = ItemStack.EMPTY;
+            workStage = WorkStage.FARM_RETURNING;
+            waitReason = "crop site occupied, returning seed";
+            return;
+        }
+        if (level.setBlock(buildPos, Blocks.WHEAT.defaultBlockState(), 3)) {
+            carried = ItemStack.EMPTY;
+            workStage = WorkStage.FARM_COMPLETE;
+            waitReason = "";
+        } else {
+            waitReason = "planting failed";
+        }
+    }
+
+    private void harvestFarmCrop(ServerLevel level) {
+        if (!level.getBlockState(buildPos.below()).is(Blocks.FARMLAND)) {
+            waitReason = "farmland missing";
+            return;
+        }
+        var crop = level.getBlockState(buildPos);
+        if (!crop.is(Blocks.WHEAT) || crop.getValue(CropBlock.AGE) < 7) {
+            workStage = WorkStage.FARM_COMPLETE;
+            waitReason = "";
+            return;
+        }
+        var drops = Block.getDrops(crop, level, buildPos, level.getBlockEntity(buildPos), this, ItemStack.EMPTY);
+        if (level.setBlock(buildPos, Blocks.AIR.defaultBlockState(), 3)) {
+            farmGoods.addAll(drops.stream().filter(stack -> !stack.isEmpty()).toList());
+            workStage = farmGoods.isEmpty() ? WorkStage.FARM_COMPLETE : WorkStage.FARM_RETURNING;
+            waitReason = "";
+        } else {
+            waitReason = "harvest failed";
+        }
+    }
+
+    private void returnFarmGoods(ServerLevel level) {
+        if (farmGoods.isEmpty()) {
+            workStage = WorkStage.FARM_COMPLETE;
+            waitReason = "";
+            return;
+        }
+        if (!(level.getBlockEntity(supplyPos) instanceof Container container)) {
+            waitReason = "warehouse missing";
+            return;
+        }
+        for (ItemStack goods : farmGoods) {
+            for (int slot = 0; slot < container.getContainerSize() && !goods.isEmpty(); slot++) {
+                if (!container.canPlaceItem(slot, goods)) {
+                    continue;
+                }
+                ItemStack existing = container.getItem(slot);
+                if (existing.isEmpty()) {
+                    container.setItem(slot, goods.copy());
+                    goods.setCount(0);
+                } else if (ItemStack.isSameItemSameComponents(existing, goods)) {
+                    int space = Math.min(existing.getMaxStackSize(), container.getMaxStackSize(existing))
+                            - existing.getCount();
+                    if (space > 0) {
+                        int moved = Math.min(space, goods.getCount());
+                        existing.grow(moved);
+                        goods.shrink(moved);
+                        container.setChanged();
+                    }
+                }
+            }
+        }
+        farmGoods.removeIf(ItemStack::isEmpty);
+        if (farmGoods.isEmpty()) {
+            workStage = WorkStage.FARM_COMPLETE;
+            waitReason = "";
+        } else {
+            waitReason = "warehouse full";
+        }
+    }
     private void recoverDroppedItem(ServerLevel level) {
         if (!carried.isEmpty()) {
             workStage = WorkStage.RETURNING;
@@ -380,11 +572,18 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         buildPos = input.read("GoblinBuildPos", BlockPos.CODEC).orElse(BlockPos.ZERO);
         pickupItemId = input.getStringOr("GoblinPickupItemId", "");
         carried = input.read("GoblinCarried", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        farmGoods = new ArrayList<>(input.read("GoblinFarmGoods", ItemStack.CODEC.listOf()).orElse(List.of()));
         if (!carried.isEmpty() && workStage == WorkStage.FETCHING) {
             workStage = WorkStage.DELIVERING;
         }
         if (!carried.isEmpty() && workStage == WorkStage.RECOVERING) {
             workStage = WorkStage.RETURNING;
+        }
+        if (!carried.isEmpty() && workStage == WorkStage.FARM_FETCHING_SEED) {
+            workStage = WorkStage.FARM_PLANTING;
+        }
+        if (farmGoods.isEmpty() && workStage == WorkStage.FARM_RETURNING) {
+            workStage = WorkStage.FARM_COMPLETE;
         }
         if (carried.isEmpty() && workStage == WorkStage.RETURNING) {
             workStage = WorkStage.ABORTED;
@@ -403,6 +602,13 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             }
             carried = ItemStack.EMPTY;
         }
+        for (ItemStack goods : farmGoods) {
+            if (!goods.isEmpty()) {
+                spawnAtLocation(level, goods.copy());
+            }
+        }
+        farmGoods.clear();
+        data.releaseFarmWorker(getUUID().toString());
         data.releaseWorker(getUUID().toString());
         data.acknowledgeCancelledWorker(getUUID().toString());
     }

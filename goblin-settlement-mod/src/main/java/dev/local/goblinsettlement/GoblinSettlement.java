@@ -9,6 +9,8 @@ import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.construction.ConstructionCommands;
 import dev.local.goblinsettlement.construction.ConstructionCoordinator;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.farming.FarmingCommands;
+import dev.local.goblinsettlement.farming.FarmingCoordinator;
 import dev.local.goblinsettlement.citizen.ModEntities;
 import dev.local.goblinsettlement.interaction.ProtectedRectangle;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -33,8 +35,11 @@ public final class GoblinSettlement implements ModInitializer {
     public void onInitialize() {
         ModEntities.initialize();
         ServerTickEvents.END_WORLD_TICK.register(ConstructionCoordinator::tick);
+        ServerTickEvents.END_WORLD_TICK.register(FarmingCoordinator::tick);
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 ConstructionCommands.register(dispatcher));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                FarmingCommands.register(dispatcher));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("goblinsettlement")
                         .then(Commands.literal("status").executes(context -> {

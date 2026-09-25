@@ -141,6 +141,25 @@ public final class SettlementSavedDataCheck {
         var parallelReloaded = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, parallelJson).getOrThrow();
         require(parallelReloaded.plans().equals(parallel.plans()), "multiple plans survive reload");
 
+        var farm = new SettlementSavedData();
+        require(farm.found(new BlockPos(0, 70, 0)) == SettlementSavedData.FoundResult.FOUNDED,
+                "farm fixture founded");
+        BlockPos crop = new BlockPos(1, 71, 1);
+        require(farm.registerFarmSite(crop), "wheat cell registered");
+        require(!farm.registerFarmSite(crop), "duplicate wheat cell rejected");
+        require(!farm.planTwoPlanks(crop), "construction cannot overlap a farm cell");
+        require(farm.assignFarmWorker(crop, "farmer"), "farm worker reserved");
+        require(!farm.assignFarmWorker(crop, "other"), "farm cell cannot have two workers");
+        require(farm.isFarmWorker("farmer"), "farm reservation visible to other work");
+        var farmJson = SettlementSavedData.CODEC.encodeStart(JsonOps.INSTANCE, farm).getOrThrow();
+        var farmReloaded = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, farmJson).getOrThrow();
+        require(farmReloaded.farmSites().equals(farm.farmSites()), "farm and worker survive reload");
+        require(farmReloaded.releaseFarmWorker("farmer"), "worker released after farm task");
+        require(!farmReloaded.isFarmWorker("farmer"), "farm worker free for another task");
+        var beforeFarms = farmJson.getAsJsonObject().deepCopy();
+        beforeFarms.remove("farm_sites");
+        require(SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, beforeFarms).getOrThrow().farmSites().isEmpty(),
+                "old saves load without invented farm cells");
         var legacyPlanJson = json.getAsJsonObject().deepCopy();
         legacyPlanJson.remove("plans");
         legacyPlanJson.add("plan", dev.local.goblinsettlement.construction.ConstructionPlan.CODEC

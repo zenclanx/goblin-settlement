@@ -18,6 +18,17 @@ public final class PublicWarehouseInventory {
         return data.warehouses().stream().filter(pos -> countAt(level, data, pos) > 0).findFirst();
     }
 
+    public static Optional<BlockPos> firstWithWheatSeeds(ServerLevel level, SettlementSavedData data) {
+        return data.warehouses().stream().filter(pos -> {
+            if (!isAccessible(level, data, pos)) return false;
+            Container container = (Container) level.getBlockEntity(pos);
+            for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                if (container.getItem(slot).is(Items.WHEAT_SEEDS)) return true;
+            }
+            return false;
+        }).findFirst();
+    }
+
     public static Optional<BlockPos> firstAccessible(ServerLevel level, SettlementSavedData data) {
         return data.warehouses().stream().filter(pos -> isAccessible(level, data, pos)).findFirst();
     }

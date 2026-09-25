@@ -227,3 +227,10 @@
 - [2026-09-25 12:15:00 +08:00] 修改 GoblinSettlement.java 的 status 指令显示已知公共库存、临时目标、快照完整性和下一优先级；修改 build.gradle，新增 SettlementDemandCheck.java，覆盖库存未知、缺箱、食物、种子、工具与施工排序。未让需求判断自动发物品或抢占现有工人。
 - [2026-09-25 12:16:00 +08:00] 固定 Gradle 9.2.1 + Java 21 运行一次完整离线 build 成功；五项现有/新增独立检查全部通过。未启动游戏客户端或专用服务端，本轮不宣称农业、工具制作或游戏内库存分类已经验收。
 - [2026-09-25 12:18:00 +08:00] 更新 STAGE4_ARCHITECTURE.md 和 CURRENT_STATUS.md。下一步把只读需求接到真实农业和工具工作流；阶段 3 客户端边界验收仍按用户要求后移。
+
+## [2026-09-25 12:18:00 +08:00 – 2026-09-25 12:28:45 +08:00] 第二十三轮：单格小麦种收归仓主链
+
+- [2026-09-25 12:20:00 +08:00] 新增 FarmSite.java、FarmingCommands.java、FarmingCoordinator.java，扩展 SettlementSavedData.java：田块与工人预约持久保存，管理员只可在已认领、活动、未保护的耕地登记小麦格，避免与活动工程重叠。
+- [2026-09-25 12:25:00 +08:00] 扩展 GoblinCitizenEntity.java、PublicWarehouseInventory.java、GoblinSettlement.java：居民从真实公共箱取一粒麦种、播种、成熟时按原版方块掉落收获并归仓；满箱则携物等待，权限或区块不可用时暂停，死亡时掉落携物。农业与施工共享居民占用边界。
+- [2026-09-25 12:27:00 +08:00] 扩充 SettlementSavedDataCheck.java，验证农田重复登记、工地重叠、单工人预约、持久重载与旧存档缺少农田字段的兼容。
+- [2026-09-25 12:28:45 +08:00] 固定 Gradle 9.2.1 + Java 21 完整离线 build 成功，现有五项独立检查全部通过。尚未做实际游戏种收或开箱验收；留种配额、锄具使用、工具制作、家庭/孕育和自主扩地未实现。更新 STAGE4_ARCHITECTURE.md 与 CURRENT_STATUS.md；未修改 ai-chat-mod 或常用存档。

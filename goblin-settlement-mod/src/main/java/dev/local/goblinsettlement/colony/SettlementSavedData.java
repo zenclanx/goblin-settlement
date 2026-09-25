@@ -18,6 +18,7 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 public final class SettlementSavedData extends SavedData {
     public static final int SCHEMA_VERSION = 1;
     public static final int MAX_ACTIVE_PLANS = 8;
+    public static final int MAX_FARM_SITES = 16;
 
     public enum FoundResult {
         FOUNDED, ALREADY_EXISTS, PLAYER_AREA_CONFLICT
@@ -69,7 +70,9 @@ public final class SettlementSavedData extends SavedData {
             Codec.STRING.listOf().optionalFieldOf("cancelled_workers", List.of())
                     .forGetter(data -> data.cancelledWorkers),
             ResidentRecord.CODEC.listOf().optionalFieldOf("residents", List.of())
-                    .forGetter(data -> data.residents)
+                    .forGetter(data -> data.residents),
+            FarmSite.CODEC.listOf().optionalFieldOf("farm_sites", List.of())
+                    .forGetter(data -> data.farmSites)
     ).apply(instance, SettlementSavedData::new));
 
     private static final SavedDataType<SettlementSavedData> TYPE = new SavedDataType<>(
@@ -83,17 +86,18 @@ public final class SettlementSavedData extends SavedData {
     private List<ConstructionPlan> plans;
     private List<String> cancelledWorkers;
     private List<ResidentRecord> residents;
+    private List<FarmSite> farmSites;
 
     public SettlementSavedData() {
         this(SCHEMA_VERSION, Optional.empty(), List.of(), List.of(), List.of(),
-                Optional.empty(), List.of(), List.of(), List.of());
+                Optional.empty(), List.of(), List.of(), List.of(), List.of());
     }
 
     private SettlementSavedData(int schemaVersion, Optional<Settlement> settlement,
                                 List<Plot> claimedPlots, List<PlayerArea> playerAreas,
                                 List<BlockPos> warehouses, Optional<ConstructionPlan> legacyPlan,
                                 List<ConstructionPlan> plans,
-                                List<String> cancelledWorkers, List<ResidentRecord> residents) {
+                                List<String> cancelledWorkers, List<ResidentRecord> residents, List<FarmSite> farmSites) {
         if (schemaVersion != SCHEMA_VERSION) {
             throw new IllegalArgumentException("Unsupported settlement data version: " + schemaVersion);
         }
@@ -106,6 +110,7 @@ public final class SettlementSavedData extends SavedData {
                 ? List.of(legacyPlan.get()) : List.copyOf(plans);
         this.cancelledWorkers = List.copyOf(cancelledWorkers);
         this.residents = List.copyOf(residents);
+        this.farmSites = List.copyOf(farmSites);
     }
 
     public static SettlementSavedData get(ServerLevel level) {
@@ -130,6 +135,60 @@ public final class SettlementSavedData extends SavedData {
 
     public List<ResidentRecord> residents() {
         return residents;
+    }
+
+    public List<FarmSite> farmSites() {
+        return farmSites;
+    }
+
+    public boolean registerFarmSite(BlockPos cropPos) {
+        if (settlement.isEmpty() || farmSites.size() >= MAX_FARM_SITES
+                || farmSites.stream().anyMatch(site -> site.cropPos().equals(cropPos))
+                || plans.stream().anyMatch(plan -> !plan.isComplete()
+                        && overlaps(plan.start(), cropPos))) {
+            return false;
+        }
+        var updated = new ArrayList<>(farmSites);
+        updated.add(new FarmSite(cropPos, Optional.empty()));
+        farmSites = List.copyOf(updated);
+        setDirty();
+        return true;
+    }
+
+    public boolean assignFarmWorker(BlockPos cropPos, String workerId) {
+        if (farmSites.stream().anyMatch(site -> site.workerId().equals(Optional.of(workerId)))
+                || plans.stream().anyMatch(plan -> plan.workerId().equals(Optional.of(workerId)))) {
+            return false;
+        }
+        for (int index = 0; index < farmSites.size(); index++) {
+            var site = farmSites.get(index);
+            if (site.cropPos().equals(cropPos) && site.workerId().isEmpty()) {
+                var updated = new ArrayList<>(farmSites);
+                updated.set(index, site.withWorker(workerId));
+                farmSites = List.copyOf(updated);
+                setDirty();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean releaseFarmWorker(String workerId) {
+        for (int index = 0; index < farmSites.size(); index++) {
+            var site = farmSites.get(index);
+            if (site.workerId().equals(Optional.of(workerId))) {
+                var updated = new ArrayList<>(farmSites);
+                updated.set(index, site.withoutWorker());
+                farmSites = List.copyOf(updated);
+                setDirty();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isFarmWorker(String workerId) {
+        return farmSites.stream().anyMatch(site -> site.workerId().equals(Optional.of(workerId)));
     }
 
     public int adultCount() {
@@ -234,7 +293,8 @@ public final class SettlementSavedData extends SavedData {
     public boolean planTwoPlanks(BlockPos start) {
         var active = plans.stream().filter(candidate -> !candidate.isComplete()).toList();
         if (settlement.isEmpty() || active.size() >= MAX_ACTIVE_PLANS
-                || active.stream().anyMatch(candidate -> overlaps(candidate.start(), start))) {
+                || active.stream().anyMatch(candidate -> overlaps(candidate.start(), start))
+                || farmSites.stream().anyMatch(site -> overlaps(start, site.cropPos()))) {
             return false;
         }
         var updated = new ArrayList<>(active);
@@ -252,7 +312,7 @@ public final class SettlementSavedData extends SavedData {
     public boolean assignWorker(BlockPos start, String workerId) {
         var target = plan(start);
         if (target.isEmpty() || target.get().isComplete() || target.get().workerId().isPresent()
-                || isCancelledWorker(workerId)
+                || isCancelledWorker(workerId) || isFarmWorker(workerId)
                 || plans.stream().anyMatch(candidate -> candidate.workerId().equals(Optional.of(workerId)))) {
             return false;
         }
