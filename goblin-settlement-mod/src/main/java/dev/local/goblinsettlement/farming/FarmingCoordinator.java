@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.AABB;
 
 /** Assigns one resident to each registered wheat cell, preserving reservations across unloads. */
@@ -28,13 +29,6 @@ public final class FarmingCoordinator {
         }
         for (var site : data.farmSites()) {
             BlockPos crop = site.cropPos();
-            if (WorldModificationPermission.check(level, settlement.get().id(), crop)
-                    != WorldModificationPermission.Decision.ALLOWED
-                    || WorldModificationPermission.check(level, settlement.get().id(), crop.below())
-                    != WorldModificationPermission.Decision.ALLOWED
-                    || !level.getBlockState(crop.below()).is(Blocks.FARMLAND)) {
-                continue;
-            }
             if (site.workerId().isPresent()) {
                 String id = site.workerId().orElseThrow();
                 try {
@@ -49,9 +43,20 @@ public final class FarmingCoordinator {
                 }
                 continue;
             }
+            if (WorldModificationPermission.check(level, settlement.get().id(), crop)
+                    != WorldModificationPermission.Decision.ALLOWED
+                    || WorldModificationPermission.check(level, settlement.get().id(), crop.below())
+                    != WorldModificationPermission.Decision.ALLOWED
+                    || !level.getBlockState(crop.below()).is(Blocks.FARMLAND)) {
+                continue;
+            }
+            if (!level.getGameRules().get(GameRules.MOB_GRIEFING)) {
+                continue;
+            }
             var state = level.getBlockState(crop);
             boolean plant = state.isAir();
-            boolean harvest = state.is(Blocks.WHEAT) && state.getValue(CropBlock.AGE) >= 7;
+            boolean harvest = state.is(Blocks.WHEAT)
+                    && ((CropBlock) Blocks.WHEAT).isMaxAge(state);
             if (!plant && !harvest) {
                 continue;
             }

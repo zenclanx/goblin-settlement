@@ -24,6 +24,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
@@ -257,8 +258,9 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 ? supplyPos : buildPos;
         if (WorldModificationPermission.check(level, settlementId, target)
                 != WorldModificationPermission.Decision.ALLOWED
-                || WorldModificationPermission.check(level, settlementId, buildPos.below())
-                != WorldModificationPermission.Decision.ALLOWED) {
+                || (workStage != WorkStage.FARM_RETURNING
+                    && WorldModificationPermission.check(level, settlementId, buildPos.below())
+                    != WorldModificationPermission.Decision.ALLOWED)) {
             waitReason = "farm or warehouse inactive or protected";
             getNavigation().stop();
             return;
@@ -269,6 +271,11 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             return;
         }
         getNavigation().stop();
+        if (workStage != WorkStage.FARM_RETURNING
+                && !level.getGameRules().get(GameRules.MOB_GRIEFING)) {
+            waitReason = "mobGriefing disabled";
+            return;
+        }
         switch (workStage) {
             case FARM_FETCHING_SEED -> fetchFarmSeed(level);
             case FARM_PLANTING -> plantFarmSeed(level);
@@ -304,12 +311,15 @@ public final class GoblinCitizenEntity extends PathfinderMob {
 
     private void plantFarmSeed(ServerLevel level) {
         if (!carried.is(Items.WHEAT_SEEDS)) {
-            workStage = WorkStage.FARM_COMPLETE;
+            workStage = farmGoods.isEmpty() ? WorkStage.FARM_COMPLETE : WorkStage.FARM_RETURNING;
             waitReason = "seed missing";
             return;
         }
         if (!level.getBlockState(buildPos.below()).is(Blocks.FARMLAND)) {
-            waitReason = "farmland missing";
+            farmGoods.add(carried);
+            carried = ItemStack.EMPTY;
+            workStage = WorkStage.FARM_RETURNING;
+            waitReason = "farmland missing, returning seed";
             return;
         }
         if (!level.getBlockState(buildPos).isAir()) {
@@ -321,7 +331,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
         if (level.setBlock(buildPos, Blocks.WHEAT.defaultBlockState(), 3)) {
             carried = ItemStack.EMPTY;
-            workStage = WorkStage.FARM_COMPLETE;
+            workStage = farmGoods.isEmpty() ? WorkStage.FARM_COMPLETE : WorkStage.FARM_RETURNING;
             waitReason = "";
         } else {
             waitReason = "planting failed";
@@ -330,11 +340,12 @@ public final class GoblinCitizenEntity extends PathfinderMob {
 
     private void harvestFarmCrop(ServerLevel level) {
         if (!level.getBlockState(buildPos.below()).is(Blocks.FARMLAND)) {
+            workStage = WorkStage.FARM_COMPLETE;
             waitReason = "farmland missing";
             return;
         }
         var crop = level.getBlockState(buildPos);
-        if (!crop.is(Blocks.WHEAT) || crop.getValue(CropBlock.AGE) < 7) {
+        if (!crop.is(Blocks.WHEAT) || !((CropBlock) Blocks.WHEAT).isMaxAge(crop)) {
             workStage = WorkStage.FARM_COMPLETE;
             waitReason = "";
             return;
@@ -342,7 +353,16 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         var drops = Block.getDrops(crop, level, buildPos, level.getBlockEntity(buildPos), this, ItemStack.EMPTY);
         if (level.setBlock(buildPos, Blocks.AIR.defaultBlockState(), 3)) {
             farmGoods.addAll(drops.stream().filter(stack -> !stack.isEmpty()).toList());
-            workStage = farmGoods.isEmpty() ? WorkStage.FARM_COMPLETE : WorkStage.FARM_RETURNING;
+            for (ItemStack goods : farmGoods) {
+                if (goods.is(Items.WHEAT_SEEDS)) {
+                    carried = goods.split(1);
+                    break;
+                }
+            }
+            farmGoods.removeIf(ItemStack::isEmpty);
+            workStage = carried.isEmpty()
+                    ? (farmGoods.isEmpty() ? WorkStage.FARM_COMPLETE : WorkStage.FARM_RETURNING)
+                    : WorkStage.FARM_PLANTING;
             waitReason = "";
         } else {
             waitReason = "harvest failed";

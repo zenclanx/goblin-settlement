@@ -234,3 +234,9 @@
 - [2026-09-25 12:25:00 +08:00] 扩展 GoblinCitizenEntity.java、PublicWarehouseInventory.java、GoblinSettlement.java：居民从真实公共箱取一粒麦种、播种、成熟时按原版方块掉落收获并归仓；满箱则携物等待，权限或区块不可用时暂停，死亡时掉落携物。农业与施工共享居民占用边界。
 - [2026-09-25 12:27:00 +08:00] 扩充 SettlementSavedDataCheck.java，验证农田重复登记、工地重叠、单工人预约、持久重载与旧存档缺少农田字段的兼容。
 - [2026-09-25 12:28:45 +08:00] 固定 Gradle 9.2.1 + Java 21 完整离线 build 成功，现有五项独立检查全部通过。尚未做实际游戏种收或开箱验收；留种配额、锄具使用、工具制作、家庭/孕育和自主扩地未实现。更新 STAGE4_ARCHITECTURE.md 与 CURRENT_STATUS.md；未修改 ai-chat-mod 或常用存档。
+
+## [2026-09-25 12:30:00 +08:00 – 2026-09-25 12:37:32 +08:00] 第二十四轮：借用原版农夫规则完善补种
+
+- [2026-09-25 12:34:00 +08:00] 对照本地 Minecraft 1.21.11 的 HarvestFarmland 与 CropBlock：原版行为限定 Villager、职业和 Brain，无法直接注册给现有哥布林；复用可公开调用的作物成熟判定、耕地及 mobGriefing 规则，保留聚落现有持久任务和真实仓库边界。
+- [2026-09-25 12:36:00 +08:00] 修改 GoblinCitizenEntity.java、FarmingCoordinator.java：收获所得种子优先使用一粒原地补种，其余物品归仓；耕地中途消失时携种返回仓库，已完成任务即使耕地消失也能释放预约。禁用 mobGriefing 时暂停新农业动作。
+- [2026-09-25 12:37:32 +08:00] 固定 Gradle 9.2.1 + Java 21 完整离线 build 成功，五项现有独立检查通过。未做游戏内种收验收；全局留种储备、锄具使用和工具制作仍待实现。更新 STAGE4_ARCHITECTURE.md 和 CURRENT_STATUS.md，未修改 ai-chat-mod 或常用存档。
