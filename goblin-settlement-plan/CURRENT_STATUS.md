@@ -1,6 +1,6 @@
 # 当前状态：哥布林模组接续入口
 
-更新日期：2026-09-26 01:36 +08:00。详细历史仅追加到 UpdateLog.md。
+更新日期：2026-09-26 01:39 +08:00。详细历史仅追加到 UpdateLog.md。
 
 ## 本轮执行约定
 
@@ -39,4 +39,4 @@
 F001 主线已有同等实现并完成较早验证，外部 r1 不重复接入。F002、F003 的 r1 已收到并完成初步静态审查，但按当前测试后置约定尚未由主程序独立复验或正式验收；外部 NOTES 自报通过不能代替验收。F004（跨仓库取料方案）与 F005（建筑地块排序）的 r1 已到并做静态初审；F005 检查程序的一条反向断言已修正并在 REVIEW.md 记录。两项均未编译或运行检查，未正式验收、未接入。详见 function-bank/README.md。
 ## 边界
 
-哥布林代码在 goblin-settlement-mod；不要改 ai-chat-mod 或常用存档。纯函数开发前读 function-bank/README.md，外部成果需审查和验证后才接入。GitHub origin 已连接并核对为 zenclanx/goblin-settlement；本轮候选提交 2ea2d53 已推送到 origin/codex/settlement-v1，远端 main 未修改。
+哥布林代码在 goblin-settlement-mod；不要改 ai-chat-mod 或常用存档。纯函数开发前读 function-bank/README.md，外部成果需审查和验证后才接入。GitHub origin 已连接并核对为 zenclanx/goblin-settlement；候选进展持续推送到 origin/codex/settlement-v1，远端 main 未修改。
