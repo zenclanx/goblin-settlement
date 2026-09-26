@@ -340,3 +340,18 @@
 - [2026-09-26 22:00:00 +08:00] GoblinSettlement 注册 GiftTradeCommands（此前的死代码），并在主循环中 Forestry 之后、Housing 之前插入 MiningCoordinator 与 SmeltingCoordinator：采矿产出煤与原矿供冶炼消费，冶炼产出锭供 Defense 内的 GolemWorkshop 消费。
 - [2026-09-26 22:01:00 +08:00] 固定 Gradle 9.2.1 + Java 21 离线完整构建成功；6 项独立检查全部通过（原有 5 项加新增 WorkerAssignmentRulesCheck）；生成 goblin-settlement-0.1.0.jar，355930 字节，确认含 camp、mining、economy.smelting、colony.WorkerAssignmentRules 等全部新类。未启动游戏、未运行专用服务端、未触碰常用存档。
 - [2026-09-26 22:02:00 +08:00] 未完成：本轮只完成静态与编译层验证，采矿/冶炼调度、工人取消与死亡释放修复、铁傀儡 home 回填均未在游戏中验证。七阶段剩余缺口（职业系统、道路桥梁居民实际搬运施工、完整住宅升级链与更多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复）本轮未动，下一步继续。
+## [2026-09-26 22:25:00 +08:00 – 2026-09-27 00:08:00 +08:00] 第三十七轮：职业系统接入与完整构建收尾
+
+- [2026-09-26 22:32:00 +08:00] 新增 colony/Profession（UNASSIGNED 加 7 种职业，UNASSIGNED 保持首位）、colony/WorkKind 与 colony/ProfessionRules 纯规则：matchRank 固化“对口 0 < 通才 1 < 被拉离本行 2”排序，workIntervalTicks 按 10/20/30 tick 三档，scarcest 取成人持有最少的职业、平局按枚举序保证可重复。哨卫暂无自身工作，按通才对待。build.gradle 注册 professionRulesCheck 并纳入 check 聚合；按 TDD 先写检查确认失败再实现转绿。
+- [2026-09-26 22:41:00 +08:00] 职业写入名册并兼容旧存档：ResidentRecord 新增持久化 profession 字段，旧记录缺该字段时按 UNASSIGNED 读入；SettlementSavedDataCheck 增加旧存档用例。SettlementSavedData 新增按名册查询与指派职业的方法（unassignedAdultIds、assignProfession、assignedProfessions）。
+- [2026-09-26 22:52:00 +08:00] 新增 colony/ProfessionCoordinator（200 tick 节律、聚落存在才工作），把每个未定职成人按 scarcest 补足职业，一过即可覆盖初始居民、新成年与旧存档居民；接入 GoblinSettlement 主循环。GoblinCitizenEntity 暴露 profession() 供派工读取。
+- [2026-09-26 23:01:00 +08:00] 9 个协调器（Construction、Transport、FoodCrafting、ToolCrafting、Smelting、Farming、Forestry、Housing、Mining）的选人比较器统一改为按 ProfessionRules.matchRank 优先对口职业，再按原有距离等因素决胜。顺带修复 ConstructionCoordinator 既有倒置比较器缺陷：原 comparing(Boolean) 使非上次工人排在前面，改为 comparingInt 后上一工人优先。
+- [2026-09-26 23:18:00 +08:00] 工作推进按职业分档：GoblinCitizenEntity 把工作阶段映射到 WorkKind，非对口职业按 workIntervalTicks 三档节流。
+- [2026-09-26 23:42:00 +08:00] goblinsettlement work 与 status 命令显示居民职业。
+- [2026-09-26 23:47:00 +08:00] 实体同步：GoblinCitizenEntity 新增 DATA_PROFESSION 同步字段，服务端写入、客户端经 professionForRender 读取。
+- [2026-09-26 23:51:00 +08:00] GoblinRenderer 按同步到的职业选取贴图，未同步或未知职业回退通用 goblin.png。
+- [2026-09-26 23:56:00 +08:00] 扩展 generate_entity_textures.py 生成 7 张原创 64×64 职业贴图（artisan、builder、farmer、forester、hauler、miner、sentry）。
+- [2026-09-27 00:00:00 +08:00] 固定 Gradle 9.2.1 / Java 21 离线完整构建成功（./gradlew build --offline --no-daemon，BUILD SUCCESSFUL）；7 项独立检查全部通过：PlotCoordinatesCheck、PopulationRulesCheck、ProfessionRulesCheck、ProtectedRectangleCheck、SettlementDemandCheck、SettlementSavedDataCheck、WorkerAssignmentRulesCheck。生成 goblin-settlement-0.1.0.jar，371476 字节，时间戳 2026-09-27 00:00。
+- [2026-09-27 00:01:00 +08:00] 核对 JAR：colony/Profession、colony/WorkKind、colony/ProfessionRules、colony/ProfessionCoordinator 四个新类均在；assets/goblin_settlement/textures/entity/ 下 goblin*.png 共 9 张（通用、7 职业、傀儡各一）。未启动游戏、未运行专用服务端、未触碰常用存档，职业系统全部 17 个提交均无游戏内证据。
+- [2026-09-27 00:08:00 +08:00] 更新 CURRENT_STATUS.md，文档单独提交后推送到 origin/claude/settlement-first-pass。
+- [2026-09-27 00:08:00 +08:00] 未完成：职业熟练度、职业名额、派工服务收口、哨卫工作、儿童外观、真实手持工具仍在尚需实现；职业系统整体未做游戏内验证，构建与检查通过不代表玩法验收。

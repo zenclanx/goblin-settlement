@@ -1,33 +1,32 @@
 # 当前状态：哥布林模组接续入口
 
-更新日期：2026-09-26 22:02 +08:00。详细历史仅追加到 UpdateLog.md。
+更新日期：2026-09-27 00:08 +08:00。详细历史仅追加到 UpdateLog.md。
 
 ## 本轮执行约定
 
-用户要求先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。2026-09-26 12:51 曾纠正一次"把候选代码当作初版完成"的误判。本轮用户改指定：先把工作区未提交的候选收口，提交到**独立分支**（`claude/settlement-first-pass`）而非 main；验证深度限定为**编译 + 运行项目自带独立检查**，仍不启动游戏、不跑专用服务端、不动常用存档。收口已完成，七阶段剩余缺口尚未开始补。
+先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。当前工作在独立分支 `claude/settlement-first-pass`，验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 本轮完整构建收尾）已接入候选。
 
 ## 阶段定位
 
 - 阶段 1—2：独立工程、基本存档权限、单居民从真实箱子取料施工，代码与较早游戏验证均已有。
-- 阶段 3：多工地与死亡/取消/卸载恢复有较早验证。本轮修复了取消/死亡后计划永久占用工人导致卡死的问题，并新增纯函数检查覆盖该真值表；未在游戏中复验。
-- 阶段 4：农业、食物与木工具、林业、家庭和人口约束扩地有候选代码。本轮新增采矿井与冶炼调度，**职业系统仍缺**。
+- 阶段 3：多工地与死亡/取消/卸载恢复有较早验证；取消/死亡后计划永久占用工人的卡死修复有纯函数检查覆盖，未在游戏中复验。
+- 阶段 4：农业、食物与木工具、林业、家庭和人口约束扩地、采矿井与冶炼调度、职业系统有候选代码。职业系统已完成完整构建 + 7 项独立检查，但未做游戏内验证。
 - 阶段 5：道路桥梁规划及服务端逐块施工有候选代码，但居民实际搬运施工仍主要由管理员命令立项。
 - 阶段 6：简易床位与顶棚、六个傀儡数值等级、关系处理、原版铁傀儡接入与赠予交易命令有候选代码；完整住宅升级链与多蓝图仍缺。
 - 阶段 7：部分扫描上限、区块门控与两张原创贴图已做；成熟城镇性能和跨存储异常恢复方案未完成。七阶段不能标记为已实现。
 
-## 本轮收口的内容
+## 本轮接入的内容（职业系统）
 
-- 修正 3 处编译错误（`GameRules` 与 `IronGolem` 的 1.21.11 包路径、`Item.getDescription()` 不存在），共 6 个文件。这批 13:03—13:09 写入的候选此前从未编译过。
-- 新增纯函数 `colony/WorkerAssignmentRules`：把"该不该释放工人"（名册阶段 × 实体是否加载 × 是否仍持有该工作）固化为真值表，并把释放检查接进 TransportCoordinator 与 HousingCoordinator。`GoblinCitizenEntity.releasePersistedWork` 在死亡与取消时释放农田/工程/交通/住房四处 workerId。
-- 新增 `mining/MiningCoordinator` 与 `economy/smelting/SmeltingCoordinator`，把此前无调用方的 `MiningWorksite`、`FurnaceWorksite` 接上主循环；`GoblinCitizenEntity` 增加 `MINING_DIGGING` 与 `SMELT_*` 阶段及状态机。冶炼不自行放置熔炉，只在管理员已提供熔炉时工作。
-- 注册此前从未被调用的 `GiftTradeCommands`；`DefenseSavedData` 增加 `backfillHome`，修复旧存档铁傀儡 home 为世界原点的问题。
+- 纯规则：`colony/Profession`（UNASSIGNED + 7 职业）、`colony/WorkKind`、`colony/ProfessionRules`（matchRank 对口/通才/拉离三档、workIntervalTicks 10/20/30、scarcest），以及纳入 check 聚合的 `professionRulesCheck`。
+- 数据与分配：`ResidentRecord` 持久化 profession 字段并兼容旧存档；`SettlementSavedData` 职业查询与指派；`ProfessionCoordinator` 每 200 tick 为未定职成人补稀缺职业，接入主循环。
+- 派工与速度：9 个协调器的选人比较器统一按 matchRank 优先对口职业；工作推进按职业三档节流；顺带修复 `ConstructionCoordinator` 既有倒置比较器（上一工人原先反而排在后面）。
+- 表现：`work`/`status` 命令显示职业；实体同步 `DATA_PROFESSION`；渲染器按职业选贴图；新增 7 张原创职业贴图（textures/entity 下 goblin*.png 共 9 张）。
 
 ## 本轮验证进展
 
-- 固定 Gradle 9.2.1 / Java 21 离线完整构建成功。
-- 6 项独立检查全部通过：原有 PlotCoordinates、PopulationRules、ProtectedRectangle、SettlementDemand、SettlementSavedData，加新增 WorkerAssignmentRulesCheck（先写失败、再实现转绿）。
-- 生成 `goblin-settlement-0.1.0.jar`（355930 字节），已确认含 camp、mining、economy.smelting 等全部新类。
-- 未启动游戏、未运行专用服务端、未触碰常用存档。本轮无游戏内证据。
+- 固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`），7 项独立检查全部通过：PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、WorkerAssignmentRules。
+- `goblin-settlement-0.1.0.jar` 重新生成（371476 字节，2026-09-27 00:00），已核对含 4 个新类与 9 张贴图。
+- 未做游戏内验证：未启动游戏、未运行专用服务端、未触碰常用存档。
 
 ## 已验证的基线
 
@@ -35,10 +34,11 @@
 
 ## 尚需实现与统一验收
 
-1. 七阶段剩余缺口：职业系统（GAME_DESIGN §3 的 7 种职业）、道路桥梁的居民实际搬运施工、完整住宅升级链与更多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复。
-2. 本轮接入的采矿、冶炼调度与工人释放修复**均未在游戏中验证**，只有编译与纯函数证据。
-3. 突然断电时实体、方块、箱子与 Saved Data 的跨存储一致性尚无保证；死亡掉落实体创建被游戏规则阻止时也可能最终失物。
-4. 保守取物目击只覆盖单箱单槽场景。道路/桥梁的非活动区块恢复、分仓与复杂地形仍需统一验证。
+1. 职业系统剩余：职业熟练度、职业名额、派工服务收口、哨卫工作、儿童外观、真实手持工具。
+2. 七阶段其他缺口：道路桥梁的居民实际搬运施工、完整住宅升级链与更多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复。
+3. 采矿、冶炼调度、工人释放修复与职业系统**均未在游戏中验证**，只有编译与纯函数证据。
+4. 突然断电时实体、方块、箱子与 Saved Data 的跨存储一致性尚无保证；死亡掉落实体创建被游戏规则阻止时也可能最终失物。
+5. 保守取物目击只覆盖单箱单槽场景。道路/桥梁的非活动区块恢复、分仓与复杂地形仍需统一验证。
 
 ## 外部纯函数任务
 
