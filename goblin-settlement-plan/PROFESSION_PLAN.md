@@ -635,12 +635,14 @@ git commit -m "Expose a resident's profession for dispatch"
 
 ```java
     .stream().min(Comparator
-            .comparing((GoblinCitizenEntity goblin) ->
-                    plan.lastWorkerId().equals(Optional.of(goblin.getUUID().toString())))
+            .comparingInt((GoblinCitizenEntity goblin) ->
+                    plan.lastWorkerId().equals(Optional.of(goblin.getUUID().toString())) ? 0 : 1)
             .thenComparingInt(goblin ->
                     ProfessionRules.matchRank(WorkKind.CONSTRUCTION, goblin.profession()))
             .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(supply.get())))
 ```
+
+**注意第一段键的写法**：它原本是 `comparing(...)` 作用在一个 `Boolean` 上，而 `Boolean` 的自然序是 `false < true`、`min` 又取最小键，于是"上次的那个工人"反而排在最后——那是个既有缺陷，已在本次实现中改为上面的 `comparingInt(... ? 0 : 1)`（0 = 优先）。**不要退回 Boolean 形式。**
 
 **不要碰** `/goblinsettlement assign` 命令（`GoblinSettlement.java`）。它是绕过全部过滤的管理员直控旁路，保持原样。
 
