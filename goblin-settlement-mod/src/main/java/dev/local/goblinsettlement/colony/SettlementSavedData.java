@@ -302,6 +302,42 @@ public final class SettlementSavedData extends SavedData {
         return false;
     }
 
+    /** Gives an unassigned adult a trade. Reassigning an existing trade is deliberately not supported yet. */
+    public boolean assignProfession(String residentId, Profession profession) {
+        if (profession == null || profession == Profession.UNASSIGNED) {
+            return false;
+        }
+        for (int index = 0; index < residents.size(); index++) {
+            ResidentRecord current = residents.get(index);
+            if (current.id().equals(residentId)
+                    && current.stage() == ResidentRecord.LifeStage.ADULT
+                    && current.profession() == Profession.UNASSIGNED) {
+                var updated = new ArrayList<>(residents);
+                updated.set(index, current.withProfession(profession));
+                residents = List.copyOf(updated);
+                setDirty();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<String> unassignedAdultIds() {
+        return residents.stream()
+                .filter(record -> record.stage() == ResidentRecord.LifeStage.ADULT)
+                .filter(record -> record.profession() == Profession.UNASSIGNED)
+                .map(ResidentRecord::id)
+                .toList();
+    }
+
+    /** The trades held by living adults, used to pick the scarcest one. */
+    public List<Profession> assignedProfessions() {
+        return residents.stream()
+                .filter(record -> record.stage() == ResidentRecord.LifeStage.ADULT)
+                .map(ResidentRecord::profession)
+                .toList();
+    }
+
     public boolean markResidentDead(String residentId) {
         for (int index = 0; index < residents.size(); index++) {
             var current = residents.get(index);
