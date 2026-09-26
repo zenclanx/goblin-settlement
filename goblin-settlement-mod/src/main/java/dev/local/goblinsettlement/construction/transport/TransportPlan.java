@@ -4,13 +4,15 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 
 /** Persisted block intent. Actual materials remain in registered containers. */
 public record TransportPlan(
         String id, String settlementId, Kind kind, List<Step> steps,
         int completedSteps, boolean open, List<BlockPos> barrierFeet,
-        List<BlockPos> closedFootprint, List<BlockPos> foundationBases) {
+        List<BlockPos> closedFootprint, List<BlockPos> foundationBases,
+        Optional<String> workerId) {
     public enum Kind {
         ROAD, WOOD_BRIDGE
     }
@@ -60,7 +62,8 @@ public record TransportPlan(
             Codec.BOOL.fieldOf("open").forGetter(TransportPlan::open),
             BlockPos.CODEC.listOf().fieldOf("barrier_feet").forGetter(TransportPlan::barrierFeet),
             BlockPos.CODEC.listOf().fieldOf("closed_footprint").forGetter(TransportPlan::closedFootprint),
-            BlockPos.CODEC.listOf().fieldOf("foundation_bases").forGetter(TransportPlan::foundationBases)
+            BlockPos.CODEC.listOf().fieldOf("foundation_bases").forGetter(TransportPlan::foundationBases),
+            Codec.STRING.optionalFieldOf("worker_id").forGetter(TransportPlan::workerId)
     ).apply(instance, TransportPlan::new));
 
     public TransportPlan {
@@ -72,6 +75,7 @@ public record TransportPlan(
         barrierFeet = immutablePositions(barrierFeet);
         closedFootprint = immutablePositions(closedFootprint);
         foundationBases = immutablePositions(foundationBases);
+        workerId = Objects.requireNonNull(workerId, "workerId");
         if (completedSteps < 0 || completedSteps > steps.size()) {
             throw new IllegalArgumentException("Invalid transport progress");
         }
@@ -99,7 +103,7 @@ public record TransportPlan(
             return this;
         }
         return new TransportPlan(id, settlementId, kind, steps, completedSteps + 1,
-                false, barrierFeet, closedFootprint, foundationBases);
+                false, barrierFeet, closedFootprint, foundationBases, Optional.empty());
     }
 
     public TransportPlan rewind(int stepIndex) {
@@ -107,11 +111,16 @@ public record TransportPlan(
             throw new IllegalArgumentException("Invalid rewind index");
         }
         return new TransportPlan(id, settlementId, kind, steps, stepIndex,
-                false, barrierFeet, closedFootprint, foundationBases);
+                false, barrierFeet, closedFootprint, foundationBases, Optional.empty());
     }
 
     public TransportPlan withOpen(boolean value) {
         return new TransportPlan(id, settlementId, kind, steps, completedSteps,
-                value, barrierFeet, closedFootprint, foundationBases);
+                value, barrierFeet, closedFootprint, foundationBases, Optional.empty());
+    }
+
+    public TransportPlan withWorker(Optional<String> value) {
+        return new TransportPlan(id, settlementId, kind, steps, completedSteps,
+                open, barrierFeet, closedFootprint, foundationBases, value);
     }
 }

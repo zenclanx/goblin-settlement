@@ -5,9 +5,11 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.ExpansionCoordinator;
 import dev.local.goblinsettlement.colony.family.FamilyCoordinator;
+import dev.local.goblinsettlement.camp.CampGenerationCoordinator;
 import dev.local.goblinsettlement.economy.food.FoodCraftingCoordinator;
 import dev.local.goblinsettlement.economy.food.MealCoordinator;
 import dev.local.goblinsettlement.economy.tools.ToolCraftingCoordinator;
+import dev.local.goblinsettlement.economy.smelting.SmeltingCoordinator;
 import dev.local.goblinsettlement.colony.PopulationRules;
 import dev.local.goblinsettlement.colony.SettlementDemand;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
@@ -27,9 +29,11 @@ import dev.local.goblinsettlement.forestry.ForestryCommands;
 import dev.local.goblinsettlement.citizen.ModEntities;
 import dev.local.goblinsettlement.interaction.ProtectedRectangle;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
+import dev.local.goblinsettlement.mining.MiningCoordinator;
 import dev.local.goblinsettlement.housing.HousingCoordinator;
 import dev.local.goblinsettlement.housing.BedProvisioningCoordinator;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
+import dev.local.goblinsettlement.social.GiftTradeCommands;
 import dev.local.goblinsettlement.social.WarehouseWithdrawalObserver;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -65,6 +69,8 @@ public final class GoblinSettlement implements ModInitializer {
                 TransportCommands.register(dispatcher));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 WarehouseRecoveryCommands.register(dispatcher));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                GiftTradeCommands.register(dispatcher));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("goblinsettlement")
                         .then(Commands.literal("status").executes(context -> {
@@ -212,6 +218,7 @@ public final class GoblinSettlement implements ModInitializer {
     }
     /** Entire settlement pauses while its anchor chunk is inactive. */
     private static void tickSettlement(ServerLevel level) {
+        CampGenerationCoordinator.tick(level);
         var founded = SettlementSavedData.get(level).settlement();
         if (founded.isEmpty() || !level.shouldTickBlocksAt(founded.get().anchor())) {
             return;
@@ -224,6 +231,8 @@ public final class GoblinSettlement implements ModInitializer {
         ConstructionCoordinator.tick(level);
         TransportCoordinator.tick(level);
         ForestryCoordinator.tick(level);
+        MiningCoordinator.tick(level);
+        SmeltingCoordinator.tick(level);
         HousingCoordinator.tick(level);
         BedProvisioningCoordinator.tick(level);
         DefenseCoordinator.tick(level);

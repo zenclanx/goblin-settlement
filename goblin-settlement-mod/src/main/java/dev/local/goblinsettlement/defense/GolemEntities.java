@@ -10,7 +10,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 
-/** Call initialize() once from the mod initializer; all six tiers share GOLEM. */
+/** The custom type serves wood, stone, gold, diamond and obsidian; iron uses vanilla's type. */
 public final class GolemEntities {
     public static final EntityType<GoblinGolemEntity> GOLEM = register();
 
@@ -27,5 +27,6 @@ public final class GolemEntities {
 
     public static void initialize() {
         FabricDefaultAttributeRegistry.register(GOLEM, GoblinGolemEntity.createAttributes());
+        VanillaIronGolemBridge.initialize();
     }
 }

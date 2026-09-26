@@ -1,18 +1,27 @@
 package dev.local.goblinsettlement.citizen;
 
+import com.mojang.serialization.Codec;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
+import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
+import dev.local.goblinsettlement.construction.transport.TransportPlan;
 import dev.local.goblinsettlement.economy.DroppedMaterialLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.food.FoodCraftingCoordinator;
+import dev.local.goblinsettlement.economy.smelting.FurnaceWorksite;
+import dev.local.goblinsettlement.economy.smelting.SmeltingSavedData;
 import dev.local.goblinsettlement.economy.tools.ToolCraftingCoordinator;
 import dev.local.goblinsettlement.economy.tools.WoodToolKind;
 import dev.local.goblinsettlement.forestry.ForestryCoordinator;
 import dev.local.goblinsettlement.forestry.ForestrySavedData;
+import dev.local.goblinsettlement.housing.HousingCoordinator;
+import dev.local.goblinsettlement.housing.HousingSavedData;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
+import dev.local.goblinsettlement.mining.MiningWorksite;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -46,7 +55,10 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         TOOL_FETCHING, TOOL_CRAFTING, TOOL_RETURNING, TOOL_COMPLETE,
         FOOD_FETCHING, FOOD_CRAFTING, FOOD_RETURNING, FOOD_COMPLETE,
         FORESTRY_FETCHING, FORESTRY_FELLING, FORESTRY_LOG_RETURNING, FORESTRY_SAPLING_RECOVERING,
-        FORESTRY_PROCESS_FETCHING, FORESTRY_PROCESSING, FORESTRY_PLANK_RETURNING, FORESTRY_COMPLETE }
+        FORESTRY_PROCESS_FETCHING, FORESTRY_PROCESSING, FORESTRY_PLANK_RETURNING, FORESTRY_COMPLETE,
+        TRANSPORT_FETCHING, TRANSPORT_DELIVERING, TRANSPORT_RETURNING, TRANSPORT_COMPLETE,
+        HOUSING_FETCHING, HOUSING_DELIVERING, HOUSING_RETURNING, HOUSING_COMPLETE,
+        MINING_DIGGING, SMELT_FEEDING, SMELT_WAITING, SMELT_COLLECTING }
 
     private WorkStage workStage = WorkStage.IDLE;
     private String settlementId = "";
@@ -60,6 +72,10 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private BlockPos forestryRoot = BlockPos.ZERO;
     private WoodToolKind toolKind;
     private String pickupItemId = "";
+    private String transportPlanId = "";
+    private int transportStepIndex = -1;
+    private BlockPos housingBed = BlockPos.ZERO;
+    private FurnaceWorksite.Ore smeltOre;
     private String waitReason = "";
 
     public GoblinCitizenEntity(EntityType<? extends GoblinCitizenEntity> type, Level level) {
@@ -79,11 +95,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
         super.die(source);
         if (level() instanceof ServerLevel serverLevel) {
-            var data = SettlementSavedData.get(serverLevel);
-            String workerId = getUUID().toString();
-            data.releaseFarmWorker(workerId);
-            data.releaseWorker(workerId);
-            data.acknowledgeCancelledWorker(workerId);
+            releasePersistedWork(serverLevel);
         }
     }
 
@@ -103,6 +115,86 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         workStage = WorkStage.FETCHING;
         waitReason = "";
         return true;
+    }
+
+    public boolean assignTransport(String id, String planId, int stepIndex,
+                                   BlockPos supply, BlockPos site) {
+        if (!isAvailableForConstruction()) return false;
+        settlementId = id;
+        transportPlanId = planId;
+        transportStepIndex = stepIndex;
+        supplyPos = supply.immutable();
+        buildPos = site.immutable();
+        workStage = WorkStage.TRANSPORT_FETCHING;
+        waitReason = "";
+        return true;
+    }
+
+    public boolean assignHousing(String id, BlockPos bed, BlockPos supply, BlockPos site) {
+        if (!isAvailableForConstruction()) return false;
+        settlementId = id;
+        housingBed = bed.immutable();
+        supplyPos = supply.immutable();
+        buildPos = site.immutable();
+        workStage = WorkStage.HOUSING_FETCHING;
+        waitReason = "";
+        return true;
+    }
+
+    /** True while this resident still legitimately holds the given transport step. */
+    public boolean hasTransportWork(String planId, int stepIndex) {
+        return transportPlanId.equals(planId) && transportStepIndex == stepIndex
+                && (workStage == WorkStage.TRANSPORT_FETCHING
+                    || workStage == WorkStage.TRANSPORT_DELIVERING
+                    || workStage == WorkStage.TRANSPORT_RETURNING);
+    }
+
+    /** True while this resident still legitimately holds the given home. Beds identify a home uniquely. */
+    public boolean hasHousingWork(BlockPos bed) {
+        return housingBed.equals(bed)
+                && (workStage == WorkStage.HOUSING_FETCHING
+                    || workStage == WorkStage.HOUSING_DELIVERING
+                    || workStage == WorkStage.HOUSING_RETURNING);
+    }
+
+    /**
+     * Mining keeps no persisted reservation: the site is re-derived from the world every tick, so the
+     * work clears itself back to IDLE instead of using the *_COMPLETE and acknowledge pattern.
+     */
+    public boolean assignMining(String id, BlockPos warehouse, BlockPos block) {
+        if (!isAvailableForConstruction()) {
+            return false;
+        }
+        settlementId = id;
+        supplyPos = warehouse.immutable();
+        buildPos = block.immutable();
+        workStage = WorkStage.MINING_DIGGING;
+        waitReason = "";
+        return true;
+    }
+
+    public boolean hasMiningWork(String id) {
+        return settlementId.equals(id) && workStage == WorkStage.MINING_DIGGING;
+    }
+
+    /** Smelting books a global one-batch reservation, so this work ends itself once the batch is collected. */
+    public boolean assignSmelting(String id, BlockPos warehouse, BlockPos furnace, FurnaceWorksite.Ore ore) {
+        if (ore == null || !isAvailableForConstruction()) {
+            return false;
+        }
+        settlementId = id;
+        supplyPos = warehouse.immutable();
+        buildPos = furnace.immutable();
+        smeltOre = ore;
+        workStage = WorkStage.SMELT_FEEDING;
+        waitReason = "";
+        return true;
+    }
+
+    public boolean hasSmeltingWork(String id) {
+        return settlementId.equals(id)
+                && (workStage == WorkStage.SMELT_FEEDING || workStage == WorkStage.SMELT_WAITING
+                    || workStage == WorkStage.SMELT_COLLECTING);
     }
 
     public boolean assignRecovery(String id, BlockPos warehouse, String itemId, BlockPos itemPos) {
@@ -261,6 +353,11 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             String workerId = getUUID().toString();
             if (data.isCancelledWorker(workerId) || data.isFarmWorker(workerId)
                     || data.plans().stream().anyMatch(plan -> plan.workerId().orElse("").equals(workerId))
+                    || TransportSavedData.get(serverLevel).plans().stream()
+                            .anyMatch(plan -> plan.workerId().orElse("").equals(workerId))
+                    || HousingSavedData.get(serverLevel).homes(data.settlement()
+                            .map(value -> value.id()).orElse("" )).stream()
+                            .anyMatch(home -> home.workerId().orElse("").equals(workerId))
                     || data.resident(workerId).map(record -> record.stage() != ResidentRecord.LifeStage.ADULT)
                             .orElse(false)) {
                 return false;
@@ -270,6 +367,8 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 && (workStage == WorkStage.IDLE || workStage == WorkStage.COMPLETE
                     || workStage == WorkStage.TOOL_COMPLETE
                     || workStage == WorkStage.FOOD_COMPLETE
+                    || workStage == WorkStage.TRANSPORT_COMPLETE
+                    || workStage == WorkStage.HOUSING_COMPLETE
                     || workStage == WorkStage.FORESTRY_COMPLETE) && carried.isEmpty()
                 && farmGoods.isEmpty() && toolGoods.isEmpty() && foodGoods.isEmpty()
                 && forestryGoods.isEmpty();
@@ -341,8 +440,38 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         workStage = WorkStage.IDLE;
         toolKind = null;
         pickupItemId = "";
+        transportPlanId = "";
+        transportStepIndex = -1;
+        housingBed = BlockPos.ZERO;
         waitReason = "";
-        data.acknowledgeCancelledWorker(getUUID().toString());
+        releasePersistedWork(level);
+    }
+
+    /**
+     * Releases every persisted reservation this resident holds. A cancelled or dead worker must not keep
+     * owning a plan or home, otherwise the coordinator never frees it and the resident stays out of the
+     * labour pool forever.
+     */
+    private void releasePersistedWork(ServerLevel level) {
+        var data = SettlementSavedData.get(level);
+        String workerId = getUUID().toString();
+        data.releaseFarmWorker(workerId);
+        data.releaseWorker(workerId);
+        var traffic = TransportSavedData.get(level);
+        for (var plan : traffic.plans()) {
+            if (plan.workerId().orElse("").equals(workerId)) {
+                traffic.replace(plan.withWorker(Optional.empty()));
+            }
+        }
+        data.settlement().ifPresent(settlement -> {
+            var housing = HousingSavedData.get(level);
+            for (var home : housing.homes(settlement.id())) {
+                if (home.workerId().orElse("").equals(workerId)) {
+                    housing.replace(home.withWorker(Optional.empty()));
+                }
+            }
+        });
+        data.acknowledgeCancelledWorker(workerId);
     }
 
     @Override
@@ -363,6 +492,29 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
         if (workStage == WorkStage.IDLE || workStage == WorkStage.COMPLETE
                 || workStage == WorkStage.RECOVERED || workStage == WorkStage.ABORTED) {
+            return;
+        }
+        if (workStage == WorkStage.TRANSPORT_FETCHING
+                || workStage == WorkStage.TRANSPORT_DELIVERING
+                || workStage == WorkStage.TRANSPORT_RETURNING) {
+            tickTransportWork(level);
+            return;
+        }
+        if (workStage == WorkStage.TRANSPORT_COMPLETE) return;
+        if (workStage == WorkStage.HOUSING_FETCHING
+                || workStage == WorkStage.HOUSING_DELIVERING
+                || workStage == WorkStage.HOUSING_RETURNING) {
+            tickHousingWork(level);
+            return;
+        }
+        if (workStage == WorkStage.HOUSING_COMPLETE) return;
+        if (workStage == WorkStage.MINING_DIGGING) {
+            tickMiningWork(level);
+            return;
+        }
+        if (workStage == WorkStage.SMELT_FEEDING || workStage == WorkStage.SMELT_WAITING
+                || workStage == WorkStage.SMELT_COLLECTING) {
+            tickSmeltingWork(level);
             return;
         }
         if (hasForestryWork(settlementId)) {
@@ -428,6 +580,357 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             fetchMaterial(level);
         } else {
             placeMaterial(level);
+        }
+    }
+
+    private void tickTransportWork(ServerLevel level) {
+        var assignedStep = TransportCoordinator.assignedStep(level, transportPlanId,
+                getUUID().toString(), transportStepIndex);
+        if (assignedStep.isEmpty()) {
+            if (carried.isEmpty()) {
+                workStage = WorkStage.TRANSPORT_COMPLETE;
+                waitReason = "";
+                return;
+            }
+            workStage = WorkStage.TRANSPORT_RETURNING;
+        }
+        if (assignedStep.isPresent()
+                && !TransportCoordinator.assignmentReady(level, transportPlanId)) {
+            waitReason = "transport footprint inactive or unsafe";
+            getNavigation().stop();
+            return;
+        }
+        if (workStage == WorkStage.TRANSPORT_RETURNING && carried.isEmpty()) {
+            workStage = WorkStage.TRANSPORT_COMPLETE;
+            waitReason = "";
+            return;
+        }
+        BlockPos destination = supplyPos;
+        if (workStage == WorkStage.TRANSPORT_DELIVERING && assignedStep.isPresent()) {
+            TransportPlan.Rule rule = assignedStep.orElseThrow().rule();
+            destination = rule == TransportPlan.Rule.ROAD_GROUND
+                    || rule == TransportPlan.Rule.APPROACH_GROUND
+                    ? buildPos.above() : buildPos;
+        }
+        if (WorldModificationPermission.check(level, settlementId, destination)
+                != WorldModificationPermission.Decision.ALLOWED
+                || !level.shouldTickBlocksAt(blockPosition())) {
+            waitReason = "transport area inactive or protected";
+            getNavigation().stop();
+            return;
+        }
+        if (distanceToSqr(destination.getX() + 0.5, destination.getY() + 0.5,
+                destination.getZ() + 0.5) > 8.0) {
+            waitReason = "walking with transport material";
+            getNavigation().moveTo(destination.getX() + 0.5, destination.getY(),
+                    destination.getZ() + 0.5, 1.0);
+            return;
+        }
+        getNavigation().stop();
+        if (workStage == WorkStage.TRANSPORT_FETCHING) {
+            if (!carried.isEmpty()) {
+                workStage = WorkStage.TRANSPORT_DELIVERING;
+                return;
+            }
+            if (!(level.getBlockEntity(supplyPos) instanceof Container container)) {
+                waitReason = "transport warehouse missing";
+                return;
+            }
+            for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                if (!container.getItem(slot).is(TransportCoordinator.materialItem(
+                        assignedStep.orElseThrow().material()))) continue;
+                ItemStack withdrawn = container.removeItem(slot, 1);
+                if (withdrawn.is(TransportCoordinator.materialItem(
+                        assignedStep.orElseThrow().material())) && withdrawn.getCount() == 1) {
+                    carried = withdrawn;
+                    container.setChanged();
+                    workStage = WorkStage.TRANSPORT_DELIVERING;
+                    waitReason = "";
+                }
+                return;
+            }
+            waitReason = "transport material missing";
+        } else if (workStage == WorkStage.TRANSPORT_DELIVERING) {
+            if (carried.isEmpty()) {
+                workStage = WorkStage.TRANSPORT_COMPLETE;
+                return;
+            }
+            if (level.getBlockState(buildPos).is(Blocks.OAK_PLANKS)
+                    || level.getBlockState(buildPos).is(Blocks.OAK_LOG)
+                    || level.getBlockState(buildPos).is(Blocks.OAK_FENCE)
+                    || level.getBlockState(buildPos).is(Blocks.TORCH)) {
+                workStage = WorkStage.TRANSPORT_RETURNING;
+                return;
+            }
+            if (TransportCoordinator.placeByResident(level, this, transportPlanId,
+                    transportStepIndex, carried)) {
+                carried = ItemStack.EMPTY;
+                workStage = WorkStage.TRANSPORT_COMPLETE;
+                waitReason = "";
+            } else {
+                waitReason = "transport site blocked or unsafe";
+            }
+        } else if (workStage == WorkStage.TRANSPORT_RETURNING) {
+            if (returnCarriedToSupply(level)) {
+                workStage = WorkStage.TRANSPORT_COMPLETE;
+                waitReason = "";
+            } else {
+                waitReason = "return warehouse missing or full";
+            }
+        }
+    }
+
+    private void tickHousingWork(ServerLevel level) {
+        boolean assigned = HousingCoordinator.assignedSite(level, housingBed,
+                getUUID().toString(), buildPos);
+        if (!assigned) {
+            if (carried.isEmpty()) {
+                workStage = WorkStage.HOUSING_COMPLETE;
+                waitReason = "";
+                return;
+            }
+            workStage = WorkStage.HOUSING_RETURNING;
+        }
+        if (workStage == WorkStage.HOUSING_RETURNING && carried.isEmpty()) {
+            workStage = WorkStage.HOUSING_COMPLETE;
+            waitReason = "";
+            return;
+        }
+        BlockPos destination = supplyPos;
+        if (workStage == WorkStage.HOUSING_DELIVERING) {
+            destination = housingApproach(level);
+            if (destination == null) {
+                waitReason = "no safe housing work position";
+                getNavigation().stop();
+                return;
+            }
+        }
+        if (WorldModificationPermission.check(level, settlementId, destination)
+                != WorldModificationPermission.Decision.ALLOWED) {
+            waitReason = "housing area inactive or protected";
+            getNavigation().stop();
+            return;
+        }
+        if (distanceToSqr(destination.getCenter()) > 2.0) {
+            waitReason = "walking with housing material";
+            getNavigation().moveTo(destination.getX() + 0.5, destination.getY(),
+                    destination.getZ() + 0.5, 1.0);
+            return;
+        }
+        getNavigation().stop();
+        if (workStage == WorkStage.HOUSING_FETCHING) {
+            if (!carried.isEmpty()) {
+                workStage = WorkStage.HOUSING_DELIVERING;
+                return;
+            }
+            if (!(level.getBlockEntity(supplyPos) instanceof Container container)) {
+                waitReason = "housing warehouse missing";
+                return;
+            }
+            for (int slot = 0; slot < container.getContainerSize(); slot++) {
+                if (!container.getItem(slot).is(Items.OAK_PLANKS)) continue;
+                ItemStack withdrawn = container.removeItem(slot, 1);
+                if (withdrawn.is(Items.OAK_PLANKS) && withdrawn.getCount() == 1) {
+                    carried = withdrawn;
+                    container.setChanged();
+                    workStage = WorkStage.HOUSING_DELIVERING;
+                    waitReason = "";
+                }
+                return;
+            }
+            waitReason = "housing planks missing";
+        } else if (workStage == WorkStage.HOUSING_DELIVERING) {
+            if (level.getBlockState(buildPos).is(Blocks.OAK_PLANKS)) {
+                workStage = WorkStage.HOUSING_RETURNING;
+                return;
+            }
+            if (HousingCoordinator.placeByResident(level, this, housingBed, buildPos, carried)) {
+                carried = ItemStack.EMPTY;
+                workStage = WorkStage.HOUSING_COMPLETE;
+                waitReason = "";
+            } else {
+                waitReason = "housing site blocked or unsafe";
+            }
+        } else if (workStage == WorkStage.HOUSING_RETURNING) {
+            if (returnCarriedToSupply(level)) {
+                workStage = WorkStage.HOUSING_COMPLETE;
+                waitReason = "";
+            } else {
+                waitReason = "housing return warehouse missing or full";
+            }
+        }
+    }
+
+    private BlockPos housingApproach(ServerLevel level) {
+        BlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                BlockPos foot = new BlockPos(buildPos.getX() + dx, housingBed.getY(),
+                        buildPos.getZ() + dz);
+                if (foot.distSqr(buildPos) > 16 || !level.shouldTickBlocksAt(foot)
+                        || WorldModificationPermission.check(level, settlementId, foot)
+                                != WorldModificationPermission.Decision.ALLOWED
+                        || !level.getBlockState(foot).isAir()
+                        || !level.getBlockState(foot.above()).isAir()
+                        || !level.getBlockState(foot.below()).isFaceSturdy(level, foot.below(), Direction.UP)) {
+                    continue;
+                }
+                double distance = blockPosition().distSqr(foot);
+                if (distance < bestDistance) {
+                    best = foot;
+                    bestDistance = distance;
+                }
+            }
+        }
+        return best;
+    }
+
+    private boolean returnCarriedToSupply(ServerLevel level) {
+        if (!(level.getBlockEntity(supplyPos) instanceof Container container)) return false;
+        for (int slot = 0; slot < container.getContainerSize(); slot++) {
+            if (!container.canPlaceItem(slot, carried)) continue;
+            ItemStack existing = container.getItem(slot);
+            if (existing.isEmpty()) {
+                int moved = Math.min(carried.getCount(),
+                        Math.min(carried.getMaxStackSize(), container.getMaxStackSize(carried)));
+                container.setItem(slot, carried.split(moved));
+            } else if (ItemStack.isSameItemSameComponents(existing, carried)) {
+                int room = Math.min(existing.getMaxStackSize(), container.getMaxStackSize(existing))
+                        - existing.getCount();
+                if (room <= 0) continue;
+                int moved = Math.min(room, carried.getCount());
+                existing.grow(moved);
+                carried.shrink(moved);
+                container.setChanged();
+            } else continue;
+            if (carried.isEmpty()) return true;
+        }
+        return false;
+    }
+
+    private void tickSmeltingWork(ServerLevel level) {
+        SmeltingSavedData saved = SmeltingSavedData.get(level);
+        // The saved batch is the authority; a reloaded worker recovers its ore from there rather than NBT.
+        if (smeltOre == null) {
+            smeltOre = saved.batch().map(SmeltingSavedData.Batch::ore).orElse(null);
+            if (smeltOre == null) {
+                workStage = WorkStage.IDLE;
+                waitReason = "";
+                return;
+            }
+        }
+        if (WorldModificationPermission.check(level, settlementId, blockPosition())
+                != WorldModificationPermission.Decision.ALLOWED
+                || WorldModificationPermission.check(level, settlementId, buildPos)
+                != WorldModificationPermission.Decision.ALLOWED
+                || WorldModificationPermission.check(level, settlementId, supplyPos)
+                != WorldModificationPermission.Decision.ALLOWED
+                || !level.shouldTickBlocksAt(buildPos)) {
+            waitReason = "smelt area inactive or protected";
+            getNavigation().stop();
+            return;
+        }
+        if (!level.getBlockState(buildPos).is(Blocks.FURNACE)) {
+            workStage = WorkStage.IDLE; // The furnace is gone; the coordinator reconciles the batch.
+            waitReason = "";
+            getNavigation().stop();
+            return;
+        }
+        if (workStage == WorkStage.SMELT_WAITING) {
+            var batch = saved.batch();
+            if (batch.isEmpty() || !batch.get().furnace().equals(buildPos)) {
+                workStage = WorkStage.IDLE;
+                waitReason = "";
+                return;
+            }
+            FurnaceWorksite.forgetLostBatch(level);
+            if (saved.batch().isEmpty()) {
+                workStage = WorkStage.IDLE;
+                waitReason = "";
+                return;
+            }
+            if (level.getBlockEntity(buildPos) instanceof Container furnace
+                    && furnace.getItem(2).is(smeltOre.ingot())) {
+                workStage = WorkStage.SMELT_COLLECTING;
+                return;
+            }
+            waitReason = "waiting for smelt";
+            return;
+        }
+        if (distanceToSqr(buildPos.getX() + 0.5, buildPos.getY() + 0.5, buildPos.getZ() + 0.5) > 9.0) {
+            waitReason = "walking to furnace";
+            getNavigation().moveTo(buildPos.getX() + 0.5, buildPos.getY(), buildPos.getZ() + 0.5, 1.0);
+            return;
+        }
+        getNavigation().stop();
+        if (workStage == WorkStage.SMELT_FEEDING) {
+            if (saved.batch().isPresent()) {
+                workStage = WorkStage.SMELT_WAITING; // Another feed won the single global batch slot.
+                return;
+            }
+            if (FurnaceWorksite.feed(level, this, settlementId, supplyPos, buildPos, smeltOre)) {
+                workStage = WorkStage.SMELT_WAITING;
+                waitReason = "";
+            } else {
+                waitReason = "smelt feed blocked";
+            }
+        } else if (workStage == WorkStage.SMELT_COLLECTING) {
+            if (saved.batch().isEmpty()) {
+                workStage = WorkStage.IDLE;
+                waitReason = "";
+                return;
+            }
+            if (FurnaceWorksite.collect(level, this)) {
+                workStage = WorkStage.IDLE;
+                waitReason = "";
+            } else {
+                workStage = WorkStage.SMELT_WAITING;
+                waitReason = "output not ready";
+            }
+        }
+    }
+
+    private void tickMiningWork(ServerLevel level) {
+        if (WorldModificationPermission.check(level, settlementId, blockPosition())
+                != WorldModificationPermission.Decision.ALLOWED) {
+            waitReason = "worker outside active claimed land";
+            getNavigation().stop();
+            return;
+        }
+        Optional<MiningWorksite.Site> site = MiningWorksite.assess(level, settlementId, buildPos);
+        if (site.isEmpty()) {
+            // The ore is gone, replaced, or its neighbours became unsafe: stop instead of swinging at air.
+            workStage = WorkStage.IDLE;
+            waitReason = "";
+            getNavigation().stop();
+            return;
+        }
+        BlockPos stand = site.orElseThrow().stand();
+        if (WorldModificationPermission.check(level, settlementId, stand)
+                != WorldModificationPermission.Decision.ALLOWED
+                || !level.shouldTickBlocksAt(stand)) {
+            waitReason = "mining site inactive or protected";
+            getNavigation().stop();
+            return;
+        }
+        if (!level.getGameRules().get(GameRules.MOB_GRIEFING)) {
+            waitReason = "mobGriefing disabled";
+            getNavigation().stop();
+            return;
+        }
+        if (distanceToSqr(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5) > 4.0) {
+            waitReason = "walking to ore";
+            getNavigation().moveTo(stand.getX() + 0.5, stand.getY(), stand.getZ() + 0.5, 1.0);
+            return;
+        }
+        getNavigation().stop();
+        if (MiningWorksite.extract(level, this, settlementId, site.orElseThrow(), supplyPos)) {
+            workStage = WorkStage.IDLE;
+            waitReason = "";
+        } else {
+            // Self-healing: a broken pickaxe, a full warehouse, or a lost site all resolve on their own.
+            waitReason = "mining blocked";
         }
     }
 
@@ -1378,7 +1881,14 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         if (path == null) return;
         var transport = TransportSavedData.get(level);
         for (int index = path.getNextNodeIndex(); index < path.getNodeCount(); index++) {
-            if (transport.isBridgeClosedAt(path.getNodePos(index))) {
+            BlockPos foot = path.getNodePos(index);
+            boolean assignedBuilderOnSafeDeck = workStage == WorkStage.TRANSPORT_DELIVERING
+                    && transport.plan(transportPlanId)
+                            .filter(plan -> plan.workerId().orElse("").equals(getUUID().toString())
+                                    && plan.closedFootprint().contains(foot))
+                            .isPresent()
+                    && level.getBlockState(foot.below()).isFaceSturdy(level, foot.below(), Direction.UP);
+            if (transport.isBridgeClosedAt(foot) && !assignedBuilderOnSafeDeck) {
                 getNavigation().stop();
                 return;
             }
@@ -1392,6 +1902,9 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         output.store("GoblinSupplyPos", BlockPos.CODEC, supplyPos);
         output.store("GoblinBuildPos", BlockPos.CODEC, buildPos);
         output.putString("GoblinPickupItemId", pickupItemId);
+        output.putString("GoblinTransportPlanId", transportPlanId);
+        output.store("GoblinTransportStepIndex", Codec.INT, transportStepIndex);
+        output.store("GoblinHousingBed", BlockPos.CODEC, housingBed);
         if (!carried.isEmpty()) {
             output.store("GoblinCarried", ItemStack.CODEC, carried);
         }
@@ -1411,6 +1924,9 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         if (toolKind != null) {
             output.putString("GoblinToolKind", toolKind.name());
         }
+        if (smeltOre != null) {
+            output.putString("GoblinSmeltOre", smeltOre.name());
+        }
     }
 
     @Override
@@ -1425,6 +1941,9 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         supplyPos = input.read("GoblinSupplyPos", BlockPos.CODEC).orElse(BlockPos.ZERO);
         buildPos = input.read("GoblinBuildPos", BlockPos.CODEC).orElse(BlockPos.ZERO);
         pickupItemId = input.getStringOr("GoblinPickupItemId", "");
+        transportPlanId = input.getStringOr("GoblinTransportPlanId", "");
+        transportStepIndex = input.read("GoblinTransportStepIndex", Codec.INT).orElse(-1);
+        housingBed = input.read("GoblinHousingBed", BlockPos.CODEC).orElse(BlockPos.ZERO);
         carried = input.read("GoblinCarried", ItemStack.CODEC).orElse(ItemStack.EMPTY);
         farmGoods = new ArrayList<>(input.read("GoblinFarmGoods", ItemStack.CODEC.listOf()).orElse(List.of()));
         toolGoods = new ArrayList<>(input.read("GoblinToolGoods", ItemStack.CODEC.listOf()).orElse(List.of()));
@@ -1458,6 +1977,11 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         } catch (IllegalArgumentException exception) {
             toolKind = null;
         }
+        try {
+            smeltOre = FurnaceWorksite.Ore.valueOf(input.getStringOr("GoblinSmeltOre", ""));
+        } catch (IllegalArgumentException exception) {
+            smeltOre = null;
+        }
         if (workStage == WorkStage.TOOL_FETCHING && !toolGoods.isEmpty()) {
             workStage = toolKind == null ? WorkStage.TOOL_RETURNING : WorkStage.TOOL_CRAFTING;
         }
@@ -1469,6 +1993,12 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
         if (!carried.isEmpty() && workStage == WorkStage.FETCHING) {
             workStage = WorkStage.DELIVERING;
+        }
+        if (!carried.isEmpty() && workStage == WorkStage.TRANSPORT_FETCHING) {
+            workStage = WorkStage.TRANSPORT_DELIVERING;
+        }
+        if (!carried.isEmpty() && workStage == WorkStage.HOUSING_FETCHING) {
+            workStage = WorkStage.HOUSING_DELIVERING;
         }
         if (!carried.isEmpty() && workStage == WorkStage.RECOVERING) {
             workStage = WorkStage.RETURNING;

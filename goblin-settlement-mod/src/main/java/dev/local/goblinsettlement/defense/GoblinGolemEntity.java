@@ -23,7 +23,8 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
 /**
- * One persistent entity type for all six tiers. It acquires a target only from an explicit
+ * Persistent custom golem for five tiers. Legacy iron entities migrate to the vanilla type.
+ * It acquires a target only from an explicit
  * resident-damage event; proximity, equipment and warehouse visits never create hostility.
  */
 public final class GoblinGolemEntity extends PathfinderMob {

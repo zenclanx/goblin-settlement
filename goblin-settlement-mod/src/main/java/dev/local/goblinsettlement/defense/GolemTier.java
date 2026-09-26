@@ -5,7 +5,7 @@ import java.util.Optional;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
-/** One entity type carries one of six durable tiers. Costs are paid from real public storage. */
+/** Six durable tiers; iron is represented by the vanilla entity. Costs use real public storage. */
 public enum GolemTier {
     WOOD(20, 4, 0.25, Items.OAK_PLANKS, List.of(new GolemMaterialCost(Items.OAK_PLANKS, 8))),
     STONE(30, 5, 0.23, Items.COBBLESTONE, List.of(new GolemMaterialCost(Items.COBBLESTONE, 8))),

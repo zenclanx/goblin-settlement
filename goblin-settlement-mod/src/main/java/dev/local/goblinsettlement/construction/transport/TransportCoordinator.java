@@ -1,6 +1,9 @@
 package dev.local.goblinsettlement.construction.transport;
 
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.ResidentRecord;
+import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
+import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
 import dev.local.goblinsettlement.planning.road.RoadPlanner;
@@ -13,6 +16,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Comparator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -25,12 +29,11 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 /**
- * First server-side traffic work loop. One block is built each second from a
- * physical registered warehouse. Plans and progress persist in TransportSavedData.
- * This does not assign a resident carrier; the entity transport handoff is a
- * separate integration point.
+ * Traffic work uses a persisted resident assignment for each step. The worker
+ * withdraws one real item, carries it, and asks this coordinator to place it.
  */
 public final class TransportCoordinator {
     private enum FootprintAccess {
@@ -80,7 +83,7 @@ public final class TransportCoordinator {
         }
         TransportPlan plan = new TransportPlan(
                 UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.ROAD,
-                List.copyOf(sites.values()), 0, false, List.of(), List.of(), List.of());
+                List.copyOf(sites.values()), 0, false, List.of(), List.of(), List.of(), Optional.empty());
         if (!traffic.add(plan)) {
             return rejected("TRAFFIC_WORK_ACTIVE_OR_LIMIT");
         }
@@ -165,7 +168,7 @@ public final class TransportCoordinator {
         }
         TransportPlan plan = new TransportPlan(
                 UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.WOOD_BRIDGE,
-                steps, 0, false, barriers, List.copyOf(closure), candidate.surveyedBases());
+                steps, 0, false, barriers, List.copyOf(closure), candidate.surveyedBases(), Optional.empty());
         if (!traffic.add(plan)) {
             return rejected("TRAFFIC_WORK_ACTIVE_OR_LIMIT");
         }
@@ -198,9 +201,17 @@ public final class TransportCoordinator {
     private static void tickPlan(ServerLevel level, SettlementSavedData settlement,
                                  TransportSavedData traffic, TransportPlan plan) {
         if (settlement.settlement().isEmpty()
-                || !settlement.settlement().orElseThrow().id().equals(plan.settlementId())
-                || !allPermitted(level, plan)
-                || !foundationsRemainSafe(level, plan)) {
+                || !settlement.settlement().orElseThrow().id().equals(plan.settlementId())) {
+            return;
+        }
+        FootprintAccess access = footprintAccess(level, plan);
+        if (access == FootprintAccess.INACTIVE) {
+            return;
+        }
+        if (access == FootprintAccess.REVOKED || !foundationsRemainSafe(level, plan)) {
+            if (plan.workerId().isPresent()) {
+                traffic.replace(plan.withWorker(Optional.empty()));
+            }
             return;
         }
         if (plan.kind() == TransportPlan.Kind.WOOD_BRIDGE
@@ -234,6 +245,26 @@ public final class TransportCoordinator {
         }
         TransportPlan.Step step = plan.steps().get(plan.completedSteps());
         Block desired = blockFor(step.material());
+        if (plan.workerId().isPresent()) {
+            String workerId = plan.workerId().orElseThrow();
+            GoblinCitizenEntity goblin = null;
+            try {
+                if (level.getEntity(UUID.fromString(workerId)) instanceof GoblinCitizenEntity loaded) {
+                    goblin = loaded;
+                }
+            } catch (IllegalArgumentException exception) {
+                goblin = null; // An unusable id is not in the roster either, so the rule below releases it.
+            }
+            var decision = WorkerAssignmentRules.decide(
+                    settlement.resident(workerId).map(ResidentRecord::stage),
+                    goblin != null,
+                    goblin != null && goblin.hasTransportWork(plan.id(), plan.completedSteps()));
+            if (decision == WorkerAssignmentRules.Decision.RELEASE) {
+                traffic.replace(plan.withWorker(Optional.empty()));
+            }
+            // An unloaded worker still owns the step and its physical item.
+            return;
+        }
         if (level.getBlockState(step.site()).is(desired)) {
             traffic.replace(plan.advance());
             return; // Reload or another builder already completed this cell.
@@ -252,26 +283,70 @@ public final class TransportCoordinator {
             if (slot < 0) {
                 continue;
             }
-            ItemStack before = container.getItem(slot).copy();
-            ItemStack removed = container.removeItem(slot, 1);
-            if (!removed.is(itemFor(step.material())) || removed.getCount() != 1) {
-                container.setItem(slot, before);
-                container.setChanged();
-                continue;
-            }
-            BlockState desiredState = desired.defaultBlockState();
-            if (!level.setBlock(step.site(), desiredState, 3)) {
-                container.setItem(slot, before);
-                container.setChanged();
-                return;
-            }
-            container.setChanged();
-            if (level.getBlockState(step.site()).is(desired)) {
-                traffic.replace(plan.advance());
+            var worker = level.getEntitiesOfClass(GoblinCitizenEntity.class,
+                            new AABB(warehouse).inflate(16.0), GoblinCitizenEntity::isAvailableForConstruction)
+                    .stream().min(Comparator.comparingDouble(goblin -> goblin.blockPosition().distSqr(warehouse)));
+            if (worker.isPresent()) {
+                GoblinCitizenEntity goblin = worker.orElseThrow();
+                TransportPlan assigned = plan.withWorker(Optional.of(goblin.getUUID().toString()));
+                if (traffic.replace(assigned) && !goblin.assignTransport(plan.settlementId(),
+                        plan.id(), plan.completedSteps(), warehouse, step.site())) {
+                    traffic.replace(plan);
+                }
             }
             return;
         }
         // No accessible warehouse currently contains this step's actual item.
+    }
+
+    /** Called at the site by the assigned resident after carrying the exact item. */
+    public static boolean placeByResident(ServerLevel level, GoblinCitizenEntity worker,
+                                          String planId, int stepIndex, ItemStack carried) {
+        TransportSavedData traffic = TransportSavedData.get(level);
+        Optional<TransportPlan> found = traffic.plan(planId);
+        if (found.isEmpty()) return false;
+        TransportPlan plan = found.orElseThrow();
+        if (plan.completedSteps() != stepIndex || stepIndex >= plan.steps().size()
+                || !plan.workerId().orElse("").equals(worker.getUUID().toString())
+                || !level.getGameRules().get(GameRules.MOB_GRIEFING)
+                || !allPermitted(level, plan) || !foundationsRemainSafe(level, plan)) {
+            return false;
+        }
+        TransportPlan.Step step = plan.steps().get(stepIndex);
+        if (!carried.is(itemFor(step.material())) || carried.getCount() != 1
+                || worker.distanceToSqr(step.site().getCenter()) > 8.0
+                || WorldModificationPermission.check(level, plan.settlementId(), worker.blockPosition())
+                        != WorldModificationPermission.Decision.ALLOWED
+                || !siteReady(level, plan.settlementId(), step)) {
+            return false;
+        }
+        Block desired = blockFor(step.material());
+        if (!level.setBlock(step.site(), desired.defaultBlockState(), 3)
+                || !level.getBlockState(step.site()).is(desired)) {
+            return false;
+        }
+        traffic.replace(plan.advance());
+        return true;
+    }
+
+    public static Optional<TransportPlan.Step> assignedStep(ServerLevel level, String planId,
+                                                            String workerId, int stepIndex) {
+        return TransportSavedData.get(level).plan(planId)
+                .filter(plan -> stepIndex >= 0 && plan.completedSteps() == stepIndex
+                        && stepIndex < plan.steps().size()
+                        && plan.workerId().orElse("").equals(workerId))
+                .map(plan -> plan.steps().get(stepIndex));
+    }
+
+    public static Item materialItem(TransportPlan.Material material) {
+        return itemFor(material);
+    }
+
+    public static boolean assignmentReady(ServerLevel level, String planId) {
+        return TransportSavedData.get(level).plan(planId)
+                .filter(plan -> footprintAccess(level, plan) == FootprintAccess.ALLOWED
+                        && foundationsRemainSafe(level, plan))
+                .isPresent();
     }
 
     private static boolean hasActivePlan(TransportSavedData traffic) {

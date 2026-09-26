@@ -47,7 +47,7 @@ public final class WarehouseWithdrawalObserver {
                         if (previous.penalized) {
                             current = current.withPenalty();
                         } else if (previous.witnessed && current.witnessed
-                                && oneDirectWithdrawal(previous, current)) {
+                                && directWithdrawal(previous, current)) {
                             SettlementRelations.get(level, current.settlementId)
                                     .recordWitnessedTheft(player.getUUID().toString());
                             current = current.withPenalty();
@@ -125,7 +125,8 @@ public final class WarehouseWithdrawalObserver {
         return witnessed;
     }
 
-    private static boolean oneDirectWithdrawal(Observation before, Observation after) {
+    /** Accept several changed slots only when one item type has the same net loss and gain. */
+    private static boolean directWithdrawal(Observation before, Observation after) {
         if (before.stock.length != after.stock.length
                 || before.backpack.length != after.backpack.length) {
             return false;
@@ -138,32 +139,33 @@ public final class WarehouseWithdrawalObserver {
             if (ItemStack.matches(old, now)) {
                 continue;
             }
-            if (!taken.isEmpty() || old.isEmpty()
-                    || (!now.isEmpty() && (!ItemStack.isSameItemSameComponents(old, now)
-                    || now.getCount() >= old.getCount()))) {
+            if (old.isEmpty() || (!now.isEmpty()
+                    && (!ItemStack.isSameItemSameComponents(old, now)
+                    || now.getCount() >= old.getCount()))
+                    || (!taken.isEmpty() && !ItemStack.isSameItemSameComponents(taken, old))) {
                 return false;
             }
             taken = old;
-            amount = old.getCount() - now.getCount();
+            amount += old.getCount() - now.getCount();
         }
-        if (taken.isEmpty()) {
+        if (taken.isEmpty() || amount <= 0) {
             return false;
         }
-        boolean received = false;
+        int received = 0;
         for (int slot = 0; slot < before.backpack.length; slot++) {
             ItemStack old = before.backpack[slot];
             ItemStack now = after.backpack[slot];
             if (ItemStack.matches(old, now)) {
                 continue;
             }
-            if (received || now.isEmpty() || !ItemStack.isSameItemSameComponents(taken, now)
+            if (now.isEmpty() || !ItemStack.isSameItemSameComponents(taken, now)
                     || (!old.isEmpty() && !ItemStack.isSameItemSameComponents(old, now))
-                    || now.getCount() - old.getCount() != amount) {
+                    || now.getCount() <= old.getCount()) {
                 return false;
             }
-            received = true;
+            received += now.getCount() - old.getCount();
         }
-        return received;
+        return received == amount;
     }
 
     private record Observation(ChestMenu menu, Container container, BlockPos position,

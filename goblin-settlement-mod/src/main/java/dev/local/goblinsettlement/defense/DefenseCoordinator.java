@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.phys.AABB;
 
 /**
@@ -22,15 +23,16 @@ public final class DefenseCoordinator {
     }
 
     public static void tick(ServerLevel level) {
-        if (level.getGameTime() % WORK_INTERVAL_TICKS != 0) {
-            return;
-        }
         SettlementSavedData settlement = SettlementSavedData.get(level);
         var founded = settlement.settlement();
         if (founded.isEmpty() || !level.shouldTickBlocksAt(founded.get().anchor())) {
             return;
         }
         String settlementId = founded.get().id();
+        VanillaIronGolemBridge.tick(level, founded.get().anchor(), settlementId);
+        if (level.getGameTime() % WORK_INTERVAL_TICKS != 0) {
+            return;
+        }
         DefenseSavedData roster = DefenseSavedData.get(level);
         List<GoblinGolemEntity> loaded = level.getEntitiesOfClass(GoblinGolemEntity.class,
                 new AABB(founded.get().anchor()).inflate(SETTLEMENT_SCAN_RADIUS),
@@ -41,10 +43,31 @@ public final class DefenseCoordinator {
             } else {
                 roster.updateTier(golem);
             }
+            if (golem.tier() == GolemTier.IRON) {
+                GolemWorkshop.migrateLegacyIron(level, golem, roster);
+            }
+        }
+
+        List<IronGolem> loadedIron = level.getEntitiesOfClass(IronGolem.class,
+                new AABB(founded.get().anchor()).inflate(SETTLEMENT_SCAN_RADIUS),
+                golem -> golem.isAlive() && roster.isSettlementIronGolem(golem, settlementId));
+        for (IronGolem iron : loadedIron) {
+            if (iron.getTarget() != null) {
+                continue;
+            }
+            for (BlockPos warehousePos : settlement.warehouses()) {
+                if (!accessibleWarehouse(level, settlement, settlementId, warehousePos)) {
+                    continue;
+                }
+                if (GolemWorkshop.tryRepairIron(level, iron, warehousePos)
+                        || GolemWorkshop.tryUpgradeIron(level, iron, warehousePos)) {
+                    break;
+                }
+            }
         }
 
         for (GoblinGolemEntity golem : loaded) {
-            if (golem.getTarget() != null) {
+            if (!golem.isAlive() || golem.tier() == GolemTier.IRON || golem.getTarget() != null) {
                 continue;
             }
             for (BlockPos warehousePos : settlement.warehouses()) {
@@ -96,6 +119,7 @@ public final class DefenseCoordinator {
                 golem -> golem.isAlive() && !golem.settlementId().isBlank())) {
             golem.alertToResidentAttack(victim, attacker);
         }
+        VanillaIronGolemBridge.alert(level, victim, attacker);
     }
 
     private static boolean accessibleWarehouse(ServerLevel level, SettlementSavedData settlement,
