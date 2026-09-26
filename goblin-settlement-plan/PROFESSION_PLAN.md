@@ -76,7 +76,7 @@ public final class ProfessionRulesCheck {
                 "an empty roster starts from the first profession");
         check(ProfessionRules.scarcest(List.of(Profession.FARMER, Profession.FARMER))
                 == Profession.FORESTER, "the fewest-staffed profession wins");
-        check(ProfessionRules.scarcest(List.of(Profession.FARMER, Profession.FORESTER))
+        check(ProfessionRules.scarcest(List.of(Profession.FORESTER, Profession.MINER))
                 == Profession.FARMER, "ties fall back to enum order");
         System.out.println("ProfessionRulesCheck passed");
     }
