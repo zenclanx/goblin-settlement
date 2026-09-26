@@ -45,7 +45,7 @@ class Canvas:
         path.write_bytes(png)
 
 
-def goblin():
+def goblin(accents=()):
     image = Canvas()
     skin, light, shade = (86, 145, 62), (119, 175, 78), (59, 105, 48)
     image.box(0, 0, 8, 8, 8, light, skin, shade)
@@ -63,6 +63,8 @@ def goblin():
     image.rect(43, 27, 3, 3, skin)
     image.box(0, 16, 3, 8, 3, (75, 60, 47), (69, 57, 51), (48, 43, 40))
     image.rect(3, 27, 3, 3, (52, 39, 32))
+    for accent in accents:
+        accent(image)
     return image
 
 
@@ -85,6 +87,63 @@ def golem():
     return image
 
 
+def straw_hat(image):
+    brim, crown = (214, 187, 108), (190, 158, 82)
+    image.rect(8, 0, 8, 8, crown)
+    image.rect(8, 8, 8, 2, brim)
+
+
+def shoulder_strap(image):
+    strap = (92, 63, 38)
+    image.rect(20, 20, 6, 2, strap)
+    image.rect(24, 22, 2, 6, strap)
+
+
+def headlamp(image):
+    band, lamp, glow = (58, 55, 52), (245, 218, 91), (255, 255, 210)
+    image.rect(8, 8, 8, 1, band)
+    image.rect(11, 9, 2, 2, lamp)
+    image.rect(11, 9, 1, 1, glow)
+
+
+def tool_belt(image):
+    belt, buckle, head = (74, 48, 28), (198, 166, 74), (150, 152, 156)
+    image.rect(20, 24, 6, 2, belt)
+    image.rect(22, 24, 2, 2, buckle)
+    image.rect(24, 26, 2, 2, head)
+
+
+def backpack(image):
+    pack, strap = (110, 82, 48), (74, 55, 32)
+    image.rect(30, 20, 6, 8, pack)
+    image.rect(30, 20, 6, 1, strap)
+    image.rect(31, 24, 4, 3, strap)
+
+
+def apron_and_goggles(image):
+    apron, glass, frame = (58, 62, 70), (137, 199, 208), (54, 50, 46)
+    image.rect(21, 22, 4, 6, apron)
+    image.rect(20, 27, 6, 1, apron)
+    image.rect(9, 10, 3, 2, frame)
+    image.rect(13, 10, 3, 2, frame)
+    image.rect(10, 10, 1, 1, glass)
+    image.rect(14, 10, 1, 1, glass)
+
+
+def helmet(image):
+    metal, rim, crest = (146, 151, 158), (96, 100, 108), (156, 66, 60)
+    image.rect(8, 0, 8, 8, metal)
+    image.rect(8, 8, 8, 2, rim)
+    image.rect(10, 0, 2, 2, crest)
+
+
 if __name__ == "__main__":
     goblin().save(ROOT / "goblin.png")
+    goblin((straw_hat,)).save(ROOT / "goblin_farmer.png")
+    goblin((shoulder_strap,)).save(ROOT / "goblin_forester.png")
+    goblin((headlamp,)).save(ROOT / "goblin_miner.png")
+    goblin((tool_belt,)).save(ROOT / "goblin_builder.png")
+    goblin((backpack,)).save(ROOT / "goblin_hauler.png")
+    goblin((apron_and_goggles,)).save(ROOT / "goblin_artisan.png")
+    goblin((helmet,)).save(ROOT / "goblin_sentry.png")
     golem().save(ROOT / "goblin_golem.png")
