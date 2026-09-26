@@ -7,7 +7,7 @@ import net.minecraft.resources.Identifier;
 
 public final class GoblinRenderer extends MobRenderer<GoblinCitizenEntity, GoblinRenderState, GoblinModel> {
     private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
-            "minecraft", "textures/entity/zombie/zombie.png");
+            "goblin_settlement", "textures/entity/goblin.png");
 
     public GoblinRenderer(EntityRendererProvider.Context context) {
         super(context, new GoblinModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_LAYER)), 0.3F);

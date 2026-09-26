@@ -78,6 +78,13 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             SettlementSavedData.get(serverLevel).markResidentDead(getUUID().toString());
         }
         super.die(source);
+        if (level() instanceof ServerLevel serverLevel) {
+            var data = SettlementSavedData.get(serverLevel);
+            String workerId = getUUID().toString();
+            data.releaseFarmWorker(workerId);
+            data.releaseWorker(workerId);
+            data.acknowledgeCancelledWorker(workerId);
+        }
     }
 
     @Override
@@ -1496,9 +1503,6 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         dropDeathGoods(level, toolGoods, "tool");
         dropDeathGoods(level, foodGoods, "food");
         dropDeathGoods(level, forestryGoods, "forestry");
-        data.releaseFarmWorker(getUUID().toString());
-        data.releaseWorker(getUUID().toString());
-        data.acknowledgeCancelledWorker(getUUID().toString());
     }
 
     private void dropDeathGoods(ServerLevel level, List<ItemStack> goods, String source) {
