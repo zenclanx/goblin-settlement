@@ -1,6 +1,6 @@
 # 当前状态：哥布林模组接续入口
 
-更新日期：2026-09-27 00:08 +08:00。详细历史仅追加到 UpdateLog.md。
+更新日期：2026-09-27 01:03 +08:00。详细历史仅追加到 UpdateLog.md。
 
 ## 本轮执行约定
 
@@ -19,12 +19,13 @@
 
 - 纯规则：`colony/Profession`（UNASSIGNED + 7 职业）、`colony/WorkKind`、`colony/ProfessionRules`（matchRank 对口/通才/拉离三档、workIntervalTicks 10/20/30、scarcest），以及纳入 check 聚合的 `professionRulesCheck`。
 - 数据与分配：`ResidentRecord` 持久化 profession 字段并兼容旧存档；`SettlementSavedData` 职业查询与指派；`ProfessionCoordinator` 每 200 tick 为未定职成人补稀缺职业，接入主循环。
-- 派工与速度：9 个协调器的选人比较器统一按 matchRank 优先对口职业；工作推进按职业三档节流；顺带修复 `ConstructionCoordinator` 既有倒置比较器（上一工人原先反而排在后面）。
+- 派工与速度：9 个协调器的选人比较器统一按 matchRank 优先对口职业；工作推进按职业三档节流；顺带修复 `ConstructionCoordinator` 既有倒置比较器（上一工人原先反而排在后面）。全分支审查后修复一处派工/执行裂脑：`GoblinCitizenEntity.workKind` 的 `RETURNING`/`RECOVERING` 原映射到 `CONSTRUCTION`，已改映射到 `RECOVERY`（与掉落物回收路径的派工口径一致）。
 - 表现：`work`/`status` 命令显示职业；实体同步 `DATA_PROFESSION`；渲染器按职业选贴图；新增 7 张原创职业贴图（textures/entity 下 goblin*.png 共 9 张）。
 
 ## 本轮验证进展
 
 - 固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`），7 项独立检查全部通过：PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、WorkerAssignmentRules。
+- 全分支审查修复后复跑 `./gradlew check --offline --no-daemon`：BUILD SUCCESSFUL，7 项独立检查全部打印 `*Check passed`。修复内容：RECOVERY 映射拆行、assign 命令旁路说明、渲染器贴图常量化、设计文档时间口径（详见 UpdateLog.md 第三十七轮补记）。
 - `goblin-settlement-0.1.0.jar` 重新生成（371476 字节，2026-09-27 00:00），已核对含 4 个新类与 9 张贴图。
 - 未做游戏内验证：未启动游戏、未运行专用服务端、未触碰常用存档。
 

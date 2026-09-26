@@ -222,7 +222,7 @@ workIntervalTicks(WorkKind kind, Profession resident) -> int
 ## 10. 兼容性
 
 - 旧存档：`profession` 字段缺失即 `UNASSIGNED`，`SCHEMA_VERSION` 不升。
-- 旧居民：加载后由 `ProfessionCoordinator` 在一秒内补上职业，之前按未定职（通才，速度居中）运行。
+- 旧居民：加载后由 `ProfessionCoordinator` 补上职业（每 200 tick 检查一次，最坏约 10 秒），之前按未定职（通才，速度居中）运行。
 - 傀儡：不设职业，渲染与行为均不受影响。
 - 实体同步项新增不会影响存档格式。
 

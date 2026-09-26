@@ -355,3 +355,8 @@
 - [2026-09-27 00:01:00 +08:00] 核对 JAR：colony/Profession、colony/WorkKind、colony/ProfessionRules、colony/ProfessionCoordinator 四个新类均在；assets/goblin_settlement/textures/entity/ 下 goblin*.png 共 9 张（通用、7 职业、傀儡各一）。未启动游戏、未运行专用服务端、未触碰常用存档，职业系统全部 17 个提交均无游戏内证据。
 - [2026-09-27 00:08:00 +08:00] 更新 CURRENT_STATUS.md，文档单独提交后推送到 origin/claude/settlement-first-pass。
 - [2026-09-27 00:08:00 +08:00] 未完成：职业熟练度、职业名额、派工服务收口、哨卫工作、儿童外观、真实手持工具仍在尚需实现；职业系统整体未做游戏内验证，构建与检查通过不代表玩法验收。
+## [2026-09-27 01:00:10 +08:00 – 2026-09-27 01:01:25 +08:00] 第三十七轮补记：RECOVERY 映射缺陷与同轮小修
+
+- [2026-09-27 01:00:20 +08:00] 全分支审查发现派工与执行裂脑：ConstructionCoordinator 掉落物回收路径用 WorkKind.RECOVERY 派工（对口搬运员 HAULER），而 GoblinCitizenEntity.workKind 把 RETURNING/RECOVERING 映射到 WorkKind.CONSTRUCTION（对口建筑工 BUILDER），派活时优先选中的搬运员干活时反被判不对口、跑最慢 30 tick 档。已把该行拆成 CONSTRUCTION（FETCHING/DELIVERING/COMPLETE）与 RECOVERY（RETURNING/RECOVERING/RECOVERED/ABORTED）两行，与 PROFESSION_PLAN.md 对照表一致；RECOVERED/ABORTED 永远走不到该闸，一并映射只是记录意图。
+- [2026-09-27 01:01:00 +08:00] 同轮小修：goblinsettlement assign 命令成功输出追加 " (administrator bypass)" 说明，挑选逻辑不动；GoblinRenderer 八张贴图 Identifier（含默认）改为静态 final 常量，getTextureLocation 只查表返回，纹理名与路径未变；PROFESSION_DESIGN.md 第 10 节旧居民补职业耗时改为与实现一致（每 200 tick，最坏约 10 秒）。
+- [2026-09-27 01:01:25 +08:00] 验证：./gradlew check --offline --no-daemon BUILD SUCCESSFUL，7 项独立检查全部打印 *Check passed（PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、WorkerAssignmentRules）。未启动游戏、未运行专用服务端、未触碰常用存档。
