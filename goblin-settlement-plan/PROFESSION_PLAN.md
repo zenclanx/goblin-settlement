@@ -937,7 +937,6 @@ public final class GoblinRenderState extends LivingEntityRenderState {
 package dev.local.goblinsettlement.client;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
-import dev.local.goblinsettlement.colony.Profession;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.resources.Identifier;
