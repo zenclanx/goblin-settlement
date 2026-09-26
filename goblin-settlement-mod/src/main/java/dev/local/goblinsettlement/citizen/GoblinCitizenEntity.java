@@ -73,8 +73,8 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private static WorkKind workKind(WorkStage stage) {
         return switch (stage) {
             case IDLE -> null;
-            case FETCHING, DELIVERING, RETURNING, RECOVERING, RECOVERED, ABORTED, COMPLETE ->
-                    WorkKind.CONSTRUCTION;
+            case FETCHING, DELIVERING, COMPLETE -> WorkKind.CONSTRUCTION;
+            case RETURNING, RECOVERING, RECOVERED, ABORTED -> WorkKind.RECOVERY;
             case FARM_FETCHING_SEED, FARM_PLANTING, FARM_HARVESTING, FARM_RETURNING, FARM_COMPLETE ->
                     WorkKind.FARMING;
             case TOOL_FETCHING, TOOL_CRAFTING, TOOL_RETURNING, TOOL_COMPLETE -> WorkKind.TOOL_CRAFTING;

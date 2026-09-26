@@ -193,7 +193,8 @@ public final class GoblinSettlement implements ModInitializer {
                                                         return 0;
                                                     }
                                                     source.sendSuccess(() -> Component.literal("Assigned oak plank construction to goblin "
-                                                            + resident.get().getUUID() + ": " + resident.get().workSummary()), true);
+                                                            + resident.get().getUUID() + ": " + resident.get().workSummary()
+                                                            + " (administrator bypass)"), true);
                                                     return Command.SINGLE_SUCCESS;
                                                 }))))
                         .then(Commands.literal("work").executes(context -> {

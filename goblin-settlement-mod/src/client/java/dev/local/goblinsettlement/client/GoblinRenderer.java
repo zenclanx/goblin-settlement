@@ -7,6 +7,13 @@ import net.minecraft.resources.Identifier;
 
 public final class GoblinRenderer extends MobRenderer<GoblinCitizenEntity, GoblinRenderState, GoblinModel> {
     private static final Identifier DEFAULT_TEXTURE = texture("goblin");
+    private static final Identifier TEXTURE_FARMER = texture("goblin_farmer");
+    private static final Identifier TEXTURE_FORESTER = texture("goblin_forester");
+    private static final Identifier TEXTURE_MINER = texture("goblin_miner");
+    private static final Identifier TEXTURE_BUILDER = texture("goblin_builder");
+    private static final Identifier TEXTURE_HAULER = texture("goblin_hauler");
+    private static final Identifier TEXTURE_ARTISAN = texture("goblin_artisan");
+    private static final Identifier TEXTURE_SENTRY = texture("goblin_sentry");
 
     public GoblinRenderer(EntityRendererProvider.Context context) {
         super(context, new GoblinModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_LAYER)), 0.3F);
@@ -30,13 +37,13 @@ public final class GoblinRenderer extends MobRenderer<GoblinCitizenEntity, Gobli
     @Override
     public Identifier getTextureLocation(GoblinRenderState state) {
         return switch (state.profession) {
-            case FARMER -> texture("goblin_farmer");
-            case FORESTER -> texture("goblin_forester");
-            case MINER -> texture("goblin_miner");
-            case BUILDER -> texture("goblin_builder");
-            case HAULER -> texture("goblin_hauler");
-            case ARTISAN -> texture("goblin_artisan");
-            case SENTRY -> texture("goblin_sentry");
+            case FARMER -> TEXTURE_FARMER;
+            case FORESTER -> TEXTURE_FORESTER;
+            case MINER -> TEXTURE_MINER;
+            case BUILDER -> TEXTURE_BUILDER;
+            case HAULER -> TEXTURE_HAULER;
+            case ARTISAN -> TEXTURE_ARTISAN;
+            case SENTRY -> TEXTURE_SENTRY;
             case UNASSIGNED -> DEFAULT_TEXTURE;
         };
     }
