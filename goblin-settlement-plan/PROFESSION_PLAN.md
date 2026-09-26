@@ -644,7 +644,7 @@ git commit -m "Expose a resident's profession for dispatch"
 
 **注意第一段键的写法**：它原本是 `comparing(...)` 作用在一个 `Boolean` 上，而 `Boolean` 的自然序是 `false < true`、`min` 又取最小键，于是"上次的那个工人"反而排在最后——那是个既有缺陷，已在本次实现中改为上面的 `comparingInt(... ? 0 : 1)`（0 = 优先）。**不要退回 Boolean 形式。**
 
-**不要碰** `/goblinsettlement assign` 命令（`GoblinSettlement.java`）。它是绕过全部过滤的管理员直控旁路，保持原样。
+**`/goblinsettlement assign` 命令**：它的**挑选逻辑保持原样**——它是绕过全部过滤的管理员直控旁路，不加职业偏好。但按设计文档第 5 节，它的**输出**要说明自己是管理员旁路，所以 `GoblinSettlement.java` 该处允许加一句输出后缀，除此之外不要改这个命令。
 
 - [ ] **Step 1: 逐个文件改比较器**
 
@@ -695,8 +695,8 @@ git commit -m "Prefer a matching trade when dispatching work"
     private static WorkKind workKind(WorkStage stage) {
         return switch (stage) {
             case IDLE -> null;
-            case FETCHING, DELIVERING, RETURNING, RECOVERING, RECOVERED, ABORTED, COMPLETE ->
-                    WorkKind.CONSTRUCTION;
+            case FETCHING, DELIVERING, COMPLETE -> WorkKind.CONSTRUCTION;
+            case RETURNING, RECOVERING, RECOVERED, ABORTED -> WorkKind.RECOVERY;
             case FARM_FETCHING_SEED, FARM_PLANTING, FARM_HARVESTING, FARM_RETURNING, FARM_COMPLETE ->
                     WorkKind.FARMING;
             case TOOL_FETCHING, TOOL_CRAFTING, TOOL_RETURNING, TOOL_COMPLETE -> WorkKind.TOOL_CRAFTING;
@@ -715,6 +715,23 @@ git commit -m "Prefer a matching trade when dispatching work"
 ```
 
 **以文件中 `WorkStage` 枚举的实际常量为准**——上面按当前枚举列的，若实际常量名有出入，按实际改。
+
+**⚠️ 映射必须与 Task 6 的派工表一一对应。** 每个 `WorkKind` 的"执行阶段"要落回同一个 `WorkKind`：派活时用哪个 kind 挑人，干活时就必须用同一个 kind 算速度，否则会出现"优先选中的人反而被判为不对口"的裂脑。回收流程（`RECOVERING`/`RETURNING`）尤其容易出错——它由 `ConstructionCoordinator` 用 `WorkKind.RECOVERY` 派工，所以它的执行阶段必须映射到 `RECOVERY` 而不是 `CONSTRUCTION`。`RECOVERED`/`ABORTED` 永远走不到这道闸（前面就 return 了），一并映射只是记录意图。
+
+各 `WorkKind` 与执行阶段的对照：
+
+| WorkKind | 执行阶段 |
+| --- | --- |
+| `CONSTRUCTION` | `FETCHING`, `DELIVERING`, `COMPLETE` |
+| `RECOVERY` | `RETURNING`, `RECOVERING`, `RECOVERED`, `ABORTED` |
+| `FARMING` | `FARM_*`（5 个） |
+| `TOOL_CRAFTING` | `TOOL_*`（4 个） |
+| `FOOD_CRAFTING` | `FOOD_*`（4 个） |
+| `FORESTRY` | `FORESTRY_*`（8 个） |
+| `TRANSPORT` | `TRANSPORT_*`（4 个） |
+| `HOUSING` | `HOUSING_*`（4 个） |
+| `MINING` | `MINING_DIGGING` |
+| `SMELTING` | `SMELT_*`（3 个） |
 
 - [ ] **Step 2: 拆开两级节流**
 
