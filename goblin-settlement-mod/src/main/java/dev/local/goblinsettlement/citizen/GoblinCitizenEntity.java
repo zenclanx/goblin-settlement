@@ -2,8 +2,10 @@ package dev.local.goblinsettlement.citizen;
 
 import com.mojang.serialization.Codec;
 import dev.local.goblinsettlement.colony.Profession;
+import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
 import dev.local.goblinsettlement.construction.transport.TransportPlan;
@@ -50,6 +52,7 @@ import net.minecraft.world.level.storage.ValueOutput;
 /** A resident with persisted work and actual carried materials or products. */
 public final class GoblinCitizenEntity extends PathfinderMob {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(GoblinCitizenEntity.class);
+    private static final int REGISTRATION_INTERVAL_TICKS = 10;
 
     private enum WorkStage { IDLE, FETCHING, DELIVERING, COMPLETE, RECOVERING, RETURNING, RECOVERED, ABORTED,
         FARM_FETCHING_SEED, FARM_PLANTING, FARM_HARVESTING, FARM_RETURNING, FARM_COMPLETE,
@@ -60,6 +63,28 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         TRANSPORT_FETCHING, TRANSPORT_DELIVERING, TRANSPORT_RETURNING, TRANSPORT_COMPLETE,
         HOUSING_FETCHING, HOUSING_DELIVERING, HOUSING_RETURNING, HOUSING_COMPLETE,
         MINING_DIGGING, SMELT_FEEDING, SMELT_WAITING, SMELT_COLLECTING }
+
+    /** The kind of work a stage performs, or null for stages that are not a job. */
+    private static WorkKind workKind(WorkStage stage) {
+        return switch (stage) {
+            case IDLE -> null;
+            case FETCHING, DELIVERING, RETURNING, RECOVERING, RECOVERED, ABORTED, COMPLETE ->
+                    WorkKind.CONSTRUCTION;
+            case FARM_FETCHING_SEED, FARM_PLANTING, FARM_HARVESTING, FARM_RETURNING, FARM_COMPLETE ->
+                    WorkKind.FARMING;
+            case TOOL_FETCHING, TOOL_CRAFTING, TOOL_RETURNING, TOOL_COMPLETE -> WorkKind.TOOL_CRAFTING;
+            case FOOD_FETCHING, FOOD_CRAFTING, FOOD_RETURNING, FOOD_COMPLETE -> WorkKind.FOOD_CRAFTING;
+            case FORESTRY_FETCHING, FORESTRY_FELLING, FORESTRY_LOG_RETURNING, FORESTRY_SAPLING_RECOVERING,
+                 FORESTRY_PROCESS_FETCHING, FORESTRY_PROCESSING, FORESTRY_PLANK_RETURNING, FORESTRY_COMPLETE ->
+                    WorkKind.FORESTRY;
+            case TRANSPORT_FETCHING, TRANSPORT_DELIVERING, TRANSPORT_RETURNING, TRANSPORT_COMPLETE ->
+                    WorkKind.TRANSPORT;
+            case HOUSING_FETCHING, HOUSING_DELIVERING, HOUSING_RETURNING, HOUSING_COMPLETE ->
+                    WorkKind.HOUSING;
+            case MINING_DIGGING -> WorkKind.MINING;
+            case SMELT_FEEDING, SMELT_WAITING, SMELT_COLLECTING -> WorkKind.SMELTING;
+        };
+    }
 
     private WorkStage workStage = WorkStage.IDLE;
     private String settlementId = "";
@@ -493,7 +518,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         stopAtClosedBridge(level);
         super.customServerAiStep(level);
         stopAtClosedBridge(level);
-        if (tickCount % 10 != 0) {
+        if (tickCount % REGISTRATION_INTERVAL_TICKS != 0) {
             return;
         }
         var settlementData = SettlementSavedData.get(level);
@@ -506,6 +531,10 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
         if (workStage == WorkStage.IDLE || workStage == WorkStage.COMPLETE
                 || workStage == WorkStage.RECOVERED || workStage == WorkStage.ABORTED) {
+            return;
+        }
+        WorkKind kind = workKind(workStage);
+        if (kind != null && tickCount % ProfessionRules.workIntervalTicks(kind, profession()) != 0) {
             return;
         }
         if (workStage == WorkStage.TRANSPORT_FETCHING
