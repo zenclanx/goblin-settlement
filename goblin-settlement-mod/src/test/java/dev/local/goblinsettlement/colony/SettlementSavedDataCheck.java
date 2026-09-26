@@ -167,6 +167,20 @@ public final class SettlementSavedDataCheck {
         var migrated = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, legacyPlanJson).getOrThrow();
         require(migrated.plans().size() == 1 && migrated.plans().getFirst().equals(data.plan().orElseThrow()),
                 "legacy single-plan field migrates into the project list");
+
+        JsonObject preProfession = new JsonObject();
+        preProfession.addProperty("id", "legacy-1");
+        preProfession.addProperty("stage", "ADULT");
+        require(ResidentRecord.CODEC.parse(JsonOps.INSTANCE, preProfession).getOrThrow().profession()
+                == Profession.UNASSIGNED, "a resident saved before professions loads as unassigned");
+
+        var tradeJson = ResidentRecord.CODEC.encodeStart(JsonOps.INSTANCE,
+                ResidentRecord.adult("traded-1").withProfession(Profession.MINER)).getOrThrow();
+        require(ResidentRecord.CODEC.parse(JsonOps.INSTANCE, tradeJson).getOrThrow().profession()
+                == Profession.MINER, "a trade survives a codec round trip");
+
+        require(ResidentRecord.adult("fresh-1").profession() == Profession.UNASSIGNED,
+                "a freshly registered adult starts with no trade");
         System.out.println("SettlementSavedDataCheck passed");
     }
 
