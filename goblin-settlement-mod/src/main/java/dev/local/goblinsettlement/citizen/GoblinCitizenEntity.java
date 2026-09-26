@@ -1,6 +1,7 @@
 package dev.local.goblinsettlement.citizen;
 
 import com.mojang.serialization.Codec;
+import dev.local.goblinsettlement.colony.Profession;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
@@ -372,6 +373,19 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                     || workStage == WorkStage.FORESTRY_COMPLETE) && carried.isEmpty()
                 && farmGoods.isEmpty() && toolGoods.isEmpty() && foodGoods.isEmpty()
                 && forestryGoods.isEmpty();
+    }
+
+    /**
+     * This resident's persisted trade. Read from the roster rather than cached on the entity so a
+     * reassignment in the settlement is picked up without touching loaded entities.
+     */
+    public Profession profession() {
+        if (level() instanceof ServerLevel serverLevel) {
+            return SettlementSavedData.get(serverLevel).resident(getUUID().toString())
+                    .map(ResidentRecord::profession)
+                    .orElse(Profession.UNASSIGNED);
+        }
+        return Profession.UNASSIGNED;
     }
 
     public boolean completedConstruction(String id, BlockPos site) {
