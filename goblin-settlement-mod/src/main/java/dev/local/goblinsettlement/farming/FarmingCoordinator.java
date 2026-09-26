@@ -1,8 +1,10 @@
 package dev.local.goblinsettlement.farming;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.SettlementDemand;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.Comparator;
@@ -98,7 +100,10 @@ public final class FarmingCoordinator {
             }
             var resident = level.getEntitiesOfClass(GoblinCitizenEntity.class,
                             new AABB(crop).inflate(16.0), GoblinCitizenEntity::isAvailableForConstruction)
-                    .stream().min(Comparator.comparingDouble(goblin -> goblin.blockPosition().distSqr(crop)));
+                    .stream().min(Comparator
+                            .comparingInt((GoblinCitizenEntity goblin) ->
+                                    ProfessionRules.matchRank(WorkKind.FARMING, goblin.profession()))
+                            .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(crop)));
             if (resident.isEmpty()) {
                 continue;
             }

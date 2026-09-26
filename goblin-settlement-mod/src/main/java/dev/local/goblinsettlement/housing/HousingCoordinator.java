@@ -1,9 +1,11 @@
 package dev.local.goblinsettlement.housing;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
+import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.ArrayList;
@@ -124,8 +126,11 @@ public final class HousingCoordinator {
             var worker = level.getEntitiesOfClass(GoblinCitizenEntity.class,
                             new AABB(warehouse.orElseThrow()).inflate(16.0),
                             GoblinCitizenEntity::isAvailableForConstruction)
-                    .stream().min(Comparator.comparingDouble(goblin ->
-                            goblin.blockPosition().distSqr(warehouse.orElseThrow())));
+                    .stream().min(Comparator
+                            .comparingInt((GoblinCitizenEntity goblin) ->
+                                    ProfessionRules.matchRank(WorkKind.HOUSING, goblin.profession()))
+                            .thenComparingDouble(goblin ->
+                                    goblin.blockPosition().distSqr(warehouse.orElseThrow())));
             if (worker.isPresent()) {
                 GoblinCitizenEntity goblin = worker.orElseThrow();
                 housing.replace(home.withWorker(Optional.of(goblin.getUUID().toString())));

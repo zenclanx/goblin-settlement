@@ -1,8 +1,10 @@
 package dev.local.goblinsettlement.economy.smelting;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseSupply;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -90,8 +92,10 @@ public final class SmeltingCoordinator {
                         goblin -> goblin.isAvailableForConstruction()
                                 && WorldModificationPermission.check(level, settlementId,
                                         goblin.blockPosition()) == WorldModificationPermission.Decision.ALLOWED)
-                .stream().min(Comparator.comparingDouble(
-                        goblin -> goblin.blockPosition().distSqr(warehouse)));
+                .stream().min(Comparator
+                        .comparingInt((GoblinCitizenEntity goblin) ->
+                                ProfessionRules.matchRank(WorkKind.SMELTING, goblin.profession()))
+                        .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(warehouse)));
         return worker.isPresent() && worker.orElseThrow().assignSmelting(settlementId, warehouse, furnace, ore);
     }
 

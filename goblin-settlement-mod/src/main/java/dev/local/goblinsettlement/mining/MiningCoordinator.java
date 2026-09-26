@@ -1,8 +1,10 @@
 package dev.local.goblinsettlement.mining;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseSupply;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -53,8 +55,10 @@ public final class MiningCoordinator {
                             goblin -> goblin.isAvailableForConstruction()
                                     && WorldModificationPermission.check(level, settlementId,
                                             goblin.blockPosition()) == WorldModificationPermission.Decision.ALLOWED)
-                    .stream().min(Comparator.comparingDouble(
-                            goblin -> goblin.blockPosition().distSqr(warehouse)));
+                    .stream().min(Comparator
+                            .comparingInt((GoblinCitizenEntity goblin) ->
+                                    ProfessionRules.matchRank(WorkKind.MINING, goblin.profession()))
+                            .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(warehouse)));
             if (worker.isPresent() && worker.get().assignMining(settlementId, warehouse, site.get().block())) {
                 return;
             }

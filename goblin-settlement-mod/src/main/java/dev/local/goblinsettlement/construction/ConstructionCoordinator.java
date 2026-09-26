@@ -1,7 +1,9 @@
 package dev.local.goblinsettlement.construction;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.DroppedMaterialLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -86,7 +88,10 @@ public final class ConstructionCoordinator {
             var resident = level.getEntitiesOfClass(GoblinCitizenEntity.class,
                             new AABB(item.position(), item.position()).inflate(16.0),
                             GoblinCitizenEntity::isAvailableForConstruction)
-                    .stream().min(Comparator.comparingDouble(goblin -> goblin.distanceToSqr(item)));
+                    .stream().min(Comparator
+                            .comparingInt((GoblinCitizenEntity goblin) ->
+                                    ProfessionRules.matchRank(WorkKind.RECOVERY, goblin.profession()))
+                            .thenComparingDouble(goblin -> goblin.distanceToSqr(item)));
             if (resident.isPresent()) {
                 var goblin = resident.get();
                 String workerId = goblin.getUUID().toString();
@@ -114,6 +119,8 @@ public final class ConstructionCoordinator {
                 .stream().min(Comparator
                         .comparing((GoblinCitizenEntity goblin) -> plan.lastWorkerId()
                                 .equals(Optional.of(goblin.getUUID().toString())))
+                        .thenComparingInt(goblin ->
+                                ProfessionRules.matchRank(WorkKind.CONSTRUCTION, goblin.profession()))
                         .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(supply.get())));
         if (resident.isPresent()) {
             var goblin = resident.get();

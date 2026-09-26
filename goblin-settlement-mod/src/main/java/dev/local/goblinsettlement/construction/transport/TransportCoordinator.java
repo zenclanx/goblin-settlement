@@ -3,6 +3,8 @@ package dev.local.goblinsettlement.construction.transport;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
+import dev.local.goblinsettlement.colony.ProfessionRules;
+import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
@@ -285,7 +287,10 @@ public final class TransportCoordinator {
             }
             var worker = level.getEntitiesOfClass(GoblinCitizenEntity.class,
                             new AABB(warehouse).inflate(16.0), GoblinCitizenEntity::isAvailableForConstruction)
-                    .stream().min(Comparator.comparingDouble(goblin -> goblin.blockPosition().distSqr(warehouse)));
+                    .stream().min(Comparator
+                            .comparingInt((GoblinCitizenEntity goblin) ->
+                                    ProfessionRules.matchRank(WorkKind.TRANSPORT, goblin.profession()))
+                            .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(warehouse)));
             if (worker.isPresent()) {
                 GoblinCitizenEntity goblin = worker.orElseThrow();
                 TransportPlan assigned = plan.withWorker(Optional.of(goblin.getUUID().toString()));
