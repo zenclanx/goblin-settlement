@@ -369,7 +369,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 + toolGoods.stream().mapToInt(ItemStack::getCount).sum()
                 + foodGoods.stream().mapToInt(ItemStack::getCount).sum()
                 + forestryGoods.stream().mapToInt(ItemStack::getCount).sum();
-        return workStage + (waitReason.isEmpty() ? "" : " (" + waitReason + ")")
+        return profession() + " " + workStage + (waitReason.isEmpty() ? "" : " (" + waitReason + ")")
                 + ", carrying=" + (carried.getCount() + goods);
     }
 

@@ -3,6 +3,7 @@ package dev.local.goblinsettlement;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.Profession;
 import dev.local.goblinsettlement.colony.ProfessionCoordinator;
 import dev.local.goblinsettlement.colony.ExpansionCoordinator;
 import dev.local.goblinsettlement.colony.family.FamilyCoordinator;
@@ -100,6 +101,22 @@ public final class GoblinSettlement implements ModInitializer {
                                         + ", containers=" + supply.accessibleContainers()
                                         + ", stock " + (supply.complete() ? "complete" : "incomplete")
                                         + ", next priority=" + demand.priority()), false);
+                                var professions = data.assignedProfessions();
+                                StringBuilder trades = new StringBuilder();
+                                for (var profession : Profession.values()) {
+                                    if (profession == Profession.UNASSIGNED) continue;
+                                    long held = professions.stream().filter(value -> value == profession).count();
+                                    if (held == 0) continue;
+                                    if (trades.length() > 0) trades.append(", ");
+                                    trades.append(profession.name().toLowerCase(java.util.Locale.ROOT)).append('=').append(held);
+                                }
+                                long unassigned = professions.stream().filter(value -> value == Profession.UNASSIGNED).count();
+                                if (unassigned > 0) {
+                                    if (trades.length() > 0) trades.append(", ");
+                                    trades.append("unassigned=").append(unassigned);
+                                }
+                                String summary = trades.length() == 0 ? "no adults" : trades.toString();
+                                context.getSource().sendSuccess(() -> Component.literal("Trades: " + summary), false);
                             }
                             return Command.SINGLE_SUCCESS;
                         }))
