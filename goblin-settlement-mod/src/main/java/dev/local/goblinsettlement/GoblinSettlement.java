@@ -3,6 +3,7 @@ package dev.local.goblinsettlement;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.colony.ProfessionCoordinator;
 import dev.local.goblinsettlement.colony.ExpansionCoordinator;
 import dev.local.goblinsettlement.colony.family.FamilyCoordinator;
 import dev.local.goblinsettlement.camp.CampGenerationCoordinator;
@@ -219,6 +220,7 @@ public final class GoblinSettlement implements ModInitializer {
     /** Entire settlement pauses while its anchor chunk is inactive. */
     private static void tickSettlement(ServerLevel level) {
         CampGenerationCoordinator.tick(level);
+        ProfessionCoordinator.tick(level);
         var founded = SettlementSavedData.get(level).settlement();
         if (founded.isEmpty() || !level.shouldTickBlocksAt(founded.get().anchor())) {
             return;
