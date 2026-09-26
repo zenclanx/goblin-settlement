@@ -89,12 +89,9 @@ public final class ProfessionRulesCheck {
 }
 ```
 
-- [ ] **Step 2: 运行检查，确认失败**
+- [ ] **Step 2: 写桩实现，让检查可编译但断言必失败**
 
-Run: `cd goblin-settlement-mod && ./gradlew compileTestJava --offline --no-daemon`
-Expected: 编译失败，报 `cannot find symbol: class ProfessionRules` / `Profession` / `WorkKind`。这是"测试先失败"的失败形式（类尚不存在）。
-
-- [ ] **Step 3: 实现 `Profession`**
+`Profession` 是纯数据，直接写成品：
 
 ```java
 package dev.local.goblinsettlement.colony;
@@ -105,7 +102,68 @@ public enum Profession {
 }
 ```
 
-- [ ] **Step 4: 实现 `WorkKind`**
+`WorkKind` 与 `ProfessionRules` 先写**故意错误的桩**，使 `professionRulesCheck` 能编译但断言失败：
+
+```java
+package dev.local.goblinsettlement.colony;
+
+public enum WorkKind {
+    FARMING, FOOD_CRAFTING, FORESTRY, MINING, CONSTRUCTION, HOUSING,
+    TRANSPORT, RECOVERY, TOOL_CRAFTING, SMELTING;
+
+    public Profession required() {
+        return Profession.UNASSIGNED;
+    }
+
+    public static boolean employs(Profession profession) {
+        return false;
+    }
+}
+```
+
+```java
+package dev.local.goblinsettlement.colony;
+
+import java.util.List;
+
+public final class ProfessionRules {
+    private ProfessionRules() {
+    }
+
+    public static int matchRank(WorkKind kind, Profession resident) {
+        return 0;
+    }
+
+    public static int workIntervalTicks(WorkKind kind, Profession resident) {
+        return 10;
+    }
+
+    public static Profession scarcest(List<Profession> assignedAdults) {
+        return Profession.UNASSIGNED;
+    }
+}
+```
+
+- [ ] **Step 3: 注册检查任务并运行，确认它因断言失败**
+
+在 `build.gradle` 的 `settlementDemandCheck` 任务之后加入：
+
+```groovy
+tasks.register('professionRulesCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks the pure profession dispatch rules.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.colony.ProfessionRulesCheck'
+}
+```
+
+并在 `tasks.named('check')` 块里追加一行 `dependsOn tasks.named('professionRulesCheck')`。
+
+Run: `cd goblin-settlement-mod && ./gradlew professionRulesCheck --offline --no-daemon`
+Expected: **编译通过，但抛 `AssertionError`**，消息形如 `a mismatched specialist ranks behind an unassigned generalist`。必须是断言失败而不是编译错误——编译错误只说明符号不存在，证明不了断言能捕捉错误行为。
+
+- [ ] **Step 4: 实现 `WorkKind`（替换桩）**
 
 ```java
 package dev.local.goblinsettlement.colony;
@@ -148,7 +206,7 @@ public enum WorkKind {
 }
 ```
 
-- [ ] **Step 5: 实现 `ProfessionRules`**
+- [ ] **Step 5: 实现 `ProfessionRules`（替换桩）**
 
 ```java
 package dev.local.goblinsettlement.colony;
@@ -211,20 +269,6 @@ public final class ProfessionRules {
 
 - [ ] **Step 6: 运行检查，确认通过**
 
-在 `build.gradle` 的 `settlementDemandCheck` 任务之后加入：
-
-```groovy
-tasks.register('professionRulesCheck', JavaExec) {
-    group = 'verification'
-    description = 'Checks the pure profession dispatch rules.'
-    dependsOn tasks.named('testClasses')
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'dev.local.goblinsettlement.colony.ProfessionRulesCheck'
-}
-```
-
-并在 `tasks.named('check')` 块里追加一行 `dependsOn tasks.named('professionRulesCheck')`。
-
 Run: `cd goblin-settlement-mod && ./gradlew professionRulesCheck --offline --no-daemon`
 Expected: 打印 `ProfessionRulesCheck passed`，`BUILD SUCCESSFUL`。
 
@@ -255,22 +299,25 @@ git commit -m "Add pure profession dispatch rules and their standalone check"
 
 - [ ] **Step 1: 写失败的检查**
 
-在 `SettlementSavedDataCheck.java` 的 `main` 内追加（保持文件既有的 `check`/源码风格，具体 JSON 写法仿照该文件已有的 Codec 往返用例）：
+该文件的断言辅助方法叫 `require(boolean, String)`（不是 `check`），Codec 惯例是 `CODEC.encodeStart(JsonOps.INSTANCE, value).getOrThrow()` 与 `CODEC.parse(JsonOps.INSTANCE, json).getOrThrow()`。在 `main` 内、`System.out.println("SettlementSavedDataCheck passed")` 之前追加：
 
 ```java
-// A save written before professions existed must load as unassigned, not fail.
-ResidentRecord legacy = ResidentRecord.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseString(
-        "{\"id\":\"legacy-1\",\"stage\":\"ADULT\"}")).getOrThrow();
-check(legacy.profession() == Profession.UNASSIGNED, "a legacy record without a profession stays unassigned");
-ResidentRecord assigned = ResidentRecord.adult("new-1").withProfession(Profession.MINER);
-check(ResidentRecord.CODEC.parse(JsonOps.INSTANCE,
-        ResidentRecord.CODEC.encodeStart(JsonOps.INSTANCE, assigned).getOrThrow()).getOrThrow()
-        .profession() == Profession.MINER, "a profession survives a codec round trip");
-check(ResidentRecord.adult("new-2").profession() == Profession.UNASSIGNED,
-        "a freshly registered adult starts unassigned");
+        JsonObject preProfession = new JsonObject();
+        preProfession.addProperty("id", "legacy-1");
+        preProfession.addProperty("stage", "ADULT");
+        require(ResidentRecord.CODEC.parse(JsonOps.INSTANCE, preProfession).getOrThrow().profession()
+                == Profession.UNASSIGNED, "a resident saved before professions loads as unassigned");
+
+        var tradeJson = ResidentRecord.CODEC.encodeStart(JsonOps.INSTANCE,
+                ResidentRecord.adult("traded-1").withProfession(Profession.MINER)).getOrThrow();
+        require(ResidentRecord.CODEC.parse(JsonOps.INSTANCE, tradeJson).getOrThrow().profession()
+                == Profession.MINER, "a trade survives a codec round trip");
+
+        require(ResidentRecord.adult("fresh-1").profession() == Profession.UNASSIGNED,
+                "a freshly registered adult starts with no trade");
 ```
 
-若该文件尚未 import `JsonOps` / `JsonParser` / `Profession`，按需补上 import（`Profession` 与 `ResidentRecord` 同包，无需 import）。
+`JsonOps` 与 `JsonObject` 该文件已 import；`Profession` 与 `ResidentRecord` 同包，无需 import。
 
 - [ ] **Step 2: 运行检查，确认失败**
 
