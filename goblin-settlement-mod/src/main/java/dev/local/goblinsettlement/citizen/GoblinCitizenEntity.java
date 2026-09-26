@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.damagesource.DamageSource;
@@ -53,6 +56,8 @@ import net.minecraft.world.level.storage.ValueOutput;
 public final class GoblinCitizenEntity extends PathfinderMob {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(GoblinCitizenEntity.class);
     private static final int REGISTRATION_INTERVAL_TICKS = 10;
+    private static final EntityDataAccessor<String> DATA_PROFESSION =
+            SynchedEntityData.defineId(GoblinCitizenEntity.class, EntityDataSerializers.STRING);
 
     private enum WorkStage { IDLE, FETCHING, DELIVERING, COMPLETE, RECOVERING, RETURNING, RECOVERED, ABORTED,
         FARM_FETCHING_SEED, FARM_PLANTING, FARM_HARVESTING, FARM_RETURNING, FARM_COMPLETE,
@@ -106,6 +111,12 @@ public final class GoblinCitizenEntity extends PathfinderMob {
 
     public GoblinCitizenEntity(EntityType<? extends GoblinCitizenEntity> type, Level level) {
         super(type, level);
+    }
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_PROFESSION, Profession.UNASSIGNED.name());
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -413,6 +424,15 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         return Profession.UNASSIGNED;
     }
 
+    /** The synced trade, safe to call on either side. Unknown names fall back to unassigned. */
+    public Profession professionForRender() {
+        try {
+            return Profession.valueOf(getEntityData().get(DATA_PROFESSION));
+        } catch (IllegalArgumentException exception) {
+            return Profession.UNASSIGNED;
+        }
+    }
+
     public boolean completedConstruction(String id, BlockPos site) {
         return workStage == WorkStage.COMPLETE && settlementId.equals(id) && buildPos.equals(site);
     }
@@ -525,6 +545,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         if (settlementData.settlement().isPresent() && settlementData.isClaimed(blockPosition())) {
             settlementData.registerAdult(getUUID().toString());
         }
+        getEntityData().set(DATA_PROFESSION, profession().name());
         if (settlementData.isCancelledWorker(getUUID().toString())) {
             applyProjectCancellation(level);
             return;
