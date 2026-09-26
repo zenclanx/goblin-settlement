@@ -117,8 +117,8 @@ public final class ConstructionCoordinator {
         var resident = level.getEntitiesOfClass(GoblinCitizenEntity.class,
                         new AABB(supply.get()).inflate(16.0), GoblinCitizenEntity::isAvailableForConstruction)
                 .stream().min(Comparator
-                        .comparing((GoblinCitizenEntity goblin) -> plan.lastWorkerId()
-                                .equals(Optional.of(goblin.getUUID().toString())))
+                        .comparingInt((GoblinCitizenEntity goblin) ->
+                                plan.lastWorkerId().equals(Optional.of(goblin.getUUID().toString())) ? 0 : 1)
                         .thenComparingInt(goblin ->
                                 ProfessionRules.matchRank(WorkKind.CONSTRUCTION, goblin.profession()))
                         .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(supply.get())));
