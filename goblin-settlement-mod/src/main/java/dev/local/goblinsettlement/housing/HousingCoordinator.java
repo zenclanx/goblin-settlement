@@ -232,6 +232,18 @@ public final class HousingCoordinator {
         return level.getBlockState(site).is(step.get().block());
     }
 
+    /**
+     * Beds this home actually provides, or 0 when even its walls are not up yet. Callers ask how many
+     * can shelter here; "which stage is built" is an implementation detail of this answer.
+     */
+    public static int shelterCapacity(ServerLevel level, HousingSavedData.Home home) {
+        if (!stageFullyBuilt(level, home, 1)) {
+            return 0;
+        }
+        return HousingRules.builtCapacity(home.capacityTarget(), true,
+                stageFullyBuilt(level, home, 2));
+    }
+
     static boolean stageFullyBuilt(ServerLevel level, HousingSavedData.Home home, int stageIndex) {
         for (HousingBlueprints.ResolvedStep step : HousingBlueprints.stages(home.style()).get(stageIndex)) {
             BlockPos site = position(level, home.bed(), home.variant(), step);

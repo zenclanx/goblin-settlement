@@ -246,6 +246,11 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         return settlementId.equals(id) && workStage == WorkStage.PATROL_WALKING;
     }
 
+    /** Where this resident is hiding, while it is hiding. Empty when it is not sheltering. */
+    public Optional<BlockPos> shelterTarget() {
+        return sheltering ? Optional.of(shelterTarget) : Optional.empty();
+    }
+
     /**
      * Called when this resident is attacked. Only a sentry hits back: everyone else relies on the
      * golems, which is what GAME_DESIGN means by sentries keeping watch and golems doing the fighting.
@@ -282,7 +287,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             return false;
         }
         if (!sheltering) {
-            var shelter = ShelterCoordinator.nearestShelter(level, settlementId, blockPosition());
+            var shelter = ShelterCoordinator.nearestShelter(level, settlementId, blockPosition(), this);
             // Nowhere to go: keep working rather than milling about in the open.
             if (shelter.isEmpty()) {
                 return false;
