@@ -294,6 +294,15 @@ public final class TransportSavedDataCheck {
         require(bridge.add(completedBridge), "an open bridge plan loads");
         require(bridge.replace(completedBridge), "replacing a complete plan is idempotent");
         require(bridge.servedFacilities().isEmpty(), "a targetless bridge registers nothing");
+        // Complete a bridge through the real path, not from an already-complete fixture: only this
+        // reaches the targetFacility().isPresent() conjunct instead of short-circuiting on the guard.
+        var building = new TransportSavedData();
+        TransportPlan unfinishedBridge = bridgePlan("bridge-2", false);
+        require(building.add(unfinishedBridge), "an unfinished bridge plan is accepted");
+        require(building.replace(unfinishedBridge.withOpen(true)),
+                "the real bridge completion path is accepted");
+        require(building.servedFacilities().isEmpty(),
+                "a bridge completing through the real path still registers nothing");
 
         var json = TransportSavedData.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow();
         var reloaded = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
@@ -319,6 +328,14 @@ public final class TransportSavedDataCheck {
         require(repeat.replace(roadPlan("sel-1", facility, 1, false)), "repeat fixture completes");
         require(repeat.replace(roadPlan("sel-1", facility, 1, false)), "repeat completion accepted");
         require(repeat.servedFacilities().size() == 1, "repeat completion does not duplicate the entry");
+        // A rewind is how a road gets repaired; re-completing it must hit the dedupe branch rather
+        // than the transition guard, which is what the two assertions above can only reach.
+        require(repeat.replace(roadPlan("sel-1", facility, 1, false).rewind(0)),
+                "the road is rewound for repairs");
+        require(repeat.replace(roadPlan("sel-1", facility, 1, false)),
+                "the repaired road completes again");
+        require(repeat.servedFacilities().size() == 1,
+                "re-completing after a rewind still registers only once");
 
         var settlement = new SettlementSavedData();
         require(settlement.found(new BlockPos(0, 70, 0)) == SettlementSavedData.FoundResult.FOUNDED,
@@ -348,8 +365,9 @@ public final class TransportSavedDataCheck {
     private static TransportPlan bridgePlan(String id, boolean open) {
         var step = new TransportPlan.Step(TransportPlan.Phase.SURFACE,
                 new BlockPos(10, 64, 10), TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.AIR_OR_WATER);
+        // completedSteps always equals the step count so withOpen(true) is constructible from it.
         return new TransportPlan(id, "settlement-1", TransportPlan.Kind.WOOD_BRIDGE, List.of(step),
-                open ? 1 : 0, open,
+                1, open,
                 List.of(new BlockPos(1, 64, 1), new BlockPos(2, 64, 1),
                         new BlockPos(3, 64, 1), new BlockPos(4, 64, 1)),
                 List.of(new BlockPos(5, 65, 1)), List.of(), Optional.empty(), Optional.empty());
