@@ -67,6 +67,7 @@ public final class TransportCoordinator {
             BlockPos foot = route.get(index);
             Direction forward = roadDirection(route, index);
             Direction side = forward.getClockWise();
+            // Two lanes, which is what RoadUpgradeRules.BUILT_ROAD_LANES describes.
             for (BlockPos lane : List.of(foot, foot.relative(side))) {
                 if (!safeRoadFoot(level, settlementId, lane)) {
                     return rejected("UNSAFE_TWO_LANE_FOOTPRINT");

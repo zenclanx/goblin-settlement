@@ -35,7 +35,9 @@ public final class TransportSavedData extends SavedData {
                     BlockPos.CODEC.listOf().optionalFieldOf("served_facilities", List.of())
                             .forGetter(data -> data.servedFacilities),
                     DeferredTarget.CODEC.listOf().optionalFieldOf("deferred_targets", List.of())
-                            .forGetter(data -> data.deferredTargets))
+                            .forGetter(data -> data.deferredTargets),
+                    Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("traffic", Map.of())
+                            .forGetter(data -> data.traffic))
                     .apply(instance, TransportSavedData::new));
     private static final SavedDataType<TransportSavedData> TYPE =
             new SavedDataType<>("goblin_transport", TransportSavedData::new, CODEC, null);
@@ -43,23 +45,27 @@ public final class TransportSavedData extends SavedData {
     private List<TransportPlan> plans;
     private List<BlockPos> servedFacilities;
     private List<DeferredTarget> deferredTargets;
+    private Map<String, Integer> traffic;
+    private int revision;
     private final List<TransportPlan> openBridges = new ArrayList<>();
     private final Map<BlockPos, Integer> closedFeet = new HashMap<>();
     private final Map<String, TransportPlan> incompletePlans = new LinkedHashMap<>();
     private int inspectionCursor;
 
     public TransportSavedData() {
-        this(List.of(), List.of(), List.of());
+        this(List.of(), List.of(), List.of(), Map.of());
     }
 
     private TransportSavedData(List<TransportPlan> plans, List<BlockPos> servedFacilities,
-                               List<DeferredTarget> deferredTargets) {
+                               List<DeferredTarget> deferredTargets, Map<String, Integer> traffic) {
         this.plans = List.copyOf(plans);
         this.servedFacilities = List.copyOf(servedFacilities);
         this.deferredTargets = List.copyOf(deferredTargets);
+        this.traffic = Map.copyOf(traffic);
         for (TransportPlan plan : this.plans) {
             index(plan);
         }
+        pruneTraffic();
     }
 
     public static TransportSavedData get(ServerLevel level) {
@@ -72,6 +78,57 @@ public final class TransportSavedData extends SavedData {
 
     public Optional<TransportPlan> plan(String id) {
         return plans.stream().filter(plan -> plan.id().equals(id)).findFirst();
+    }
+
+    /** Sample hits per road plan id. Only finished roads are sampled; see TrafficSampler. */
+    public Map<String, Integer> traffic() {
+        return traffic;
+    }
+
+    /** Bumped whenever the plan list changes, so a derived index can tell when it has gone stale. */
+    public int revision() {
+        return revision;
+    }
+
+    /** Add one sample round's hits: one per resident seen standing on that road. */
+    public void recordTraffic(Map<String, Integer> hits) {
+        if (hits.isEmpty()) {
+            return;
+        }
+        var updated = new HashMap<>(traffic);
+        boolean changed = false;
+        for (var entry : hits.entrySet()) {
+            Integer count = entry.getValue();
+            if (count == null || count <= 0) {
+                continue;
+            }
+            updated.merge(entry.getKey(), count, Integer::sum);
+            changed = true;
+        }
+        if (changed) {
+            traffic = Map.copyOf(updated);
+            setDirty();
+        }
+    }
+
+    /**
+     * Drop counters whose road is gone. The map is persisted and keyed by plan id, so without this it
+     * would grow without bound as MAX_COMPLETED_ROADS retires the oldest finished roads.
+     */
+    private void pruneTraffic() {
+        if (traffic.isEmpty()) {
+            return;
+        }
+        var retained = new HashMap<String, Integer>();
+        for (var entry : traffic.entrySet()) {
+            if (plan(entry.getKey()).isPresent()) {
+                retained.put(entry.getKey(), entry.getValue());
+            }
+        }
+        if (retained.size() != traffic.size()) {
+            traffic = Map.copyOf(retained);
+            setDirty();
+        }
     }
 
     public List<BlockPos> servedFacilities() {
@@ -175,6 +232,7 @@ public final class TransportSavedData extends SavedData {
         var updated = new ArrayList<>(plans);
         updated.add(plan);
         plans = List.copyOf(updated);
+        revision++;
         index(plan);
         setDirty();
         return true;
@@ -192,6 +250,8 @@ public final class TransportSavedData extends SavedData {
                     trimCompletedRoads(updated);
                 }
                 plans = List.copyOf(updated);
+                revision++;
+                pruneTraffic();
                 if (!old.isComplete() && replacement.isComplete()
                         && replacement.targetFacility().isPresent()) {
                     registerServed(replacement.targetFacility().orElseThrow());

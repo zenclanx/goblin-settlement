@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 
@@ -112,6 +113,41 @@ public final class TransportSavedDataCheck {
                 "deferred facilities are not pending targets");
         require(TrafficProposalCoordinator.hasPendingTarget(settlement, allParked, 24000L),
                 "expired deferrals restore pending targets");
+        var counted = new TransportSavedData();
+        require(counted.add(roadPlan("traffic-1", facility, 0, false)), "traffic fixture accepted");
+        require(counted.replace(roadPlan("traffic-1", facility, 1, false)), "traffic fixture completes");
+        counted.recordTraffic(Map.of("traffic-1", 5));
+        counted.recordTraffic(Map.of("traffic-1", 2));
+        require(counted.traffic().get("traffic-1") == 7, "sample hits accumulate");
+        counted.recordTraffic(Map.of("traffic-1", 0));
+        require(counted.traffic().get("traffic-1") == 7, "a zero-hit round changes nothing");
+
+        var countedJson = TransportSavedData.CODEC.encodeStart(JsonOps.INSTANCE, counted).getOrThrow();
+        var countedReload = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, countedJson).getOrThrow();
+        require(countedReload.traffic().get("traffic-1") == 7, "counts survive reload");
+        JsonObject withoutTraffic = countedJson.getAsJsonObject().deepCopy();
+        withoutTraffic.remove("traffic");
+        require(TransportSavedData.CODEC.parse(JsonOps.INSTANCE, withoutTraffic).getOrThrow()
+                .traffic().isEmpty(), "an old save loads without invented counts");
+        JsonObject orphaned = countedJson.getAsJsonObject().deepCopy();
+        orphaned.getAsJsonObject("traffic").addProperty("gone-1", 9);
+        var orphanedReload = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, orphaned).getOrThrow();
+        require(!orphanedReload.traffic().containsKey("gone-1"),
+                "a counter with no matching plan is pruned on load");
+        require(orphanedReload.traffic().containsKey("traffic-1"),
+                "while the counter whose plan is known stays");
+
+        var retired = new TransportSavedData();
+        for (int index = 0; index < 33; index++) {
+            String id = "road-" + index;
+            require(retired.add(roadPlan(id, facility, 0, false)), "road " + index + " accepted");
+            require(retired.replace(roadPlan(id, facility, 1, false)), "road " + index + " completed");
+            retired.recordTraffic(Map.of(id, index + 1));
+        }
+        require(retired.plans().size() == 32, "completed roads are capped at 32");
+        require(!retired.traffic().containsKey("road-0"), "a retired road's counter is pruned");
+        require(retired.traffic().containsKey("road-32"), "the newest road keeps its counter");
+
         System.out.println("TransportSavedDataCheck passed");
     }
 

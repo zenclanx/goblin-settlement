@@ -22,6 +22,7 @@ import dev.local.goblinsettlement.defense.PatrolCoordinator;
 import dev.local.goblinsettlement.construction.ConstructionCommands;
 import dev.local.goblinsettlement.construction.ConstructionCoordinator;
 import dev.local.goblinsettlement.construction.transport.TrafficProposalCoordinator;
+import dev.local.goblinsettlement.construction.transport.TrafficSampler;
 import dev.local.goblinsettlement.construction.transport.TransportCommands;
 import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
@@ -120,6 +121,8 @@ public final class GoblinSettlement implements ModInitializer {
                                                 data, TransportSavedData.get(level), level.getGameTime())
                                                 .map(pos -> "Next traffic target: " + pos.toShortString())
                                                 .orElse("No pending traffic target")), false);
+                                context.getSource().sendSuccess(() -> Component.literal(
+                                        TransportCommands.trafficLine(TransportSavedData.get(level))), false);
                                 var professions = data.assignedProfessions();
                                 StringBuilder trades = new StringBuilder();
                                 for (var profession : Profession.values()) {
@@ -273,6 +276,7 @@ public final class GoblinSettlement implements ModInitializer {
         ConstructionCoordinator.tick(level);
         TrafficProposalCoordinator.tick(level);   // propose first: saved plans reach the worker tick below
         TransportCoordinator.tick(level);
+        TrafficSampler.tick(level);
         ForestryCoordinator.tick(level);
         MiningCoordinator.tick(level);
         SmeltingCoordinator.tick(level);
