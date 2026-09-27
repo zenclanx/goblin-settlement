@@ -10,6 +10,7 @@ import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -43,13 +44,15 @@ public final class HousingCoordinator {
         housing.useSettlement(id);
         int occupied = data.occupiedPopulationSlots();
         int beds = BedCensus.count(level, data);
+        List<int[]> heads = bedHeadAxes(level, data);
         for (var home : housing.homes(id)) {
             if (!level.shouldTickBlocksAt(home.bed())) continue;
             if (!isBedHead(level, id, home.bed())) {
                 housing.remove(home.bed());
                 return;
             }
-            var action = HousingRules.decide(beds, occupied, home.capacityTarget(), home.qualityTarget());
+            var action = HousingRules.decide(beds, occupied, home.capacityTarget(), home.qualityTarget(),
+                    usedBedsNear(heads, home));
             if (action == HousingRules.HomeAction.EXPAND_CAPACITY) {
                 housing.replace(home.withCapacityTarget(home.capacityTarget() + 1));
                 return;
@@ -196,18 +199,27 @@ public final class HousingCoordinator {
         if (settlement.isEmpty()) {
             return false;
         }
-        var heads = new ArrayList<int[]>();
-        for (BlockPos head : BedCensus.heads(level, data)) {
-            heads.add(new int[] {head.getX(), head.getY(), head.getZ()});
-        }
+        List<int[]> heads = bedHeadAxes(level, data);
         for (var home : HousingSavedData.get(level).homes(settlement.orElseThrow().id())) {
-            int used = HousingRules.bedsNear(heads, home.bed().getX(), home.bed().getY(),
-                    home.bed().getZ(), HousingRules.BIND_RADIUS);
-            if (HousingRules.canGainCapacity(used, home.capacityTarget())) {
+            if (HousingRules.canGainCapacity(usedBedsNear(heads, home), home.capacityTarget())) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static List<int[]> bedHeadAxes(ServerLevel level, SettlementSavedData data) {
+        List<int[]> heads = new ArrayList<int[]>();
+        for (BlockPos head : BedCensus.heads(level, data)) {
+            heads.add(new int[] {head.getX(), head.getY(), head.getZ()});
+        }
+        return heads;
+    }
+
+    /** Beds that count against this home: the census heads inside its binding radius. */
+    private static int usedBedsNear(List<int[]> heads, HousingSavedData.Home home) {
+        return HousingRules.bedsNear(heads, home.bed().getX(), home.bed().getY(), home.bed().getZ(),
+                HousingRules.BIND_RADIUS);
     }
 
     private static boolean siteSuitable(ServerLevel level, String id, BlockPos bed, int variant) {

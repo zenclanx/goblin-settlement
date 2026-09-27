@@ -28,14 +28,22 @@ public final class HousingRules {
         return STAGES;
     }
 
-    /** A bed shortage is the only thing that justifies spending planks on capacity. */
-    public static HomeAction decide(int beds, int occupiedSlots, int capacityTarget, int qualityTarget) {
-        if (beds < 0 || occupiedSlots < 0) {
-            throw new IllegalArgumentException("Bed and occupied slot counts cannot be negative");
+    /**
+     * A bed shortage is the only thing that justifies spending planks on capacity, and only for a
+     * home that can actually host another bed. A home walled in by its neighbours' beds keeps its
+     * planks: raising its target would build a stage no resident could ever sleep in, and decorating
+     * while residents go without beds is not what "house them first" means.
+     */
+    public static HomeAction decide(int beds, int occupiedSlots, int capacityTarget, int qualityTarget,
+                                    int usedBedsNear) {
+        if (beds < 0 || occupiedSlots < 0 || usedBedsNear < 0) {
+            throw new IllegalArgumentException(
+                    "Bed, occupied slot and nearby bed counts cannot be negative");
         }
         validate(capacityTarget, qualityTarget);
-        if (needsCapacity(beds, occupiedSlots) && capacityTarget < MAX_CAPACITY_TARGET) {
-            return HomeAction.EXPAND_CAPACITY;
+        if (needsCapacity(beds, occupiedSlots)) {
+            return canGainCapacity(usedBedsNear, capacityTarget)
+                    ? HomeAction.EXPAND_CAPACITY : HomeAction.NONE;
         }
         return qualityTarget < MAX_QUALITY_TARGET ? HomeAction.IMPROVE_QUALITY : HomeAction.NONE;
     }

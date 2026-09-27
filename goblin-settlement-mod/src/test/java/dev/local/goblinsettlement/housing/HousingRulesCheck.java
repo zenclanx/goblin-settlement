@@ -17,20 +17,22 @@ public final class HousingRulesCheck {
     }
 
     private static void checkDecide() {
-        require(HousingRules.decide(8, 8, 0, 0) == HousingRules.HomeAction.EXPAND_CAPACITY,
-                "a bed shortage expands capacity first");
-        require(HousingRules.decide(8, 8, 1, 0) == HousingRules.HomeAction.EXPAND_CAPACITY,
+        require(HousingRules.decide(8, 8, 0, 0, 0) == HousingRules.HomeAction.EXPAND_CAPACITY,
+                "a shortage expands a home that can still host another bed");
+        require(HousingRules.decide(8, 8, 1, 0, 2) == HousingRules.HomeAction.EXPAND_CAPACITY,
                 "a shortage keeps expanding while capacity remains");
-        require(HousingRules.decide(8, 8, 2, 0) == HousingRules.HomeAction.IMPROVE_QUALITY,
-                "a shortage with capacity maxed turns to quality instead of stalling");
-        require(HousingRules.decide(8, 8, 2, 2) == HousingRules.HomeAction.NONE,
+        require(HousingRules.decide(8, 8, 1, 0, 3) == HousingRules.HomeAction.NONE,
+                "a home walled in by neighbouring beds keeps its planks instead of raising a target");
+        require(HousingRules.decide(8, 8, 2, 0, 0) == HousingRules.HomeAction.NONE,
+                "a maxed home does not decorate while the settlement is short of beds");
+        require(HousingRules.decide(8, 8, 2, 2, 0) == HousingRules.HomeAction.NONE,
                 "nothing left to raise");
-        require(HousingRules.decide(9, 8, 0, 0) == HousingRules.HomeAction.IMPROVE_QUALITY,
+        require(HousingRules.decide(9, 8, 0, 0, 0) == HousingRules.HomeAction.IMPROVE_QUALITY,
                 "surplus beds never expand capacity");
-        require(HousingRules.decide(9, 8, 2, 2) == HousingRules.HomeAction.NONE, "fully upgraded");
+        require(HousingRules.decide(9, 8, 2, 2, 0) == HousingRules.HomeAction.NONE, "fully upgraded");
         boolean threw = false;
         try {
-            HousingRules.decide(-1, 0, 0, 0);
+            HousingRules.decide(-1, 0, 0, 0, 0);
         } catch (IllegalArgumentException expected) {
             threw = true;
         }
