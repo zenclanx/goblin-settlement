@@ -366,14 +366,13 @@ public final class BedCensus {
 - [ ] **Step 2: 编译**
 
 Run: `cd goblin-settlement-mod && ./gradlew compileJava --offline --no-daemon`
-Expected: `BUILD SUCCESSFUL`（Task 3 的编译失败应在本步解除）。
+Expected: `BUILD SUCCESSFUL`。
 
 - [ ] **Step 3: 提交**
 
 ```bash
-git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/BedCensus.java \
-        goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/HousingCoordinator.java
-git commit -m "Add the bed census and the capacity-growth check"
+git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/BedCensus.java
+git commit -m "Add the bed census as the single bed-count authority"
 ```
 
 ---
