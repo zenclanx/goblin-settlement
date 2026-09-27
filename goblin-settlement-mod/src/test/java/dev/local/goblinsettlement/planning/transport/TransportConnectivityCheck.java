@@ -29,7 +29,7 @@ public final class TransportConnectivityCheck {
     private static void checkOneBlockRiseAndDrop() {
         var rise = set(point(0, 64, 0), point(1, 65, 0), point(2, 66, 0));
         require(TransportConnectivity.connects(rise, point(0, 64, 0), set(point(2, 66, 0))),
-                "a walker climbs one block per step, as a bridge deck above its bank needs");
+                "a walker climbs one block per step");
         var drop = set(point(0, 66, 0), point(1, 65, 0), point(2, 64, 0));
         require(TransportConnectivity.connects(drop, point(0, 66, 0), set(point(2, 64, 0))),
                 "and drops one block per step");

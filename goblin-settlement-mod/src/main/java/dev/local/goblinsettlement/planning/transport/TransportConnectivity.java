@@ -20,8 +20,9 @@ public final class TransportConnectivity {
 
     /**
      * Walks from from to any of goals, stepping only between cells of walkable. Steps are four-way --
-     * never diagonal -- and may rise or drop one block, which is what a walker does over a step, a
-     * slope or a deck sitting above its bank. The visited set bounds the work to one visit per cell.
+     * never diagonal -- and may rise or drop one block, which is what a walker does over a step or a
+     * slope, and keeps the rule robust to terrain. The visited set bounds the work to one visit per
+     * cell.
      */
     public static boolean connects(Set<BlockPos> walkable, BlockPos from, Set<BlockPos> goals) {
         if (walkable.isEmpty() || goals.isEmpty() || !walkable.contains(from)) {
