@@ -56,7 +56,7 @@
 - 取仓改 `PublicWarehouseInventory.firstHolding(level, data, material.item())`（第四十五轮已有的通用方法）；
 - 站点可用性（空气 + 下方结实）与权限判定不动。
 
-**回收侧**（`DroppedMaterialLookup`）：签名改成 `find(ServerLevel level, String entityId, Item item, BlockPos lastPos)`，两个分支都改用 `item` 匹配；调用点传 `plan.material().item()`。顺带把 `RecoveryDrop.itemId` 这个**名字**与它的真实含义（掉落物实体 id）对齐——只改名，不改字段与 JSON 键。
+**回收侧**（`DroppedMaterialLookup`）：签名改成 `find(ServerLevel level, String entityId, Item item, BlockPos lastPos)`，两个分支都改用 `item` 匹配。**调用点有两处**：协调器的回收分支（传 `plan.material().item()`）与工人自己那条回收走（`GoblinCitizenEntity.recoverDroppedItem`——它与取料/放置一样，经 `materialFor(workerId)` 取同一份声明；取不到声明就按既有的 `ABORTED` 口径结束）。顺带把 `RecoveryDrop.itemId` 与 `retargetRecoveryDrop` 的 `oldItemId`/`newItemId` 这些**名字**与它们的真实含义（掉落物实体 id）对齐——只改名，**不改 JSON 键**。
 
 ## 5. 命令与显示
 
