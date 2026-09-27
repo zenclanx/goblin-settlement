@@ -1,0 +1,117 @@
+# 哥布林交通自主立项：设计
+
+记录日期：2026-09-27
+状态：设计稿，已由用户确认方向。数值为**建议初值**。
+
+本设计落实 [GAME_DESIGN.md](GAME_DESIGN.md) 第 7 节的道路与桥梁要求，并遵循 [TECH_DESIGN.md](TECH_DESIGN.md) 第 2 节的模块边界。当前进展见 [CURRENT_STATUS.md](CURRENT_STATUS.md)。
+
+## 1. 背景：缺的不是施工，是决策
+
+调查结论（证据见 `construction/transport/` 与 `planning/` 各文件）：
+
+- **施工侧已经完整且真实。** 居民会从真实容器 `removeItem` 取料、背负行走、走到工地由 `placeByResident` 调 `level.setBlock` 逐块放置。阶段顺序、临时围栏开合、未完工禁行、缺料停工保工地、结构被破坏后回退重修、重载不丢，全部已实现。
+- **设计第 7 节对道路桥梁的工程要求基本已落地**：两车道宽度、木桥 4～12 格跨度、施工顺序（引道→桥台支撑→桥面→护栏→照明）、未完工禁行、同时一项工程。
+- **唯一缺口：没有任何东西决定"该修哪条路"。** `TransportCoordinator.startRoad` 与 `startWoodBridge` 全工程只有管理员命令一个调用者；`RoadPlanner` 需要外部传入目标设施，`BridgePlanner` 需要外部传入桥头与方向——设计第 7 节要求聚落自己做的两项前置判断在代码里不存在。
+
+因此本设计**不新建施工能力**，只新增一层自主提案：判断该连哪个设施、该修路还是架桥，然后调用既有的立项入口。
+
+## 2. 决策模型
+
+### 2.1 已服务设施登记
+
+在 `TransportSavedData` 上持久化一份**已被道路服务过的设施坐标**集合。设施集合沿用 `RoadPlanner` 已在使用的三类：聚落锚点、已登记公共仓库、已登记农田。
+
+一条路完工时，把它的目标设施标记为已服务；此后不再为它立项。
+
+**为什么需要新增一处数据**：`TransportPlan` 目前不记录自己通向哪个设施，完工时无从登记。给它加一个**可选**的 `target_facility` 字段（`optionalFieldOf`，缺省为空），完工时据此标记。旧存档缺该字段即视为"无目标设施"，只是不会被登记为已服务，不影响加载。
+
+### 2.2 选哪个设施
+
+遍历未服务设施，选取**离聚落锚点最近**的一个，且其距离超过下限（避免给近在咫尺的箱子铺路）。
+
+### 2.3 修路还是架桥
+
+对选中的设施，沿"锚点 → 设施"的直线做一次有界探测：
+
+- 若直线中途遇到**水面**，且水面缺口宽度落在木桥能力范围（4～12 格）内，且**对岸确实存在该设施**（即"对岸有利用价值"，对应设计第 7 节的立项条件），则交 `BridgePlanner` 勘测；
+- 否则交 `RoadPlanner` 修路。
+
+这段判定是**纯计算**（输入是沿线采样的地形事实，输出是"路"还是"桥"），可独立写检查。
+
+### 2.4 门禁
+
+立项必须同时满足：
+
+1. `SettlementDemand` 的优先级为 `TRANSPORT`（见 3.1）；
+2. 当前**没有在途交通工程**（`TransportSavedData` 已有"同时仅一条"的硬门禁，直接复用）；
+3. 所选方案需要的材料**真实存在于公共仓库**（木板／原木／栅栏／火把）。缺料则不立项——对应设计"材料和施工人员足够"的立项条件。
+
+任一不满足就什么都不做，下个周期再看。
+
+## 3. 与既有机制的衔接
+
+### 3.1 `SettlementDemand` 新增 `TRANSPORT` 档
+
+设计第 3 节的默认优先级是：避险救援 → 食物与补种 → 基础工具 → **关键交通和设施维修** → 必要住房 → 扩张工程 → 傀儡升级 → 装饰与品质改建。
+
+现有 `SettlementDemand.Priority` 是"首个未满足即返回"的有序枚举，在 `BASIC_TOOLS` 与 `CONSTRUCTION` 之间没有档位。新增 `TRANSPORT` 插在这两者之间，使"该修交通"成为一个可被其它协调器看见的显式状态。
+
+`assess` 现有签名是 `assess(int adults, int children, WarehouseSupply supply, boolean activeConstruction)`，已经有一个调用方传入的布尔参数。按同一模式追加 `boolean trafficPending`，判定顺序为：
+
+```text
+工具不全 → BASIC_TOOLS
+有交通待办 → TRANSPORT
+否则 → activeConstruction ? CONSTRUCTION : READY
+```
+
+**`trafficPending` 由谁算**：由交通侧提供一个查询方法——"是否存在尚未被服务、且距离超过下限的已登记设施"。它只读存档与不动产位置，不做世界探测（直线探测发生在真正提案时）。命令显示与协调器都调它，避免两套判据。
+
+现有 4 个 `assess` 调用点（`ExpansionCoordinator`、`FoodCraftingCoordinator`、`FarmingCoordinator`、`GoblinSettlement` 的 status 行）都要补这个实参；只有交通相关的那一处传真实值，其余传 `false`。
+
+副作用：`ExpansionCoordinator` 用 `priority() == READY` 当扩地闸，插入新档后"待修交通"时优先级为 `TRANSPORT` 而非 `READY`，扩地自然让位——这正是设计要的次序。
+
+`SettlementDemandCheck` 需同步新增用例。
+
+### 3.1a 施工占用的对称性
+
+设计第 12 节要求"同时进行 1 项工程；道路、桥梁和大型改建都算工程"。因此交通提案也要反向检查**没有在途建造工程**（`SettlementSavedData.plans()` 无未完成项），与扩地对交通的检查构成对称，共同保证任一时刻只有一项工程在推进。
+
+### 3.2 扩地检查在途交通工程
+
+设计第 12 节要求"同时进行 1 项工程；道路、桥梁和大型改建都算工程"。目前扩地只检查 `SettlementSavedData.plans()` 是否有未完成项，**看不见交通计划**。给 `ExpansionCoordinator` 的门禁补一条"没有在途交通工程"。
+
+这是本设计对交通以外的唯一改动。
+
+### 3.3 与职业系统的关系
+
+施工派工沿用既有 `WorkKind.TRANSPORT`（对口职业搬运员），本设计不新增 `WorkKind`。
+
+## 4. 落点与接线
+
+新建协调器放 **`construction/transport/`**，与 `TransportCoordinator` 同包。理由：它要调用的就是同包的 `startRoad` / `startWoodBridge`，同包耦合最小；若放 `colony/` 会同时依赖 `planning` 与 `construction` 两个包。既有先例是 `farming/FarmDiscoveryCoordinator` 住在自己的领域包。
+
+主循环中排在 `TransportCoordinator` **之前**（先立项、后施工），并排在 `ExpansionCoordinator` 之前。
+
+周期：建议 1200 tick（60 秒）一次。交通不紧急，且每次都要做一次有界的直线探测。
+
+## 5. 验证
+
+- 修路／架桥判定与设施选取各自的纯逻辑，按项目现有独立检查的写法（无 JUnit、`main` + `require`、成功打印 `XxxCheck passed`）新增检查并纳入 `check` 聚合，先写失败再实现。
+- `SettlementDemandCheck` 增加 `TRANSPORT` 档用例。
+- 完整离线构建 + 全部独立检查通过。
+- **不做游戏内验证**：按用户约定，初版代码全部完成后才统一测试。
+
+## 6. 范围外（本轮不做）
+
+- **通行量驱动的道路升级**：设计第 7 节要求"根据频率与搬运耗时铺装和升级"。这需要一个类似 `WarehouseWithdrawalObserver` 的事实观察器先累积通行数据，工作量大，留待后续。
+- **成熟期多工程并行**：设计第 12 节的"成熟期最多 3 项"；当前硬编码为 1 项。
+- **道路连通性验收**：现有完工判定只查"方块在位"，不查"两端是否真的连通"。本设计不改进它。
+- **石桥与更长跨度**：`BridgePlanner` 目前只做 4～12 格木桥。
+- **玩家提案接口**：设计第 11 节允许玩家建议"这里适合修桥/农田"，本设计不做。
+
+## 7. 风险
+
+- **动到存档结构**：`TransportPlan` 新增字段。用可选字段 + 默认值，**不提升 schema 版本**，旧存档按"无目标设施"处理。
+- **`SettlementDemand` 语义变化**：插入新档会改变所有消费 `priority()` 的协调器读到的值。除 `ExpansionCoordinator` 外，需确认没有别的协调器以 `== READY` 为闸（实现时逐一核对）。
+- **直线探测的边界**：直线采样是近似的，不等于真实可行走路线。它只用来**二选一**，真正的路线仍由 `RoadPlanner` 的 A\* 产出。若探测误判为"该架桥"，`BridgePlanner` 会因两岸条件不符而返回失败状态，此时应退回修路，而不是放弃。
+- **自主修路会真实消耗材料并改动世界**：比扩地（只写一行存档）激进得多。门禁必须真的生效，尤其是材料检查。
