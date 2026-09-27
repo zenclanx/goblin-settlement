@@ -258,6 +258,7 @@ public final class GoblinSettlement implements ModInitializer {
         FarmingCoordinator.tick(level);
         ToolCraftingCoordinator.tick(level);
         ConstructionCoordinator.tick(level);
+        TrafficProposalCoordinator.tick(level);   // propose first: saved plans reach the worker tick below
         TransportCoordinator.tick(level);
         ForestryCoordinator.tick(level);
         MiningCoordinator.tick(level);

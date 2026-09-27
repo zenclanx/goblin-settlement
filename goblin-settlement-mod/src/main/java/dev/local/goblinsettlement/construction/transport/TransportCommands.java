@@ -95,6 +95,12 @@ public final class TransportCommands {
     private static int showStatus(CommandSourceStack source) {
         var plans = TransportSavedData.get(source.getLevel()).plans();
         source.sendSuccess(() -> Component.literal("Traffic plans=" + plans.size()), false);
+        var traffic = TransportSavedData.get(source.getLevel());
+        var settlement = SettlementSavedData.get(source.getLevel());
+        source.sendSuccess(() -> Component.literal("Served facilities=" + traffic.servedFacilities().size()
+                + ", " + TrafficProposalCoordinator.nearestUnservedFacility(settlement, traffic)
+                        .map(pos -> "next target=" + pos.toShortString())
+                        .orElse("no pending target")), false);
         for (int index = Math.max(0, plans.size() - 8); index < plans.size(); index++) {
             TransportPlan plan = plans.get(index);
             source.sendSuccess(() -> Component.literal(plan.kind() + " " + plan.id()
