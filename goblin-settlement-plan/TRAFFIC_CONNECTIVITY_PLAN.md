@@ -714,7 +714,7 @@ Expected: `BUILD SUCCESSFUL`，17 项全部 `*Check passed`。
 
 Run: `grep -rn "shouldUpgrade\|TransportConnectivity.connects\|setBlock" src/main/java/dev/local/goblinsettlement/construction/transport/TransportCommands.java`
 
-Expected: **一条都没有**——显示层不算阈值、不做连通 BFS、不碰世界。三个判定全部来自 `TransportCoordinator`。
+Expected: **只有一处**，即第五十五轮 `trafficLine` 的私有 `qualifies` 调用 `RoadUpgradeRules.shouldUpgrade`（那是**调用**规则，不是重写阈值）。**本轮新增的 `connectivityLine` / `loaded` / `blockedWord` / `chainIntact` 一处都不应命中**——显示层不做连通 BFS、不碰世界、不重写任何判据。
 
 再 Run: `grep -c "shouldTickBlocksAt" src/main/java/dev/local/goblinsettlement/construction/transport/TransportCommands.java`
 
