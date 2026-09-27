@@ -9,12 +9,15 @@ public final class RoadUpgradeRules {
     /** Net walking widths from GAME_DESIGN section 7, narrowest first. */
     private static final int[] LADDER = {2, 3, 5};
 
-    /**
-     * The width every road is built at today: TransportCoordinator.startRoad lays the foot cell and its
-     * clockwise neighbour. Widening is a later round, and it replaces this constant with a per-road
-     * measured width.
-     */
-    public static final int BUILT_ROAD_LANES = LADDER[0];
+    /** The ladder itself, as a copy: geometry that has to agree with the rungs pins itself to this. */
+    public static int[] ladder() {
+        return LADDER.clone();
+    }
+
+    /** The width every road is built at, and the width every plan written before widening is assumed. */
+    public static int baseLanes() {
+        return LADDER[0];
+    }
 
     /**
      * Sample hits a road needs before a widening is worth it, per lane it already has. INVENTED: the

@@ -159,7 +159,7 @@ public final class TransportCommands {
     }
 
     private static boolean qualifies(TransportSavedData traffic, TransportPlan plan) {
-        return RoadUpgradeRules.shouldUpgrade(RoadUpgradeRules.BUILT_ROAD_LANES,
+        return RoadUpgradeRules.shouldUpgrade(RoadUpgradeRules.baseLanes(),
                 traffic.traffic().getOrDefault(plan.id(), 0));
     }
 

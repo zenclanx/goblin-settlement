@@ -8,7 +8,7 @@ public final class RoadUpgradeRulesCheck {
         checkWiderRoadsAskForMore();
         checkTheWidestStreetNeverUpgrades();
         checkNonWidthsNeverUpgrade();
-        checkBuiltWidthIsOnTheLadder();
+        checkBaseWidthIsOnTheLadder();
         System.out.println("RoadUpgradeRulesCheck passed");
     }
 
@@ -47,9 +47,11 @@ public final class RoadUpgradeRulesCheck {
         require(!RoadUpgradeRules.shouldUpgrade(-1, Integer.MAX_VALUE), "a negative width is not a road");
     }
 
-    private static void checkBuiltWidthIsOnTheLadder() {
-        require(RoadUpgradeRules.BUILT_ROAD_LANES == 2, "roads are built two lanes wide today");
-        require(RoadUpgradeRules.nextLanes(RoadUpgradeRules.BUILT_ROAD_LANES) == 3,
+    private static void checkBaseWidthIsOnTheLadder() {
+        require(RoadUpgradeRules.baseLanes() == 2, "roads are built two lanes wide today");
+        require(RoadUpgradeRules.baseLanes() == RoadUpgradeRules.ladder()[0],
+                "the built width is the ladder's first rung");
+        require(RoadUpgradeRules.nextLanes(RoadUpgradeRules.baseLanes()) == 3,
                 "so the first widening step goes to three");
     }
 
