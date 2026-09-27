@@ -19,7 +19,7 @@ public final class HousingRules {
 
     public enum HomeAction { EXPAND_CAPACITY, IMPROVE_QUALITY, NONE }
 
-    public record Step(int x, int y, int z) {
+    public record Step(int x, int y, int z, String block) {
     }
 
     private static final List<List<Step>> STAGES = blueprints();
@@ -123,41 +123,41 @@ public final class HousingRules {
         // Moved from HousingCoordinator.blueprints(): shelter, cabin, expanded, quality, mature.
         var shelter = new ArrayList<Step>();
         for (int x : new int[] {-1, 1}) for (int z : new int[] {-1, 1})
-            for (int y = 0; y <= 2; y++) shelter.add(new Step(x, y, z));
+            for (int y = 0; y <= 2; y++) shelter.add(new Step(x, y, z, "minecraft:oak_planks"));
         for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
-            shelter.add(new Step(x, 3, z));
+            shelter.add(new Step(x, 3, z, "minecraft:oak_planks"));
         var cabin = new ArrayList<Step>();
         for (int y = 0; y <= 2; y++) {
             for (int x = -2; x <= 2; x++) {
-                cabin.add(new Step(x, y, -2));
-                if (x != 0 || y == 2) cabin.add(new Step(x, y, 2));
+                cabin.add(new Step(x, y, -2, "minecraft:oak_planks"));
+                if (x != 0 || y == 2) cabin.add(new Step(x, y, 2, "minecraft:oak_planks"));
             }
             for (int z = -1; z <= 1; z++) {
-                cabin.add(new Step(-2, y, z));
-                cabin.add(new Step(2, y, z));
+                cabin.add(new Step(-2, y, z, "minecraft:oak_planks"));
+                cabin.add(new Step(2, y, z, "minecraft:oak_planks"));
             }
         }
         for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++)
-            cabin.add(new Step(x, 3, z));
+            cabin.add(new Step(x, 3, z, "minecraft:oak_planks"));
         var expanded = new ArrayList<Step>();
         for (int z = -1; z <= 1; z++) {
-            expanded.add(new Step(3, 0, z));
-            expanded.add(new Step(3, 3, z));
+            expanded.add(new Step(3, 0, z, "minecraft:oak_planks"));
+            expanded.add(new Step(3, 3, z, "minecraft:oak_planks"));
         }
         for (int y = 1; y <= 2; y++) {
-            expanded.add(new Step(3, y, -1));
-            expanded.add(new Step(3, y, 1));
+            expanded.add(new Step(3, y, -1, "minecraft:oak_planks"));
+            expanded.add(new Step(3, y, 1, "minecraft:oak_planks"));
         }
         var quality = new ArrayList<Step>();
-        for (int x = -2; x <= 2; x++) quality.add(new Step(x, 4, 0));
+        for (int x = -2; x <= 2; x++) quality.add(new Step(x, 4, 0, "minecraft:oak_planks"));
         for (int z = -2; z <= 2; z++) {
             // The cross shares its center block (0,4,0), already added above; skip the duplicate so
             // the stage holds exactly the nine quality blocks the design counts.
-            if (z != 0) quality.add(new Step(0, 4, z));
+            if (z != 0) quality.add(new Step(0, 4, z, "minecraft:oak_planks"));
         }
         var mature = new ArrayList<Step>();
-        for (int z = -2; z <= 2; z++) mature.add(new Step(-3, 0, z));
-        for (int x = -2; x <= 2; x++) mature.add(new Step(x, 4, -2));
+        for (int z = -2; z <= 2; z++) mature.add(new Step(-3, 0, z, "minecraft:oak_planks"));
+        for (int x = -2; x <= 2; x++) mature.add(new Step(x, 4, -2, "minecraft:oak_planks"));
         return List.of(List.copyOf(shelter), List.copyOf(cabin), List.copyOf(expanded),
                 List.copyOf(quality), List.copyOf(mature));
     }

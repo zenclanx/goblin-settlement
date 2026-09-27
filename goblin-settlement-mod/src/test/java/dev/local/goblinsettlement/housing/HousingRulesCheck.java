@@ -1,14 +1,10 @@
 package dev.local.goblinsettlement.housing;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public final class HousingRulesCheck {
     public static void main(String[] args) {
         checkDecide();
-        checkSteps();
-        checkFirstUnbuilt();
         checkCounts();
         checkUsableBedHead();
         checkBedsNear();
@@ -37,39 +33,6 @@ public final class HousingRulesCheck {
             threw = true;
         }
         require(threw, "negative counts are rejected");
-    }
-
-    private static void checkSteps() {
-        require(HousingRules.steps(0, 0).size() == 21, "shelter only");
-        require(HousingRules.steps(1, 0).size() == 92, "shelter plus cabin");
-        require(HousingRules.steps(2, 0).size() == 102, "all three capacity stages");
-        require(HousingRules.steps(2, 1).size() == 111, "capacity plus the first quality stage");
-        require(HousingRules.steps(2, 2).size() == 121, "everything");
-        require(HousingRules.steps(1, 1).equals(HousingRules.steps(1, 1)),
-                "the same targets always compose the same list");
-        for (var step : HousingRules.steps(2, 2)) {
-            require(step.x() >= -3 && step.x() <= 3 && step.z() >= -2 && step.z() <= 2
-                    && step.y() >= 0 && step.y() <= 4, "every step stays inside the blueprint box");
-        }
-    }
-
-    private static void checkFirstUnbuilt() {
-        List<HousingRules.Step> shelter = HousingRules.steps(0, 0);
-        require(HousingRules.firstUnbuilt(shelter, Set.of()).orElseThrow() == 0,
-                "an untouched home starts at the first step");
-        Set<HousingRules.Step> half = new HashSet<>(shelter.subList(0, 5));
-        require(HousingRules.firstUnbuilt(shelter, half).orElseThrow() == 5,
-                "built leading steps are skipped");
-        require(HousingRules.firstUnbuilt(shelter, new HashSet<>(shelter)).isEmpty(),
-                "a fully built home has nothing left");
-        // The regression this design exists for: quality steps are built first, then the capacity
-        // target rises. The newly inserted capacity steps sit BEFORE the built quality ones, so a
-        // stored cursor would skip them; deriving from the world finds them.
-        Set<HousingRules.Step> builtEarly = new HashSet<>(HousingRules.steps(1, 1));
-        int next = HousingRules.firstUnbuilt(HousingRules.steps(2, 1), builtEarly).orElseThrow();
-        require(next == 92, "raising the capacity target after quality work finds the inserted steps");
-        require(HousingRules.steps(2, 1).get(next) == HousingRules.steps(2, 0).get(21 + 71),
-                "the step found is the first expanded-stage step");
     }
 
     private static void checkCounts() {
