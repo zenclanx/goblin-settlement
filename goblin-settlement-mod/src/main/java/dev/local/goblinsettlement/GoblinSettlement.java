@@ -36,12 +36,14 @@ import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.mining.MiningCoordinator;
 import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.housing.BedProvisioningCoordinator;
+import dev.local.goblinsettlement.housing.HousingBlueprints;
 import dev.local.goblinsettlement.housing.HousingCoordinator;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
 import dev.local.goblinsettlement.social.GiftTradeCommands;
 import dev.local.goblinsettlement.social.WarehouseWithdrawalObserver;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
@@ -63,6 +65,7 @@ public final class GoblinSettlement implements ModInitializer {
         GolemEntities.initialize();
         RelationshipCoordinator.initialize();
         WarehouseWithdrawalObserver.initialize();
+        ServerLifecycleEvents.SERVER_STARTING.register(server -> HousingBlueprints.load());
         ServerTickEvents.END_WORLD_TICK.register(GoblinSettlement::tickSettlement);
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 ConstructionCommands.register(dispatcher));

@@ -1,6 +1,5 @@
 package dev.local.goblinsettlement.housing;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.Set;
@@ -11,8 +10,9 @@ public final class HousingRules {
     public static final int MAX_QUALITY_TARGET = 2;
     /** A new bed binds to a home whose anchor bed is within this Chebyshev x/z radius. */
     public static final int BIND_RADIUS = 8;
-    public static final int RESERVE_EXPANDED = 24;
-    public static final int RESERVE_BASIC = 8;
+    /** Used only before the blueprint file loads; construction does not run while it has not. */
+    public static final int RESERVE_FALLBACK_BASIC = 8;
+    public static final int RESERVE_FALLBACK_EXPANDED = 24;
 
     private HousingRules() {
     }
@@ -20,12 +20,6 @@ public final class HousingRules {
     public enum HomeAction { EXPAND_CAPACITY, IMPROVE_QUALITY, NONE }
 
     public record Step(int x, int y, int z, String block) {
-    }
-
-    private static final List<List<Step>> STAGES = blueprints();
-
-    public static List<List<Step>> stages() {
-        return STAGES;
     }
 
     /**
@@ -66,19 +60,6 @@ public final class HousingRules {
         return capacityTarget < MAX_CAPACITY_TARGET && usedBeds < capacityTarget + 2;
     }
 
-    /** The capacity axis builds its stages first, then the quality axis. Order never varies. */
-    public static List<Step> steps(int capacityTarget, int qualityTarget) {
-        validate(capacityTarget, qualityTarget);
-        List<Step> result = new ArrayList<>();
-        for (int capacity = 0; capacity <= capacityTarget; capacity++) {
-            result.addAll(STAGES.get(capacity));
-        }
-        for (int quality = 1; quality <= qualityTarget; quality++) {
-            result.addAll(STAGES.get(MAX_CAPACITY_TARGET + quality));
-        }
-        return List.copyOf(result);
-    }
-
     public static OptionalInt firstUnbuilt(List<Step> steps, Set<Step> built) {
         for (int index = 0; index < steps.size(); index++) {
             if (!built.contains(steps.get(index))) {
@@ -117,48 +98,5 @@ public final class HousingRules {
                 || qualityTarget < 0 || qualityTarget > MAX_QUALITY_TARGET) {
             throw new IllegalArgumentException("Housing targets out of range");
         }
-    }
-
-    private static List<List<Step>> blueprints() {
-        // Moved from HousingCoordinator.blueprints(): shelter, cabin, expanded, quality, mature.
-        var shelter = new ArrayList<Step>();
-        for (int x : new int[] {-1, 1}) for (int z : new int[] {-1, 1})
-            for (int y = 0; y <= 2; y++) shelter.add(new Step(x, y, z, "minecraft:oak_planks"));
-        for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
-            shelter.add(new Step(x, 3, z, "minecraft:oak_planks"));
-        var cabin = new ArrayList<Step>();
-        for (int y = 0; y <= 2; y++) {
-            for (int x = -2; x <= 2; x++) {
-                cabin.add(new Step(x, y, -2, "minecraft:oak_planks"));
-                if (x != 0 || y == 2) cabin.add(new Step(x, y, 2, "minecraft:oak_planks"));
-            }
-            for (int z = -1; z <= 1; z++) {
-                cabin.add(new Step(-2, y, z, "minecraft:oak_planks"));
-                cabin.add(new Step(2, y, z, "minecraft:oak_planks"));
-            }
-        }
-        for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++)
-            cabin.add(new Step(x, 3, z, "minecraft:oak_planks"));
-        var expanded = new ArrayList<Step>();
-        for (int z = -1; z <= 1; z++) {
-            expanded.add(new Step(3, 0, z, "minecraft:oak_planks"));
-            expanded.add(new Step(3, 3, z, "minecraft:oak_planks"));
-        }
-        for (int y = 1; y <= 2; y++) {
-            expanded.add(new Step(3, y, -1, "minecraft:oak_planks"));
-            expanded.add(new Step(3, y, 1, "minecraft:oak_planks"));
-        }
-        var quality = new ArrayList<Step>();
-        for (int x = -2; x <= 2; x++) quality.add(new Step(x, 4, 0, "minecraft:oak_planks"));
-        for (int z = -2; z <= 2; z++) {
-            // The cross shares its center block (0,4,0), already added above; skip the duplicate so
-            // the stage holds exactly the nine quality blocks the design counts.
-            if (z != 0) quality.add(new Step(0, 4, z, "minecraft:oak_planks"));
-        }
-        var mature = new ArrayList<Step>();
-        for (int z = -2; z <= 2; z++) mature.add(new Step(-3, 0, z, "minecraft:oak_planks"));
-        for (int x = -2; x <= 2; x++) mature.add(new Step(x, 4, -2, "minecraft:oak_planks"));
-        return List.of(List.copyOf(shelter), List.copyOf(cabin), List.copyOf(expanded),
-                List.copyOf(quality), List.copyOf(mature));
     }
 }

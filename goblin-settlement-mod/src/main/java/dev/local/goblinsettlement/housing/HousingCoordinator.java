@@ -35,6 +35,7 @@ public final class HousingCoordinator {
     public static void tick(ServerLevel level) {
         if (level.getGameTime() % INTERVAL_TICKS != 0
                 || !level.getGameRules().get(GameRules.MOB_GRIEFING)) return;
+        if (!HousingBlueprints.available()) return;
         var data = SettlementSavedData.get(level);
         var settlement = data.settlement();
         if (settlement.isEmpty() || data.claimedPlots().isEmpty()
@@ -123,7 +124,8 @@ public final class HousingCoordinator {
         if (!permitted(level, id, site)) return false;
         if (!level.getBlockState(site).isAir()) return false;
         var stock = PublicWarehouseInventory.snapshot(level, data);
-        int reserve = home.capacityTarget() >= 2 ? HousingRules.RESERVE_EXPANDED : HousingRules.RESERVE_BASIC;
+        int reserve = home.capacityTarget() >= 2
+                ? HousingBlueprints.reserveExpanded() : HousingBlueprints.reserveBasic();
         if (!stock.complete() || stock.oakPlanks() <= reserve) return false;
         var warehouse = PublicWarehouseInventory.firstWithOakPlank(level, data);
         if (warehouse.isPresent()) {
@@ -147,11 +149,12 @@ public final class HousingCoordinator {
         return false;
     }
 
-    /** First step whose site is not yet oak planks; null when fully built or the bed lost its facing. */
+    /** First step whose site is not yet the declared block; null when built or the bed lost its facing. */
     private static BlockPos nextSite(ServerLevel level, HousingSavedData.Home home) {
-        for (HousingRules.Step step : HousingRules.steps(home.capacityTarget(), home.qualityTarget())) {
+        for (HousingBlueprints.ResolvedStep step
+                : HousingBlueprints.steps(home.capacityTarget(), home.qualityTarget())) {
             BlockPos candidate = position(level, home.bed(), home.variant(), step);
-            if (candidate != null && level.getBlockState(candidate).is(Blocks.OAK_PLANKS)) {
+            if (candidate != null && level.getBlockState(candidate).is(step.block())) {
                 continue;
             }
             return candidate;
@@ -184,9 +187,9 @@ public final class HousingCoordinator {
     }
 
     static boolean stageFullyBuilt(ServerLevel level, HousingSavedData.Home home, int stageIndex) {
-        for (HousingRules.Step step : HousingRules.stages().get(stageIndex)) {
+        for (HousingBlueprints.ResolvedStep step : HousingBlueprints.stages().get(stageIndex)) {
             BlockPos site = position(level, home.bed(), home.variant(), step);
-            if (site == null || !level.getBlockState(site).is(Blocks.OAK_PLANKS)) {
+            if (site == null || !level.getBlockState(site).is(step.block())) {
                 return false;
             }
         }
@@ -233,11 +236,11 @@ public final class HousingCoordinator {
                         && level.getBlockState(other).is(BlockTags.BEDS)) return false;
             }
         }
-        for (var stage : HousingRules.stages()) for (HousingRules.Step step : stage) {
+        for (var stage : HousingBlueprints.stages()) for (var step : stage) {
             BlockPos site = position(level, bed, variant, step);
             if (site == null || !permitted(level, id, site)) return false;
             var state = level.getBlockState(site);
-            if (!state.isAir() && !state.is(Blocks.OAK_PLANKS)) return false;
+            if (!state.isAir() && !state.is(step.block())) return false;
             if (step.y() == 0) {
                 BlockPos ground = site.below();
                 if (!permitted(level, id, ground)
@@ -247,7 +250,8 @@ public final class HousingCoordinator {
         return true;
     }
 
-    static BlockPos position(ServerLevel level, BlockPos bed, int variant, HousingRules.Step step) {
+    static BlockPos position(ServerLevel level, BlockPos bed, int variant,
+                            HousingBlueprints.ResolvedStep step) {
         var state = level.getBlockState(bed);
         if (!state.hasProperty(BedBlock.FACING)) return null;
         Direction south = state.getValue(BedBlock.FACING).getOpposite();
