@@ -9,8 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 /** Pure blueprint data: geometry, upgrade chain and the rules that keep it honest. */
-public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
-                           int reserveBasic, int reserveExpanded) {
+public record BlueprintSet(List<Style> styles, int reserveBasic, int reserveExpanded) {
     /** The blueprint box every coordinate must stay inside. */
     public static final int MIN_X = -3;
     public static final int MAX_X = 3;
@@ -18,6 +17,14 @@ public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
     public static final int MAX_Y = 4;
     public static final int MIN_Z = -2;
     public static final int MAX_Z = 2;
+
+    /**
+     * One complete house style: a full capacity ladder plus a full quality ladder. Variety is per
+     * style rather than per level because the levels are additive -- a per-level shape set would
+     * demand that every pair of levels join seamlessly, which no simple rule can guarantee.
+     */
+    public record Style(String id, List<Stage> capacity, List<Stage> quality) {
+    }
 
     /** {@code requires} is empty for a chain head, otherwise the id of the previous stage. */
     public record Stage(String id, String requires, List<HousingRules.Step> steps) {
@@ -37,39 +44,58 @@ public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
             STEP_CODEC.listOf().fieldOf("steps").forGetter(Stage::steps)
     ).apply(instance, Stage::new));
 
+    public static final Codec<Style> STYLE_CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.STRING.fieldOf("id").forGetter(Style::id),
+            STAGE_CODEC.listOf().fieldOf("capacity").forGetter(Style::capacity),
+            STAGE_CODEC.listOf().fieldOf("quality").forGetter(Style::quality)
+    ).apply(instance, Style::new));
+
     public static final Codec<BlueprintSet> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-            STAGE_CODEC.listOf().fieldOf("capacity").forGetter(BlueprintSet::capacity),
-            STAGE_CODEC.listOf().fieldOf("quality").forGetter(BlueprintSet::quality),
+            STYLE_CODEC.listOf().fieldOf("styles").forGetter(BlueprintSet::styles),
             Codec.INT.fieldOf("reserve_basic").forGetter(BlueprintSet::reserveBasic),
             Codec.INT.fieldOf("reserve_expanded").forGetter(BlueprintSet::reserveExpanded)
     ).apply(instance, BlueprintSet::new));
+
+    public int styleCount() {
+        return styles.size();
+    }
+
+    /** An out-of-range index degrades to the first style rather than failing a world load. */
+    public Style styleAt(int styleIndex) {
+        if (styleIndex < 0 || styleIndex >= styles.size()) {
+            return styles.get(0);
+        }
+        return styles.get(styleIndex);
+    }
 
     /**
      * The capacity stages first, then the quality stages, exactly as the two-axis design orders
      * them. Both lists keep sharing their step instances, so repeated calls are cheap.
      */
-    public List<HousingRules.Step> steps(int capacityTarget, int qualityTarget) {
-        if (capacityTarget < 0 || capacityTarget >= capacity.size()
-                || qualityTarget < 0 || qualityTarget > quality.size()) {
+    public List<HousingRules.Step> steps(int styleIndex, int capacityTarget, int qualityTarget) {
+        Style style = styleAt(styleIndex);
+        if (capacityTarget < 0 || capacityTarget >= style.capacity().size()
+                || qualityTarget < 0 || qualityTarget > style.quality().size()) {
             throw new IllegalArgumentException("Blueprint targets out of range");
         }
         List<HousingRules.Step> result = new ArrayList<>();
         for (int index = 0; index <= capacityTarget; index++) {
-            result.addAll(capacity.get(index).steps());
+            result.addAll(style.capacity().get(index).steps());
         }
         for (int index = 1; index <= qualityTarget; index++) {
-            result.addAll(quality.get(index - 1).steps());
+            result.addAll(style.quality().get(index - 1).steps());
         }
         return List.copyOf(result);
     }
 
-    /** Every stage in the order the coordinator indexes them: capacity 0..n, then quality 0..m. */
-    public List<List<HousingRules.Step>> stages() {
+    /** Every stage of one style in the order the coordinator indexes them: capacity, then quality. */
+    public List<List<HousingRules.Step>> stages(int styleIndex) {
+        Style style = styleAt(styleIndex);
         List<List<HousingRules.Step>> result = new ArrayList<>();
-        for (Stage stage : capacity) {
+        for (Stage stage : style.capacity()) {
             result.add(List.copyOf(stage.steps()));
         }
-        for (Stage stage : quality) {
+        for (Stage stage : style.quality()) {
             result.add(List.copyOf(stage.steps()));
         }
         return List.copyOf(result);
@@ -78,13 +104,8 @@ public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
     /** All problems found, empty when the data is sound. */
     public List<String> validate(Set<String> knownBlocks) {
         List<String> problems = new ArrayList<>();
-        if (capacity.size() != HousingRules.MAX_CAPACITY_TARGET + 1) {
-            problems.add("capacity needs " + (HousingRules.MAX_CAPACITY_TARGET + 1)
-                    + " stages, found " + capacity.size());
-        }
-        if (quality.size() != HousingRules.MAX_QUALITY_TARGET) {
-            problems.add("quality needs " + HousingRules.MAX_QUALITY_TARGET
-                    + " stages, found " + quality.size());
+        if (styles.isEmpty()) {
+            problems.add("at least one style is required");
         }
         if (reserveBasic <= 0) {
             problems.add("reserve_basic must be positive");
@@ -92,8 +113,24 @@ public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
         if (reserveExpanded <= 0) {
             problems.add("reserve_expanded must be positive");
         }
-        validateChain("capacity", capacity, knownBlocks, problems);
-        validateChain("quality", quality, knownBlocks, problems);
+        Set<String> ids = new HashSet<>();
+        for (Style style : styles) {
+            if (style.id() == null || style.id().isEmpty()) {
+                problems.add("a style has an empty id");
+            } else if (!ids.add(style.id())) {
+                problems.add("duplicate style id " + style.id());
+            }
+            if (style.capacity().size() != HousingRules.MAX_CAPACITY_TARGET + 1) {
+                problems.add(style.id() + " needs " + (HousingRules.MAX_CAPACITY_TARGET + 1)
+                        + " capacity stages, found " + style.capacity().size());
+            }
+            if (style.quality().size() != HousingRules.MAX_QUALITY_TARGET) {
+                problems.add(style.id() + " needs " + HousingRules.MAX_QUALITY_TARGET
+                        + " quality stages, found " + style.quality().size());
+            }
+            validateChain(style.id() + "/capacity", style.capacity(), knownBlocks, problems);
+            validateChain(style.id() + "/quality", style.quality(), knownBlocks, problems);
+        }
         return List.copyOf(problems);
     }
 

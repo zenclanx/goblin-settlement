@@ -75,7 +75,7 @@ public final class HousingRulesCheck {
 
     private static void checkHomeCodec() {
         var bed = new net.minecraft.core.BlockPos(10, 64, 10);
-        var modern = new HousingSavedData.Home(bed, 1, 2, 1, java.util.Optional.empty());
+        var modern = new HousingSavedData.Home(bed, 1, 1, 2, 1);
         var json = HousingSavedData.Home.CODEC
                 .encodeStart(com.mojang.serialization.JsonOps.INSTANCE, modern).getOrThrow();
         require(!json.getAsJsonObject().has("stage"),
@@ -86,6 +86,7 @@ public final class HousingRulesCheck {
                 .parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow();
         require(reloaded.capacityTarget() == 2 && reloaded.qualityTarget() == 1,
                 "two-axis targets survive a round trip");
+        require(reloaded.style() == 1, "the chosen style survives a round trip");
 
         int[][] expected = {{0, 0}, {1, 0}, {2, 0}, {2, 1}, {2, 2}, {2, 2}};
         for (int stage = 0; stage <= 5; stage++) {
@@ -100,6 +101,14 @@ public final class HousingRulesCheck {
                             && migrated.qualityTarget() == expected[stage][1],
                     "legacy stage " + stage + " maps onto the two axes");
         }
+
+        // A save written before styles existed carries no style field at all.
+        var styleless = json.getAsJsonObject().deepCopy();
+        styleless.remove("style");
+        var defaulted = HousingSavedData.Home.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, styleless).getOrThrow();
+        require(defaulted.style() == 0,
+                "a save without a style lands on the first style, which is the cottage");
     }
 
     private static void require(boolean condition, String message) {

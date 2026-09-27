@@ -4,6 +4,7 @@ import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,6 +18,7 @@ public final class BlueprintCheck {
     public static void main(String[] args) throws Exception {
         BlueprintSet data = loadRealFile();
         checkRealFile(data);
+        checkEveryStyleIsBuildable(data);
         checkSteps(data);
         checkFirstUnbuilt(data);
         checkCodecRoundTrip();
@@ -40,24 +42,58 @@ public final class BlueprintCheck {
     private static void checkRealFile(BlueprintSet data) {
         var problems = data.validate(KNOWN);
         require(problems.isEmpty(), "the shipped blueprint file validates: " + problems);
+        require(data.styles().size() >= 3,
+                "the shipped file carries the cottage, the lean-to and the side porch");
+        require(data.styles().get(0).id().equals("cottage"),
+                "style 0 is the cottage, so old saves keep the geometry they were built with");
+        require(data.styles().stream().map(BlueprintSet.Style::id).distinct().count()
+                        == data.styles().size(),
+                "style ids are unique");
+    }
+
+    private static void checkEveryStyleIsBuildable(BlueprintSet data) {
+        for (int index = 0; index < data.styles().size(); index++) {
+            var style = data.styles().get(index);
+            require(style.capacity().size() == HousingRules.MAX_CAPACITY_TARGET + 1,
+                    style.id() + " has a full capacity ladder");
+            require(style.quality().size() == HousingRules.MAX_QUALITY_TARGET,
+                    style.id() + " has a full quality ladder");
+            require(!data.steps(index, 0, 0).isEmpty(), style.id() + " builds something at level 0");
+            // The levels are additive and the cottage deliberately re-covers its roof at each
+            // level, so a cell may repeat -- but only with the same block. Two stages claiming one
+            // cell with different blocks would leave a step that can never be placed, because the
+            // first one to run fills the cell the second one needs empty.
+            var blocks = new HashMap<Long, String>();
+            for (var step : data.steps(index, 2, 2)) {
+                require(step.x() >= -3 && step.x() <= 3 && step.z() >= -2 && step.z() <= 2
+                                && step.y() >= 0 && step.y() <= 4,
+                        style.id() + " stays inside the blueprint box");
+                long key = ((long) (step.x() + 64) << 42) ^ ((long) (step.y() + 64) << 21)
+                        ^ (step.z() + 64);
+                String previous = blocks.putIfAbsent(key, step.block());
+                require(previous == null || previous.equals(step.block()),
+                        style.id() + " claims " + step.x() + "," + step.y() + "," + step.z()
+                                + " with both " + previous + " and " + step.block());
+            }
+        }
     }
 
     private static void checkSteps(BlueprintSet data) {
-        require(data.steps(0, 0).size() == 21, "shelter only");
-        require(data.steps(1, 0).size() == 92, "shelter plus cabin");
-        require(data.steps(2, 0).size() == 102, "all three capacity stages");
-        require(data.steps(2, 1).size() == 111, "capacity plus the first quality stage");
-        require(data.steps(2, 2).size() == 121, "everything");
-        require(data.steps(1, 1).equals(data.steps(1, 1)),
+        require(data.steps(0, 0, 0).size() == 21, "shelter only");
+        require(data.steps(0, 1, 0).size() == 92, "shelter plus cabin");
+        require(data.steps(0, 2, 0).size() == 102, "all three capacity stages");
+        require(data.steps(0, 2, 1).size() == 111, "capacity plus the first quality stage");
+        require(data.steps(0, 2, 2).size() == 121, "everything");
+        require(data.steps(0, 1, 1).equals(data.steps(0, 1, 1)),
                 "the same targets always compose the same list");
-        for (var step : data.steps(2, 2)) {
+        for (var step : data.steps(0, 2, 2)) {
             require(step.x() >= -3 && step.x() <= 3 && step.z() >= -2 && step.z() <= 2
                     && step.y() >= 0 && step.y() <= 4, "every step stays inside the blueprint box");
             require(KNOWN.contains(step.block()), "every step names a known block");
         }
         boolean threw = false;
         try {
-            data.steps(3, 0);
+            data.steps(0, 3, 0);
         } catch (IllegalArgumentException expected) {
             threw = true;
         }
@@ -65,7 +101,7 @@ public final class BlueprintCheck {
     }
 
     private static void checkFirstUnbuilt(BlueprintSet data) {
-        List<HousingRules.Step> shelter = data.steps(0, 0);
+        List<HousingRules.Step> shelter = data.steps(0, 0, 0);
         require(HousingRules.firstUnbuilt(shelter, Set.of()).orElseThrow() == 0,
                 "an untouched home starts at the first step");
         Set<HousingRules.Step> half = new HashSet<>(shelter.subList(0, 5));
@@ -73,24 +109,29 @@ public final class BlueprintCheck {
                 "built leading steps are skipped");
         require(HousingRules.firstUnbuilt(shelter, new HashSet<>(shelter)).isEmpty(),
                 "a fully built home has nothing left");
-        Set<HousingRules.Step> builtEarly = new HashSet<>(data.steps(1, 1));
-        int next = HousingRules.firstUnbuilt(data.steps(2, 1), builtEarly).orElseThrow();
+        Set<HousingRules.Step> builtEarly = new HashSet<>(data.steps(0, 1, 1));
+        int next = HousingRules.firstUnbuilt(data.steps(0, 2, 1), builtEarly).orElseThrow();
         require(next == 92, "raising the capacity target after quality work finds the inserted steps");
-        require(data.steps(2, 1).get(next).equals(data.steps(2, 0).get(21 + 71)),
+        require(data.steps(0, 2, 1).get(next).equals(data.steps(0, 2, 0).get(21 + 71)),
                 "the step found is the first expanded-stage step");
     }
 
     private static void checkCodecRoundTrip() {
         var json = JsonParser.parseString("""
                 {"reserve_basic": 8, "reserve_expanded": 24,
-                 "capacity": [{"id": "a", "steps": [{"x": 1, "y": 0, "z": -1, "block": "minecraft:oak_planks"}]}],
-                 "quality": [{"id": "b", "requires": "a", "steps": []}]}
+                 "styles": [
+                   {"id": "a", "capacity": [{"id": "s0", "steps": [{"x": 1, "y": 0, "z": -1, "block": "minecraft:oak_planks"}]}],
+                              "quality": [{"id": "q0", "steps": []}]},
+                   {"id": "b", "capacity": [{"id": "s0", "requires": "s0", "steps": []}],
+                              "quality": [{"id": "q0", "steps": []}]}]}
                 """);
         BlueprintSet parsed = BlueprintSet.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
-        require(parsed.capacity().size() == 1 && parsed.quality().size() == 1,
-                "both chains decode");
-        require(parsed.capacity().get(0).requires().isEmpty(), "an absent requires decodes to empty");
-        require(parsed.quality().get(0).requires().equals("a"), "a present requires survives");
+        require(parsed.styles().size() == 2, "every style decodes");
+        require(parsed.styles().get(0).id().equals("a"), "style order is preserved");
+        require(parsed.styles().get(0).capacity().get(0).requires().isEmpty(),
+                "an absent requires decodes to empty");
+        require(parsed.styles().get(1).capacity().get(0).requires().equals("s0"),
+                "a present requires survives");
         var reencoded = BlueprintSet.CODEC
                 .encodeStart(JsonOps.INSTANCE, parsed).getOrThrow().getAsJsonObject();
         BlueprintSet again = BlueprintSet.CODEC.parse(JsonOps.INSTANCE, reencoded).getOrThrow();
@@ -178,21 +219,31 @@ public final class BlueprintCheck {
         return List.of(cap("q0", ""), cap("q1", "q0"));
     }
 
+    /** Wraps a hand-made capacity chain into an otherwise valid single-style set. */
+    private static BlueprintSet setOf(List<BlueprintSet.Stage> capacity) {
+        return setOf(capacity, 8, 24);
+    }
+
+    private static BlueprintSet setOf(List<BlueprintSet.Stage> capacity, int basic, int expanded) {
+        return new BlueprintSet(
+                List.of(new BlueprintSet.Style("probe", capacity, qualities())), basic, expanded);
+    }
+
     /** Puts a hand-made capacity chain into an otherwise valid set and returns its problems. */
     private static List<String> valid(List<BlueprintSet.Stage> capacity) {
-        return new BlueprintSet(capacity, qualities(), 8, 24).validate(KNOWN);
+        return setOf(capacity).validate(KNOWN);
     }
 
     /** Problem count for a set whose first capacity stage carries exactly the given steps. */
     private static int problemsWithStage(HousingRules.Step... steps) {
         var capacity = List.of(new BlueprintSet.Stage("a", "", List.of(steps)),
                 cap("b", "a"), cap("c", "b"));
-        return new BlueprintSet(capacity, qualities(), 8, 24).validate(KNOWN).size();
+        return setOf(capacity).validate(KNOWN).size();
     }
 
     private static int reserveProblem(int basic, int expanded) {
         var capacity = List.of(cap("a", ""), cap("b", "a"), cap("c", "b"));
-        return new BlueprintSet(capacity, qualities(), basic, expanded).validate(KNOWN).size();
+        return setOf(capacity, basic, expanded).validate(KNOWN).size();
     }
 
     private static void require(boolean condition, String message) {

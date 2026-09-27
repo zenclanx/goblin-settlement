@@ -29,7 +29,7 @@ public final class HousingBlueprints {
     public record ResolvedStep(int x, int y, int z, Block block, Item item) {
     }
 
-    private static List<List<ResolvedStep>> stages = List.of();
+    private static List<List<List<ResolvedStep>>> styles = List.of();
     private static int reserveBasic = HousingRules.RESERVE_FALLBACK_BASIC;
     private static int reserveExpanded = HousingRules.RESERVE_FALLBACK_EXPANDED;
     private static boolean available;
@@ -41,8 +41,19 @@ public final class HousingBlueprints {
         return available;
     }
 
-    public static List<List<ResolvedStep>> stages() {
-        return stages;
+    public static int styleCount() {
+        return styles.size();
+    }
+
+    /** An out-of-range style degrades to the first one, so removing a style cannot break a world. */
+    public static List<List<ResolvedStep>> stages(int styleIndex) {
+        if (styles.isEmpty()) {
+            return List.of();
+        }
+        if (styleIndex < 0 || styleIndex >= styles.size()) {
+            return styles.get(0);
+        }
+        return styles.get(styleIndex);
     }
 
     public static int reserveBasic() {
@@ -54,13 +65,14 @@ public final class HousingBlueprints {
     }
 
     /** Capacity stages first, then quality stages, exactly as the two-axis design orders them. */
-    public static List<ResolvedStep> steps(int capacityTarget, int qualityTarget) {
+    public static List<ResolvedStep> steps(int styleIndex, int capacityTarget, int qualityTarget) {
+        List<List<ResolvedStep>> style = stages(styleIndex);
         List<ResolvedStep> result = new ArrayList<>();
         for (int index = 0; index <= capacityTarget; index++) {
-            result.addAll(stages.get(index));
+            result.addAll(style.get(index));
         }
         for (int index = 1; index <= qualityTarget; index++) {
-            result.addAll(stages.get(HousingRules.MAX_CAPACITY_TARGET + index));
+            result.addAll(style.get(HousingRules.MAX_CAPACITY_TARGET + index));
         }
         return List.copyOf(result);
     }
@@ -82,22 +94,26 @@ public final class HousingBlueprints {
                         problems);
                 return;
             }
-            List<List<ResolvedStep>> resolved = new ArrayList<>();
-            for (List<HousingRules.Step> branch : data.stages()) {
-                List<ResolvedStep> converted = new ArrayList<>();
-                for (HousingRules.Step step : branch) {
-                    Block block = blocks.get(step.block());
-                    Item item = block.asItem();
-                    if (item == Items.AIR) {
-                        LOGGER.error("Housing blueprint block {} has no item form, housing"
-                                + " construction is stopped", step.block());
-                        return;
+            List<List<List<ResolvedStep>>> resolvedStyles = new ArrayList<>();
+            for (int styleIndex = 0; styleIndex < data.styleCount(); styleIndex++) {
+                List<List<ResolvedStep>> resolved = new ArrayList<>();
+                for (List<HousingRules.Step> branch : data.stages(styleIndex)) {
+                    List<ResolvedStep> converted = new ArrayList<>();
+                    for (HousingRules.Step step : branch) {
+                        Block block = blocks.get(step.block());
+                        Item item = block.asItem();
+                        if (item == Items.AIR) {
+                            LOGGER.error("Housing blueprint block {} has no item form, housing"
+                                    + " construction is stopped", step.block());
+                            return;
+                        }
+                        converted.add(new ResolvedStep(step.x(), step.y(), step.z(), block, item));
                     }
-                    converted.add(new ResolvedStep(step.x(), step.y(), step.z(), block, item));
+                    resolved.add(List.copyOf(converted));
                 }
-                resolved.add(List.copyOf(converted));
+                resolvedStyles.add(List.copyOf(resolved));
             }
-            stages = List.copyOf(resolved);
+            styles = List.copyOf(resolvedStyles);
             reserveBasic = data.reserveBasic();
             reserveExpanded = data.reserveExpanded();
             available = true;

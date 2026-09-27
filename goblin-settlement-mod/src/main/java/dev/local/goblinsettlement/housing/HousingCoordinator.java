@@ -78,10 +78,15 @@ public final class HousingCoordinator {
                             Math.abs(home.bed().getX() - bed.getX()) <= 6
                                     && Math.abs(home.bed().getZ() - bed.getZ()) <= 6
                                     && Math.abs(home.bed().getY() - bed.getY()) <= 4)) continue;
-                    for (int variant = 0; variant < 3; variant++) {
-                        if (siteSuitable(level, id, bed, variant)) {
-                            housing.add(new HousingSavedData.Home(bed, variant, 0, 0));
-                            return;
+                    int styleCount = HousingBlueprints.styleCount();
+                    int preferred = preferredStyle(bed, styleCount);
+                    for (int offset = 0; offset < styleCount; offset++) {
+                        int style = (preferred + offset) % styleCount;
+                        for (int variant = 0; variant < 3; variant++) {
+                            if (siteSuitable(level, id, bed, variant, style)) {
+                                housing.add(new HousingSavedData.Home(bed, variant, style, 0, 0));
+                                return;
+                            }
                         }
                     }
                 }
@@ -152,10 +157,21 @@ public final class HousingCoordinator {
         return false;
     }
 
+    /**
+     * The style a home at this bed prefers. An explicit formula rather than BlockPos.hashCode(),
+     * whose contract gives no stability guarantee across versions -- this value ends up in a save.
+     */
+    static int preferredStyle(BlockPos bed, int styleCount) {
+        if (styleCount <= 0) {
+            return 0;
+        }
+        return Math.floorMod(bed.getX() * 31 + bed.getZ() * 17, styleCount);
+    }
+
     /** First step whose site is not yet the declared block; null when built or the bed lost its facing. */
     private static BlockPos nextSite(ServerLevel level, HousingSavedData.Home home) {
-        for (HousingBlueprints.ResolvedStep step
-                : HousingBlueprints.steps(home.capacityTarget(), home.qualityTarget())) {
+        for (HousingBlueprints.ResolvedStep step : HousingBlueprints.steps(
+                home.style(), home.capacityTarget(), home.qualityTarget())) {
             BlockPos candidate = position(level, home.bed(), home.variant(), step);
             if (candidate != null && level.getBlockState(candidate).is(step.block())) {
                 continue;
@@ -174,8 +190,8 @@ public final class HousingCoordinator {
     static Optional<HousingBlueprints.ResolvedStep> stepAt(ServerLevel level,
                                                            HousingSavedData.Home home,
                                                            BlockPos site) {
-        for (HousingBlueprints.ResolvedStep step
-                : HousingBlueprints.steps(home.capacityTarget(), home.qualityTarget())) {
+        for (HousingBlueprints.ResolvedStep step : HousingBlueprints.steps(
+                home.style(), home.capacityTarget(), home.qualityTarget())) {
             if (site.equals(position(level, home.bed(), home.variant(), step))) {
                 return Optional.of(step);
             }
@@ -225,7 +241,7 @@ public final class HousingCoordinator {
     }
 
     static boolean stageFullyBuilt(ServerLevel level, HousingSavedData.Home home, int stageIndex) {
-        for (HousingBlueprints.ResolvedStep step : HousingBlueprints.stages().get(stageIndex)) {
+        for (HousingBlueprints.ResolvedStep step : HousingBlueprints.stages(home.style()).get(stageIndex)) {
             BlockPos site = position(level, home.bed(), home.variant(), step);
             if (site == null || !level.getBlockState(site).is(step.block())) {
                 return false;
@@ -263,7 +279,8 @@ public final class HousingCoordinator {
                 HousingRules.BIND_RADIUS);
     }
 
-    private static boolean siteSuitable(ServerLevel level, String id, BlockPos bed, int variant) {
+    private static boolean siteSuitable(ServerLevel level, String id, BlockPos bed, int variant,
+                                        int style) {
         if (!level.getBlockState(bed).hasProperty(BedBlock.FACING)) return false;
         BlockPos foot = bed.relative(level.getBlockState(bed).getValue(BedBlock.FACING).getOpposite());
         for (int dx = -3; dx <= 3; dx++) {
@@ -274,7 +291,7 @@ public final class HousingCoordinator {
                         && level.getBlockState(other).is(BlockTags.BEDS)) return false;
             }
         }
-        for (var stage : HousingBlueprints.stages()) for (var step : stage) {
+        for (var stage : HousingBlueprints.stages(style)) for (var step : stage) {
             BlockPos site = position(level, bed, variant, step);
             if (site == null || !permitted(level, id, site)) return false;
             var state = level.getBlockState(site);

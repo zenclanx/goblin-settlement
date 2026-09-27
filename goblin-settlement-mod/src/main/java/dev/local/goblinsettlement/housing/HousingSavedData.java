@@ -16,11 +16,12 @@ public final class HousingSavedData extends SavedData {
     public static final int MAX_HOMES = 48;
 
     /** Durable two-axis housing targets. Progress itself is derived from world blocks. */
-    public record Home(BlockPos bed, int variant, int capacityTarget, int qualityTarget,
+    public record Home(BlockPos bed, int variant, int style, int capacityTarget, int qualityTarget,
                        Optional<String> workerId) {
         static final Codec<Home> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 BlockPos.CODEC.fieldOf("bed").forGetter(Home::bed),
                 Codec.INT.fieldOf("blueprint").forGetter(Home::variant),
+                Codec.INT.optionalFieldOf("style", 0).forGetter(Home::style),
                 Codec.INT.optionalFieldOf("capacity_target").forGetter(home -> Optional.of(home.capacityTarget())),
                 Codec.INT.optionalFieldOf("quality_target").forGetter(home -> Optional.of(home.qualityTarget())),
                 Codec.INT.optionalFieldOf("stage").forGetter(home -> Optional.<Integer>empty()),
@@ -28,14 +29,14 @@ public final class HousingSavedData extends SavedData {
                 Codec.STRING.optionalFieldOf("worker_id").forGetter(Home::workerId)
         ).apply(instance, Home::migrate));
 
-        public Home(BlockPos bed, int variant, int capacityTarget, int qualityTarget) {
-            this(bed, variant, capacityTarget, qualityTarget, Optional.empty());
+        public Home(BlockPos bed, int variant, int style, int capacityTarget, int qualityTarget) {
+            this(bed, variant, style, capacityTarget, qualityTarget, Optional.empty());
         }
 
         public Home {
             bed = bed.immutable();
             workerId = java.util.Objects.requireNonNull(workerId, "workerId");
-            if (variant < 0 || variant > 2
+            if (variant < 0 || variant > 2 || style < 0
                     || capacityTarget < 0 || capacityTarget > HousingRules.MAX_CAPACITY_TARGET
                     || qualityTarget < 0 || qualityTarget > HousingRules.MAX_QUALITY_TARGET) {
                 throw new IllegalArgumentException("Invalid housing targets");
@@ -45,9 +46,10 @@ public final class HousingSavedData extends SavedData {
         /**
          * Legacy saves carried a single stage and a build cursor. Stage 5 was reachable (the old
          * advance loop incremented unconditionally and the validator allowed it) and is identical
-         * to stage 4 in geometry. The cursor is dropped: progress is derived from the world.
+         * to stage 4 in geometry. The cursor is dropped: progress is derived from the world. A save
+         * written before styles existed has no style field, so it lands on the first style.
          */
-        private static Home migrate(BlockPos bed, int variant, Optional<Integer> capacityTarget,
+        private static Home migrate(BlockPos bed, int variant, int style, Optional<Integer> capacityTarget,
                                     Optional<Integer> qualityTarget, Optional<Integer> legacyStage,
                                     Optional<Integer> legacyStep, Optional<String> workerId) {
             if (legacyStage.isPresent()) {
@@ -55,21 +57,23 @@ public final class HousingSavedData extends SavedData {
                 if (stage < 0 || stage > 5) {
                     throw new IllegalArgumentException("Invalid legacy housing stage: " + stage);
                 }
-                return new Home(bed, variant, Math.min(stage, 2), Math.min(2, Math.max(0, stage - 2)), workerId);
+                return new Home(bed, variant, style, Math.min(stage, 2),
+                        Math.min(2, Math.max(0, stage - 2)), workerId);
             }
-            return new Home(bed, variant, capacityTarget.orElse(0), qualityTarget.orElse(0), workerId);
+            return new Home(bed, variant, style, capacityTarget.orElse(0), qualityTarget.orElse(0),
+                    workerId);
         }
 
         public Home withWorker(Optional<String> value) {
-            return new Home(bed, variant, capacityTarget, qualityTarget, value);
+            return new Home(bed, variant, style, capacityTarget, qualityTarget, value);
         }
 
         public Home withCapacityTarget(int value) {
-            return new Home(bed, variant, value, qualityTarget, workerId);
+            return new Home(bed, variant, style, value, qualityTarget, workerId);
         }
 
         public Home withQualityTarget(int value) {
-            return new Home(bed, variant, capacityTarget, value, workerId);
+            return new Home(bed, variant, style, capacityTarget, value, workerId);
         }
     }
 
