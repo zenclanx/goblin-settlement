@@ -380,3 +380,12 @@
 - [2026-09-27 10:35:24 +08:00] 用 Pillow 检查目录中恰有 8 张 PNG 且均可打开。此验证只涉及图片文件，不代表三视图几何一致或模型可在游戏运行。
 - [2026-09-27 10:37:44 +08:00] 更新 Models/README.md 和 CURRENT_STATUS.md，明确已有 24 方块男哥布林仅为用户未认可的粗模试作，不是正式 A 造型；目前未在 Blockbench 实际打开，也未接入模组或做游戏内验证。
 - [2026-09-27 10:38:10 +08:00] 未完成：高保真男哥布林模型、贴图、动作与实际游戏接入。Blockbench 桌面版及第三方 MCP 仅调查，未安装、未连接或验证；需在取得可视化建模反馈后重新制作，不承诺概念图的逐像素复刻。
+## [2026-09-27 11:35:00 +08:00 – 2026-09-27 11:48:00 +08:00] 第四十轮：交通五任务完整验收与文档收尾
+
+- [2026-09-27 11:35:00 +08:00] 接手"聚落自主修路架桥"五任务的总验收（前四任务的代码与全范围审查修复均已提交，工作区干净；UpdateLog 第三十八、三十九轮是并行美术代理的记录）。核对提交历史确认各任务落点：交通数据层与目标选取（515c0f3 起）、TRANSPORT 需求档与扩地互斥（422f6a4）、修路/架桥判定纯函数（43151e7）、直线探测与提案协调器接线（560fe30），全范围审查后的修复在 9b9ea47、3e8231a、024978d，设计规则落盘在 76efd7f。
+- [2026-09-27 11:36:00 +08:00] 补记全范围审查发现并修复的两个问题（代码已随上述提交入库，本轮以验收视角复核）：一、探测层把长草的河岸判为 BLOCKED 阻挡，导致河对岸的设施永远架不成桥——已改为水面段两侧允许长草河岸/非 sturdy 杂物踩过分类；二、无法服务的目标（距离下限之外或仓库为空）永久顶住 TRANSPORT 需求档，扩地闸被持续挡住而永久冻结——已给 TransportSavedData 增加持久化延期名单并接入目标选取与协调器。两者均已写入 TRAFFIC_DESIGN.md 作为设计规则。
+- [2026-09-27 11:36:04 +08:00] 完整构建 `./gradlew build --offline --no-daemon`：BUILD SUCCESSFUL（19 秒，18 tasks：12 executed、6 up-to-date），10 项独立检查全部打印 `*Check passed`：PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
+- [2026-09-27 11:37:09 +08:00] 核对产物 build/libs/goblin-settlement-0.1.0.jar：392340 字节、时间戳 2026-09-27 11:36；本批新类 planning/transport/TrafficDecision、planning/transport/TrafficTargetRules、planning/transport/StraightLineProbe、construction/transport/TrafficProposalCoordinator 均在 JAR 内。
+- [2026-09-27 11:40:00 +08:00] 更新 CURRENT_STATUS.md：把"道路桥梁的居民实际搬运施工"从缺口移出并记为已接入候选（立项只写存档不动世界，施工仍由 TransportCoordinator 既有路径完成，派工沿用 WorkKind.TRANSPORT）；记录本轮接入的自主立项五件套（已服务设施登记、TRANSPORT 需求档与扩地互斥、修路/架桥纯判定、有界只读直线探测、提案协调器）；验证进展写明"完整构建 + 10 项独立检查通过，未做游戏内验证"；尚需实现保留通行量驱动的道路升级、成熟期多工程并行、道路连通性验收、石桥与更长跨度，以及此前遗留的完整住宅升级链与多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复、职业系统剩余 6 项。
+- [2026-09-27 11:45:00 +08:00] 提交本轮文档（UpdateLog.md 与 CURRENT_STATUS.md，仅暂存实际改动文件）并推送到 origin/claude/settlement-first-pass；代码与资源无改动，不另行提交。
+- [2026-09-27 11:48:00 +08:00] 未完成：交通自主立项只有编译与纯函数证据，未启动游戏、未运行专用服务端、未触碰常用存档，不能视为玩法验收；通行量驱动的道路升级、成熟期多工程并行、道路连通性验收、石桥与更长跨度仍缺；完整住宅升级链与多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复、职业系统剩余 6 项延续此前状态。

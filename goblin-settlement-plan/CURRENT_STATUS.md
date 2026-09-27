@@ -1,19 +1,26 @@
 # 当前状态：哥布林模组接续入口
 
-更新日期：2026-09-27 10:37 +08:00。详细历史仅追加到 UpdateLog.md。
+更新日期：2026-09-27 11:40 +08:00。详细历史仅追加到 UpdateLog.md。
 
 ## 本轮执行约定
 
-先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。当前工作在独立分支 `claude/settlement-first-pass`，验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 本轮完整构建收尾）已接入候选。
+先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。当前工作在独立分支 `claude/settlement-first-pass`，验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 完整构建收尾）与道路桥梁自主立项（交通 5 任务）均已接入候选。
 
 ## 阶段定位
 
 - 阶段 1—2：独立工程、基本存档权限、单居民从真实箱子取料施工，代码与较早游戏验证均已有。
 - 阶段 3：多工地与死亡/取消/卸载恢复有较早验证；取消/死亡后计划永久占用工人的卡死修复有纯函数检查覆盖，未在游戏中复验。
-- 阶段 4：农业、食物与木工具、林业、家庭和人口约束扩地、采矿井与冶炼调度、职业系统有候选代码。职业系统已完成完整构建 + 7 项独立检查，但未做游戏内验证。
-- 阶段 5：道路桥梁规划及服务端逐块施工有候选代码，但居民实际搬运施工仍主要由管理员命令立项。
+- 阶段 4：农业、食物与木工具、林业、家庭和人口约束扩地、采矿井与冶炼调度、职业系统有候选代码。职业系统已完成完整构建 + 独立检查，但未做游戏内验证。
+- 阶段 5：道路桥梁自主立项（已服务设施登记、TRANSPORT 需求档与扩地互斥、修路/架桥纯判定、有界只读直线探测、提案协调器）有候选代码，完整构建 + 10 项独立检查通过；居民实际搬运施工已接入候选（立项后由 TransportCoordinator 既有路径施工）。未做游戏内验证。
 - 阶段 6：简易床位与顶棚、六个傀儡数值等级、关系处理、原版铁傀儡接入与赠予交易命令有候选代码；完整住宅升级链与多蓝图仍缺。
 - 阶段 7：部分扫描上限、区块门控与两张原创贴图已做；成熟城镇性能和跨存储异常恢复方案未完成。七阶段不能标记为已实现。
+
+## 本轮接入的内容（道路桥梁自主立项）
+
+- 数据层与纯规则：`planning/transport/TrafficDecision`（修路/架桥纯判定，NONE/ROAD/BRIDGE + 首段水面与近远岸）、`planning/transport/TrafficTargetRules`（最近未服务设施选取，MIN_TARGET_DISTANCE_SQ=144 下限，确定性破序）、`TransportSavedData` 新增已服务设施登记与持久化延期名单。
+- 需求与扩地：`SettlementDemand` 新增 `TRANSPORT` 档（工具不全 → BASIC_TOOLS → 待修交通 → TRANSPORT → 建造/就绪）；`ExpansionCoordinator` 在有待修交通或未完成交通工程时让位。
+- 探测与协调器：`planning/transport/StraightLineProbe`（有界只读直线探测，上界 80 列，权限与区块门控，长草河岸/杂物的踩过分类）、`construction/transport/TrafficProposalCoordinator`（1200 tick 周期，单在途硬门禁 + 材料门禁，桥失败回退修路）。立项只写存档不动世界，施工仍走 TransportCoordinator 既有路径，派工沿用 WorkKind.TRANSPORT。
+- 全范围审查修复两项：探测层把长草河岸判为阻挡导致对岸设施永远架不成桥（已修复并写入 TRAFFIC_DESIGN.md 设计规则）；无法服务的目标永久顶住需求档导致扩地被永久冻结（已加持久化延期名单修复，规则同步写入设计文档）。
 
 ## 本轮接入的内容（职业系统）
 
@@ -24,10 +31,9 @@
 
 ## 本轮验证进展
 
-- 固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`），7 项独立检查全部通过：PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、WorkerAssignmentRules。
-- 全分支审查修复后复跑 `./gradlew check --offline --no-daemon`：BUILD SUCCESSFUL，7 项独立检查全部打印 `*Check passed`。修复内容：RECOVERY 映射拆行、assign 命令旁路说明、渲染器贴图常量化、设计文档时间口径（详见 UpdateLog.md 第三十七轮补记）。
-- `goblin-settlement-0.1.0.jar` 重新生成（371476 字节，2026-09-27 00:00），已核对含 4 个新类与 9 张贴图。
-- 未做游戏内验证：未启动游戏、未运行专用服务端、未触碰常用存档。
+- 固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`，BUILD SUCCESSFUL），10 项独立检查全部打印 `*Check passed`：PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
+- `goblin-settlement-0.1.0.jar` 重新生成（392340 字节，2026-09-27 11:36），已核对含交通新类：`planning/transport/TrafficDecision`、`planning/transport/TrafficTargetRules`、`planning/transport/StraightLineProbe`、`construction/transport/TrafficProposalCoordinator`。
+- 未做游戏内验证：未启动游戏、未运行专用服务端、未触碰常用存档。构建与检查通过不代表玩法验收。
 
 ## 美术候选（2026-09-27）
 
@@ -41,10 +47,11 @@
 ## 尚需实现与统一验收
 
 1. 职业系统剩余：职业熟练度、职业名额、派工服务收口、哨卫工作、儿童外观、真实手持工具。
-2. 七阶段其他缺口：道路桥梁的居民实际搬运施工、完整住宅升级链与更多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复。
-3. 采矿、冶炼调度、工人释放修复与职业系统**均未在游戏中验证**，只有编译与纯函数证据。
-4. 突然断电时实体、方块、箱子与 Saved Data 的跨存储一致性尚无保证；死亡掉落实体创建被游戏规则阻止时也可能最终失物。
-5. 保守取物目击只覆盖单箱单槽场景。道路/桥梁的非活动区块恢复、分仓与复杂地形仍需统一验证。
+2. 交通剩余：通行量驱动的道路升级、成熟期多工程并行、道路连通性验收、石桥与更长跨度（设计第 7/12 节要求，本轮未覆盖）。
+3. 七阶段其他缺口：完整住宅升级链与更多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复。
+4. 交通自主立项、采矿、冶炼调度、工人释放修复与职业系统**均未在游戏中验证**，只有编译与纯函数证据。
+5. 突然断电时实体、方块、箱子与 Saved Data 的跨存储一致性尚无保证；死亡掉落实体创建被游戏规则阻止时也可能最终失物。
+6. 保守取物目击只覆盖单箱单槽场景。道路/桥梁的非活动区块恢复、分仓与复杂地形仍需统一验证。
 
 ## 外部纯函数任务
 
