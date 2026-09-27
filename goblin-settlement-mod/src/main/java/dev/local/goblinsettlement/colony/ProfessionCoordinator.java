@@ -20,8 +20,10 @@ public final class ProfessionCoordinator {
         if (data.settlement().isEmpty()) {
             return;
         }
+        int adults = data.adultCount();
         for (String residentId : data.unassignedAdultIds()) {
-            data.assignProfession(residentId, ProfessionRules.scarcest(data.assignedProfessions()));
+            ProfessionRules.scarcest(data.assignedProfessions(), adults)
+                    .ifPresent(profession -> data.assignProfession(residentId, profession));
         }
     }
 }
