@@ -11,7 +11,10 @@ import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
 import dev.local.goblinsettlement.planning.road.RoadPlanner;
 import dev.local.goblinsettlement.planning.transport.RoadLayout;
 import dev.local.goblinsettlement.planning.transport.RoadUpgradeRules;
+import dev.local.goblinsettlement.planning.transport.TransportConnectivity;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -279,6 +282,12 @@ public final class TransportCoordinator {
                 return;
             }
             if (plan.kind() == TransportPlan.Kind.WOOD_BRIDGE) {
+                // A crossing nobody can walk is not opened. The saved closure keeps it impassable, and
+                // the temporary fences stay up, so a bridge that is not yet crossable still looks like
+                // a site rather than a finished bridge behind an invisible wall.
+                if (!bridgeConnects(level, plan, settlement.settlement().orElseThrow().anchor())) {
+                    return;
+                }
                 // Keep the saved closure until every temporary fence is gone.
                 // A failed removal can be retried after a reload without opening early.
                 if (clearFinishedBarriers(level, plan)) {
@@ -536,6 +545,119 @@ public final class TransportCoordinator {
             }
         }
         return true;
+    }
+
+    /** The cell a walker stands on for this step: roads and approaches sit on the ground, decks are it. */
+    private static BlockPos walkerCell(TransportPlan.Step step) {
+        return step.site().above();
+    }
+
+    /**
+     * Whether a declared walking cell can be walked through right now. Our own temporary barrier fence
+     * is not an obstruction -- it is a construction marker, not terrain -- so a finished-but-unopened
+     * bridge can be judged while its fences are still up, and a read-only command can judge it at all.
+     */
+    private static boolean passable(ServerLevel level, TransportPlan plan, BlockPos cell) {
+        BlockState state = level.getBlockState(cell);
+        if (state.isAir()) {
+            return true;
+        }
+        return plan.barrierFeet().contains(cell) && state.is(Blocks.OAK_FENCE);
+    }
+
+    /** The cell nearest a point; ties break by x then z so the answer never wobbles. */
+    private static BlockPos nearestOf(Collection<BlockPos> cells, BlockPos to) {
+        BlockPos best = null;
+        for (BlockPos cell : cells) {
+            if (best == null || isCloser(cell, best, to)) {
+                best = cell;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isCloser(BlockPos candidate, BlockPos incumbent, BlockPos to) {
+        double candidateDistance = candidate.distSqr(to);
+        double incumbentDistance = incumbent.distSqr(to);
+        if (candidateDistance != incumbentDistance) {
+            return candidateDistance < incumbentDistance;
+        }
+        int byX = Integer.compare(candidate.getX(), incumbent.getX());
+        return byX != 0 ? byX < 0 : candidate.getZ() < incumbent.getZ();
+    }
+
+    /** True while every declared structural cell is in place; false means the plan can be rebuilt. */
+    public static boolean structurallyComplete(ServerLevel level, TransportPlan plan) {
+        return firstMissingStructuralStep(level, plan) < 0;
+    }
+
+    /**
+     * Whether a finished bridge can be crossed: a walker on the landing nearest the settlement must
+     * reach a landing on the far bank, using only the bridge's own built walking cells. The far bank is
+     * the pair of landings farthest from the near one, so no stored landing order is relied on.
+     */
+    public static boolean bridgeConnects(ServerLevel level, TransportPlan plan, BlockPos anchor) {
+        if (plan.barrierFeet().isEmpty()) {
+            return false;
+        }
+        var walkable = new HashSet<BlockPos>();
+        for (TransportPlan.Step step : plan.steps()) {
+            if (step.phase() != TransportPlan.Phase.SURFACE
+                    && step.phase() != TransportPlan.Phase.APPROACHES) {
+                continue;
+            }
+            BlockPos cell = walkerCell(step);
+            if (passable(level, plan, cell)) {
+                walkable.add(cell);
+            }
+        }
+        BlockPos from = nearestOf(plan.barrierFeet(), anchor);
+        var landings = new ArrayList<>(plan.barrierFeet());
+        landings.sort((left, right) -> isCloser(left, right, from) ? -1 : (isCloser(right, left, from) ? 1 : 0));
+        var goals = new HashSet<>(landings.subList(landings.size() - 2, landings.size()));
+        return TransportConnectivity.connects(walkable, from, goals);
+    }
+
+    /**
+     * Whether a finished road actually reaches the facility its chain was built for: a walker on the
+     * cell nearest the settlement must reach a cell beside that facility, using only the road's own
+     * built walking cells. Every member of the chain counts -- a widening is part of the road.
+     */
+    public static boolean roadConnects(ServerLevel level, TransportSavedData traffic,
+                                       TransportPlan road, BlockPos anchor) {
+        var target = traffic.roadTarget(road.id());
+        if (target.isEmpty()) {
+            return true; // nothing was recorded to reach, so there is no claim to verify
+        }
+        BlockPos facility = target.orElseThrow();
+        var walkable = new HashSet<BlockPos>();
+        var goals = new HashSet<BlockPos>();
+        for (TransportPlan member : traffic.chainOf(road.id())) {
+            for (TransportPlan.Step step : member.steps()) {
+                if (step.phase() != TransportPlan.Phase.SURFACE) {
+                    continue;
+                }
+                BlockPos cell = walkerCell(step);
+                if (!passable(level, member, cell)) {
+                    continue;
+                }
+                walkable.add(cell);
+                if (besideFacility(cell, facility)) {
+                    goals.add(cell);
+                }
+            }
+        }
+        if (goals.isEmpty()) {
+            return false;
+        }
+        return TransportConnectivity.connects(walkable, nearestOf(walkable, anchor), goals);
+    }
+
+    /** True when the cell is beside the facility: one step horizontally and at most one up or down. */
+    private static boolean besideFacility(BlockPos cell, BlockPos facility) {
+        int dx = Math.abs(cell.getX() - facility.getX());
+        int dz = Math.abs(cell.getZ() - facility.getZ());
+        return dx + dz == 1 && Math.abs(cell.getY() - facility.getY()) <= 1;
     }
 
     private static boolean siteReady(
