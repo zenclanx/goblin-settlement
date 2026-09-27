@@ -1,6 +1,6 @@
 # 当前状态：哥布林模组接续入口
 
-更新日期：2026-09-27 14:31 +08:00。详细历史仅追加到 UpdateLog.md。
+更新日期：2026-09-27 15:00 +08:00。详细历史仅追加到 UpdateLog.md。
 
 ## 接续须知（先读这段）
 
@@ -12,7 +12,7 @@
 
 ## 本轮执行约定
 
-先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。第四十二轮起因用户指定直接在 `main` 上开发。验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 完整构建收尾）、道路桥梁自主立项（交通 5 任务）与住宅两轴升级链（住宅 7 任务）均已接入候选；第四十二轮收敛了床位判据的重复实现。
+先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。第四十二轮起因用户指定直接在 `main` 上开发。验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 完整构建收尾）、道路桥梁自主立项（交通 5 任务）与住宅两轴升级链（住宅 7 任务）均已接入候选；第四十二轮收敛了床位判据的重复实现，第四十三轮细化了住宅决策规则（缺床时饱和房子不动）。
 
 ## 阶段定位
 
@@ -55,11 +55,19 @@
 - 新增独立检查 `HousingRulesCheck.checkUsableBedHead`，逐条断言判据的三条腿各自独立决定结果。
 - 明确不合并的近似副本：`HousingCoordinator.isBedHead`（识别锚点床，故意不含净空）、`camp/CampGenerationCoordinator.bedPartMatches`（校验刚放置白床的部件与朝向）——已在源码加注说明。
 
+## 本轮接入的内容（第四十三轮：住宅决策规则细化）
+
+- `HousingRules.decide` 增参 `usedBedsNear`（该房锚点 `BIND_RADIUS` 半径内已用的床位数）。缺床时改问既有的 `canGainCapacity(usedBedsNear, capacityTarget)`：能多放一张床才扩容量，否则返回 **NONE**（不装修、不花木板，也不再占用每 40 tick 一次的决策名额）。原先"`capacityTarget < MAX_CAPACITY_TARGET` 就扩容量"的单独判断删除——已由 `canGainCapacity` 涵盖，留着就是两处判据。
+- `HousingCoordinator` 抽出 `bedHeadAxes`/`usedBedsNear` 两个私有助手，`tick` 与 `hasCapacityGain` 共用（后者原是内联的重复构造）；`decide` 的调用点同步补第 5 参。
+- **设计取舍**：缺床期间不装修。这推翻了实现期 `HousingRulesCheck` 的断言"缺床且容量到顶转提品质"（改为期望 NONE），依据是 HOUSING_DESIGN.md §4 正文"缺房时不会去给房子加装饰"——两者此前互相矛盾，现以设计原文为准，详见该文档新增的 §4.1。
+- 逃生路径未动：全聚落无处可扩容时 `hasCapacityGain` 为假 → 扩地放行 + 自由放床。
+
 ## 本轮验证进展
 
-- 第四十二轮：先跑绿色基线，再按 TDD 先写失败检查（`:compileTestJava FAILED`，报错为方法不存在，失败原因正确），实现后转绿。固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`，BUILD SUCCESSFUL，22 秒，无编译警告），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
-- `goblin-settlement-0.1.0.jar` 重新生成（402322 字节，2026-09-27 14:30）。
-- 未做游戏内验证：未启动游戏、未运行专用服务端、未触碰常用存档。构建与检查通过不代表玩法验收。
+- 第四十三轮：按 TDD 先写失败检查（`:compileTestJava FAILED`，报错为「需要: int,int,int,int / 找到: int,int,int,int,int」，失败原因正确），实现后转绿。固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`，BUILD SUCCESSFUL，17 秒，无编译警告），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
+- `goblin-settlement-0.1.0.jar` 重新生成（402519 字节，2026-09-27 14:59）。已核对 `HousingRules.decide` 的生产调用方只剩 `HousingCoordinator` 一处。
+- 第四十二轮（床位判据收敛）的构建为 402322 字节、22 秒。
+- 未做游戏内验证：未启动游戏、未运行专用服务端、未触碰常用存档。构建与检查通过不代表玩法验收。第四十三轮"缺床期间不再装修"是设计取舍，需在统一测试时观察成熟聚落是否因此长期停在低品质。
 
 ## 美术候选（2026-09-27）
 
@@ -74,7 +82,7 @@
 
 1. 职业系统剩余：职业熟练度、职业名额、派工服务收口、哨卫工作、儿童外观、真实手持工具。
 2. 交通剩余：通行量驱动的道路升级、成熟期多工程并行、道路连通性验收、石桥与更长跨度（设计第 7/12 节要求，本轮未覆盖）。
-3. 住宅剩余。**床位判据已于第四十二轮收敛为单一权威**（`BedCensus.usableBedHead` 采集三项事实、`HousingRules.usableBedHead` 做纯判定，`FamilyCoordinator` 与 `BedProvisioningCoordinator` 已改走它，新增独立检查用例逐条钉死判据的三条腿；未合并 `HousingCoordinator.isBedHead`——它问的是"是不是我登记的锚点床"，故意不含净空要求）。**下轮第一优先**：`HousingRules.decide` 在一栋房子已无扩容空间时仍会抬高它的容量目标，白花约 81 块木板（有界、会自解，但设计规则可细化）。其余：蓝图与材料清单迁到受校验的数据文件（几何仍硬编码在协调器里）、改建安全（拆前确认材料与临时住处）、公共设施、更多蓝图（`Home.variant` 仍是朝向镜像，不是可选形制）、实体公告牌方块、住户分配、历史保留。
+3. 住宅剩余。**已完成两项**：床位判据已于第四十二轮收敛为单一权威；`HousingRules.decide` 的白花问题已于第四十三轮修掉（缺床时改由 `canGainCapacity` 决定扩不扩容量，放不下则不动；`decide` 签名变 5 参，检查断言随之变更，设计见 HOUSING_DESIGN.md §4/§4.1）。**下轮第一优先**：蓝图与材料清单迁到受校验的数据文件——TECH_DESIGN 第 6 节要求（资源标识存在、升级链无环、蓝图有合法入口、数值不越界），目前几何仍硬编码在 `HousingCoordinator` 里，它也是"更多蓝图"的前置。其余：改建安全（拆前确认材料与临时住处）、公共设施、更多蓝图（`Home.variant` 仍是朝向镜像，不是可选形制）、实体公告牌方块、住户分配、历史保留。
 4. 七阶段其他缺口：阶段 7 成熟城镇性能与跨存储异常恢复。
 5. 交通自主立项、采矿、冶炼调度、工人释放修复、职业系统与住宅两轴升级链**均未在游戏中验证**，只有编译与纯函数证据。
 6. 突然断电时实体、方块、箱子与 Saved Data 的跨存储一致性尚无保证；死亡掉落实体创建被游戏规则阻止时也可能最终失物。

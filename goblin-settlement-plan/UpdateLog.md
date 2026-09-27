@@ -410,3 +410,12 @@
 - [2026-09-27 14:30:00 +08:00] 完整构建 `./gradlew build --offline --no-daemon`：BUILD SUCCESSFUL（22 秒），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。无编译警告。
 - [2026-09-27 14:30:30 +08:00] 核对产物 build/libs/goblin-settlement-0.1.0.jar：402322 字节、时间戳 2026-09-27 14:30。
 - [2026-09-27 14:31:00 +08:00] 未完成：本轮为无行为变更的去重重构，仍只有编译与纯函数证据，未启动游戏、未运行专用服务端、未触碰常用存档，不构成玩法验收。CURRENT_STATUS.md 第 3 条剩余的"decide 在已无扩容空间的房子上仍抬高容量目标"未处理。
+## [2026-09-27 14:33:00 +08:00 – 2026-09-27 15:00:00 +08:00] 第四十三轮：住宅决策规则细化（缺床时饱和房子不动）
+
+- [2026-09-27 14:35:00 +08:00] 处理 CURRENT_STATUS 第 3 条"下轮第一优先"：`HousingRules.decide` 在一栋房子已无扩容空间时仍抬高其容量目标，白花约 81 块木板。先按 superpowers 的 brainstorming 走设计对话，发现设计与实现互相矛盾：HOUSING_DESIGN.md §4 正文写"缺房时**不会**去给房子加装饰"，而实现期 HousingRulesCheck 却断言"缺床且容量到顶转提品质（instead of stalling）"。两者不能同时成立，提给用户裁决。
+- [2026-09-27 14:40:00 +08:00] 用户选择"缺床时不装修"。据此改写 HOUSING_DESIGN.md §4 并新增 §4.1：缺床时只有 `canGainCapacity(周围已用床数, 容量目标)` 为真才扩容量，否则返回 NONE；`capacityTarget < MAX_CAPACITY_TARGET` 的单独判断删除（已由 `canGainCapacity` 涵盖，避免两处判据）。§4.1 同时记下与旧断言的冲突取舍（以设计原文为准）与正向副作用（饱和房子不再占用每 40 tick 一次的决策名额）。§10"绑定残余死角"补记与 4.1 的关系：那种房子会反复扩容量（有界，上限 2 级）却仍放不下床，成因是物理放床受阻，本轮不缓解。设计提交 f03bcdf。
+- [2026-09-27 14:48:00 +08:00] 按 writing-plans 写实施计划 HOUSING_DECIDE_PLAN.md（两个任务，内嵌自查记录），提交 14baf47。用户选择本会话内联执行。
+- [2026-09-27 14:52:00 +08:00] Task 1 按 TDD 执行：先改 `HousingRulesCheck.checkDecide` 写失败用例（全部调用补第 5 参、原 `(8,8,2,0)` 期望由 IMPROVE_QUALITY 改为 NONE、新增 `(8,8,1,0,3)→NONE` 覆盖白花情形）。运行 `./gradlew housingRulesCheck --offline --no-daemon` 失败，报错为「需要: int,int,int,int / 找到: int,int,int,int,int」，失败原因正确。
+- [2026-09-27 14:55:00 +08:00] 实现：`HousingRules.decide` 增参 `usedBedsNear` 并改用 `canGainCapacity`；`HousingCoordinator` 抽出 `bedHeadAxes`/`usedBedsNear` 两个私有助手，`tick` 与 `hasCapacityGain` 共用（后者原先是内联的一份重复构造），补 `import java.util.List`。检查转绿。
+- [2026-09-27 14:59:00 +08:00] 完整构建 `./gradlew build --offline --no-daemon`：BUILD SUCCESSFUL（17 秒），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。无编译警告。产物 build/libs/goblin-settlement-0.1.0.jar：402519 字节、时间戳 2026-09-27 14:59。核对 `HousingRules.decide` 的生产调用方只剩 HousingCoordinator 一处，已同步。代码提交 b23d4d9。
+- [2026-09-27 15:00:00 +08:00] 未完成：本轮仍只有编译与纯函数证据，未启动游戏、未运行专用服务端、未触碰常用存档，不构成玩法验收。"缺床期间不再装修"是设计取舍，需在统一测试时观察成熟聚落是否因此长期停滞在低品质；§10 的绑定残余死角未缓解。
