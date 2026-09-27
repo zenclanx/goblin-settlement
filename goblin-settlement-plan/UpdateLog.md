@@ -566,3 +566,17 @@
 - [2026-09-27 18:03:00 +08:00] **用户决定拆两轮、先量再决定**。第一轮只做：采样通行量（定期遍历已加载居民、查"铺面方块→计划 id"表）、持久化计数（`TransportSavedData` 的 `unboundedMap(STRING, INT)`，可选字段不升 schema）、纯判据 `RoadUpgradeRules`（2→3→5，阈值是**发明值**并标注）、`status` 显示各路流量与是否够格加宽。**第二轮才真的加宽。**
 - [2026-09-27 18:04:00 +08:00] **两个必须分轮的硬点**（已写进设计）：一、**阈值没有数据就定不出来**——§7 说的是"频率"，而频率要看过才知道；二、**加宽会撞上既有计划模型**——进度是"步列表 + 游标"，往路中间插入新车道会让游标错位（与 HOUSING 两轴升级链当初遇到的问题同类），且从步列表**推导不出路线方向**，算不出"旁边的车道"在哪；再加宽还要处理"旧车道的样本算谁的"以免形成加宽循环。
 - [2026-09-27 18:05:00 +08:00] 已写 [TRAFFIC_UPGRADE_DESIGN.md](TRAFFIC_UPGRADE_DESIGN.md)（只覆盖第一轮，第二轮列为范围外并说明理由）。**实现计划 `TRAFFIC_UPGRADE_PLAN.md` 尚未写**——下一个对话应从读该设计、写计划开始，不需要重新 brainstorming。未写代码、未改动任何运行时源码、未构建、未做游戏内验证。
+
+## [2026-09-27 18:22:00 +08:00 – 2026-09-27 18:47:00 +08:00] 第五十四轮：通行量采样（量）
+
+- [2026-09-27 18:22:00 +08:00] 按 TRAFFIC_UPGRADE_DESIGN.md 与 TRAFFIC_UPGRADE_PLAN.md 执行"先量再决定"的第一轮。本轮**只量、只存、只显示**，不加宽任何道路。
+- [2026-09-27 18:26:00 +08:00] 新增纯判据 `planning/transport/RoadUpgradeRules`：档位梯子 2/3/5，`nextLanes` 对梯子上没有的宽度取上一档（1→2、4→5、9→5），`shouldUpgrade` 满足"满档永假、越宽要得越多、至少一整份"三条。GAME_DESIGN 第 7 节只给宽度不给数字，因此 `TRAFFIC_PER_LANE = 200` 是**发明值**，源码注释写明没有依据、须按实测重定。
+- [2026-09-27 18:28:00 +08:00] 新增第 15 项独立检查 `RoadUpgradeRulesCheck`：档位推进、到顶不再变、阈值边界（刚好到 / 差一）、越宽要求越多、满档与非法宽度永不升级、`BUILT_ROAD_LANES` 在梯子上。
+- [2026-09-27 18:30:00 +08:00] `TransportSavedData` 加持久映射"计划 id → 命中次数"（`Codec.unboundedMap`，`optionalFieldOf`，**不升 schema 版本**）、加 `revision` 版本号（`add`/`replace` 各一处自增）、加 `pruneTraffic`（构造与 `replace` 两处清理）。落在 `replace` 是因为 `MAX_COMPLETED_ROADS` 的淘汰正在那里发生——不清理的话映射会随计划增删无界增长（设计 §3 点名）。
+- [2026-09-27 18:31:00 +08:00] 新增 `construction/transport/TrafficSampler`：每 `SAMPLE_INTERVAL_TICKS = 100`（5 秒）遍历已加载居民（上限 64），取脚下方块在"铺面 → 计划 id"表里查，命中即给那条路记 1 次。表由**已完成 ROAD 计划的 SURFACE 步**织出，按 `(instance, revision)` 缓存——键用 `TransportSavedData` 而非 `ServerLevel`，因为同一进程内重新加载维度会换一个新实例而 `revision` 从 0 重来。
+- [2026-09-27 18:32:00 +08:00] **采样节拍是判据的一半**：命中数按次累计，所以调 `SAMPLE_INTERVAL_TICKS` 就改变了阈值的含义。两个常量在注释里互相引用。设计 §2 的要求。
+- [2026-09-27 18:33:00 +08:00] 显示：`goblinsettlement status` 加一行 `Road traffic: n road(s), k ready to widen (*); <id8>=<count>[ *]…`（命中数降序、并列按 id、最多 8 条、其余折叠为 `+N more`）。设计 §6 的理由是"本轮价值一半在把数据摊开"——否则调阈值仍是盲调。
+- [2026-09-27 18:38:00 +08:00] `TransportCoordinator.startRoad` 的取车道循环**一行未改**，只加了一行指向 `RoadUpgradeRules.BUILT_ROAD_LANES` 的注释：不把常量搬进循环，因为加宽轮次会重写这段。
+- [2026-09-27 18:39:00 +08:00] **近似而非精确流量**（设计 §8）：站岗、避难、打架的居民也会被计到；本轮不按 `workStage` 过滤，不加字段。计数**不按经过的采样数归一**，建得早的路数更大——第二轮定阈值必须把这一点算进去。
+- [2026-09-27 18:46:00 +08:00] 验证：完整构建 ./gradlew build --offline --no-daemon BUILD SUCCESSFUL，**15 项**独立检查全部 *Check passed（新增第 15 项 `RoadUpgradeRulesCheck`）。产物 build/libs/goblin-settlement-0.1.0.jar：436602 字节，耗时 20 秒。
+- [2026-09-27 18:47:00 +08:00] 未完成：不做玩法验收；**采样、计数持久化、显示三样都不可纯测**（只有编译与代码审查）；阈值与节拍都是发明值；加宽本身留下一轮，本轮结束后路会被判为"够格"但宽度不变。
