@@ -3,8 +3,8 @@ package dev.local.goblinsettlement.construction.transport;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
-import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.WorkKind;
+import dev.local.goblinsettlement.colony.WorkerDispatch;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
@@ -18,7 +18,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Comparator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -31,7 +30,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 
 /**
  * Traffic work uses a persisted resident assignment for each step. The worker
@@ -287,12 +285,8 @@ public final class TransportCoordinator {
             if (slot < 0) {
                 continue;
             }
-            var worker = level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                            new AABB(warehouse).inflate(16.0), GoblinCitizenEntity::isAvailableForConstruction)
-                    .stream().min(Comparator
-                            .comparingInt((GoblinCitizenEntity goblin) ->
-                                    ProfessionRules.matchRank(WorkKind.TRANSPORT, goblin.profession()))
-                            .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(warehouse)));
+            var worker = WorkerDispatch.nearest(level, WorkKind.TRANSPORT, warehouse,
+                    GoblinCitizenEntity::isAvailableForConstruction);
             if (worker.isPresent()) {
                 GoblinCitizenEntity goblin = worker.orElseThrow();
                 TransportPlan assigned = plan.withWorker(Optional.of(goblin.getUUID().toString()));

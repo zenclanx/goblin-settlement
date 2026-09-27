@@ -1,21 +1,19 @@
 package dev.local.goblinsettlement.farming;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
-import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.SettlementDemand;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.WorkKind;
+import dev.local.goblinsettlement.colony.WorkerDispatch;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
-import java.util.Comparator;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.gamerules.GameRules;
-import net.minecraft.world.phys.AABB;
 
 /** Assigns one resident to each registered wheat cell, preserving reservations across unloads. */
 public final class FarmingCoordinator {
@@ -100,12 +98,8 @@ public final class FarmingCoordinator {
             if (warehouse.isEmpty()) {
                 continue;
             }
-            var resident = level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                            new AABB(crop).inflate(16.0), GoblinCitizenEntity::isAvailableForConstruction)
-                    .stream().min(Comparator
-                            .comparingInt((GoblinCitizenEntity goblin) ->
-                                    ProfessionRules.matchRank(WorkKind.FARMING, goblin.profession()))
-                            .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(crop)));
+            var resident = WorkerDispatch.nearest(level, WorkKind.FARMING, crop,
+                    GoblinCitizenEntity::isAvailableForConstruction);
             if (resident.isEmpty()) {
                 continue;
             }

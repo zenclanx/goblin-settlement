@@ -1,15 +1,14 @@
 package dev.local.goblinsettlement.housing;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
-import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
 import dev.local.goblinsettlement.colony.WorkKind;
+import dev.local.goblinsettlement.colony.WorkerDispatch;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,7 +21,6 @@ import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
 
 /** Each review raises one housing target or dispatches one site derived from the world. */
 public final class HousingCoordinator {
@@ -137,14 +135,8 @@ public final class HousingCoordinator {
         }
         var warehouse = PublicWarehouseInventory.firstHolding(level, data, step.get().item());
         if (warehouse.isPresent()) {
-            var worker = level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                            new AABB(warehouse.orElseThrow()).inflate(16.0),
-                            GoblinCitizenEntity::isAvailableForConstruction)
-                    .stream().min(Comparator
-                            .comparingInt((GoblinCitizenEntity goblin) ->
-                                    ProfessionRules.matchRank(WorkKind.HOUSING, goblin.profession()))
-                            .thenComparingDouble(goblin ->
-                                    goblin.blockPosition().distSqr(warehouse.orElseThrow())));
+            var worker = WorkerDispatch.nearest(level, WorkKind.HOUSING, warehouse.orElseThrow(),
+                    GoblinCitizenEntity::isAvailableForConstruction);
             if (worker.isPresent()) {
                 GoblinCitizenEntity goblin = worker.orElseThrow();
                 housing.replace(home.withWorker(Optional.of(goblin.getUUID().toString())));

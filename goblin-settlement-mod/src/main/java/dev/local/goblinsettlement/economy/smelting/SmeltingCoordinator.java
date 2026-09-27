@@ -1,20 +1,17 @@
 package dev.local.goblinsettlement.economy.smelting;
 
-import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
-import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.WorkKind;
+import dev.local.goblinsettlement.colony.WorkerDispatch;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseSupply;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
-import java.util.Comparator;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
 
 /**
  * Runs one real furnace next to a registered warehouse. The module never places the furnace itself,
@@ -87,15 +84,8 @@ public final class SmeltingCoordinator {
 
     private static boolean assignWorker(ServerLevel level, String settlementId,
                                         BlockPos warehouse, BlockPos furnace, FurnaceWorksite.Ore ore) {
-        var worker = level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                        new AABB(warehouse).inflate(16.0),
-                        goblin -> goblin.isAvailableForConstruction()
-                                && WorldModificationPermission.check(level, settlementId,
-                                        goblin.blockPosition()) == WorldModificationPermission.Decision.ALLOWED)
-                .stream().min(Comparator
-                        .comparingInt((GoblinCitizenEntity goblin) ->
-                                ProfessionRules.matchRank(WorkKind.SMELTING, goblin.profession()))
-                        .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(warehouse)));
+        var worker = WorkerDispatch.nearest(level, WorkKind.SMELTING, warehouse,
+                WorkerDispatch.permitted(level, settlementId));
         return worker.isPresent() && worker.orElseThrow().assignSmelting(settlementId, warehouse, furnace, ore);
     }
 

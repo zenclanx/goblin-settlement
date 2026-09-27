@@ -1,13 +1,12 @@
 package dev.local.goblinsettlement.forestry;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
-import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.colony.WorkKind;
+import dev.local.goblinsettlement.colony.WorkerDispatch;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
-import java.util.Comparator;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -252,14 +251,7 @@ public final class ForestryCoordinator {
 
     private static Optional<GoblinCitizenEntity> nearestWorker(
             ServerLevel level, SettlementSavedData data, String id, BlockPos target) {
-        return level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                        new AABB(target).inflate(16.0),
-                        goblin -> goblin.isAvailableForConstruction()
-                                && WorldModificationPermission.check(level, id, goblin.blockPosition())
-                                == WorldModificationPermission.Decision.ALLOWED)
-                .stream().min(Comparator
-                        .comparingInt((GoblinCitizenEntity goblin) ->
-                                ProfessionRules.matchRank(WorkKind.FORESTRY, goblin.profession()))
-                        .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(target)));
+        return WorkerDispatch.nearest(level, WorkKind.FORESTRY, target,
+                WorkerDispatch.permitted(level, id));
     }
 }

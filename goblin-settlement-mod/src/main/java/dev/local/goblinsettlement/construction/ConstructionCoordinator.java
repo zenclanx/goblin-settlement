@@ -85,6 +85,9 @@ public final class ConstructionCoordinator {
             if (warehouse.isEmpty()) {
                 return;
             }
+            // Deliberately not WorkerDispatch: this hire is measured from the dropped stack's own
+            // coordinates, not from a block, so its box and distance metric differ from every other
+            // site. Only this one caller takes its anchor from an entity.
             var resident = level.getEntitiesOfClass(GoblinCitizenEntity.class,
                             new AABB(item.position(), item.position()).inflate(16.0),
                             GoblinCitizenEntity::isAvailableForConstruction)
@@ -114,6 +117,8 @@ public final class ConstructionCoordinator {
         if (supply.isEmpty()) {
             return;
         }
+        // Deliberately not WorkerDispatch: this one ranks the plan's previous worker ahead of
+        // profession fit, a rule no other hire needs. The rest of the recipe is the same.
         var resident = level.getEntitiesOfClass(GoblinCitizenEntity.class,
                         new AABB(supply.get()).inflate(16.0), GoblinCitizenEntity::isAvailableForConstruction)
                 .stream().min(Comparator

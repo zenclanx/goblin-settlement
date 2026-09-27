@@ -1,21 +1,18 @@
 package dev.local.goblinsettlement.economy.tools;
 
-import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
-import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.colony.WorkKind;
+import dev.local.goblinsettlement.colony.WorkerDispatch;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseSupply;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
-import java.util.Comparator;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.AABB;
 
 /** Starts one real-material wooden-tool job when the live warehouse stock needs it. */
 public final class ToolCraftingCoordinator {
@@ -57,15 +54,8 @@ public final class ToolCraftingCoordinator {
                 if (table.isEmpty()) {
                     continue;
                 }
-                var worker = level.getEntitiesOfClass(GoblinCitizenEntity.class,
-                                new AABB(warehouse).inflate(16.0),
-                                goblin -> goblin.isAvailableForConstruction()
-                                        && WorldModificationPermission.check(level, settlementId,
-                                                goblin.blockPosition()) == WorldModificationPermission.Decision.ALLOWED)
-                        .stream().min(Comparator
-                                .comparingInt((GoblinCitizenEntity goblin) ->
-                                        ProfessionRules.matchRank(WorkKind.TOOL_CRAFTING, goblin.profession()))
-                                .thenComparingDouble(goblin -> goblin.blockPosition().distSqr(warehouse)));
+                var worker = WorkerDispatch.nearest(level, WorkKind.TOOL_CRAFTING, warehouse,
+                        WorkerDispatch.permitted(level, settlementId));
                 if (worker.isPresent() && worker.get().assignToolCrafting(settlementId, warehouse,
                         table.get(), kind)) {
                     return;
