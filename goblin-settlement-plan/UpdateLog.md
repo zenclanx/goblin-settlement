@@ -580,3 +580,4 @@
 - [2026-09-27 18:39:00 +08:00] **近似而非精确流量**（设计 §8）：站岗、避难、打架的居民也会被计到；本轮不按 `workStage` 过滤，不加字段。计数**不按经过的采样数归一**，建得早的路数更大——第二轮定阈值必须把这一点算进去。
 - [2026-09-27 18:46:00 +08:00] 验证：完整构建 ./gradlew build --offline --no-daemon BUILD SUCCESSFUL，**15 项**独立检查全部 *Check passed（新增第 15 项 `RoadUpgradeRulesCheck`）。产物 build/libs/goblin-settlement-0.1.0.jar：436602 字节，耗时 20 秒。
 - [2026-09-27 18:47:00 +08:00] 未完成：不做玩法验收；**采样、计数持久化、显示三样都不可纯测**（只有编译与代码审查）；阈值与节拍都是发明值；加宽本身留下一轮，本轮结束后路会被判为"够格"但宽度不变。
+- [2026-09-27 18:56:05 +08:00] 补记：终审指出 `TRAFFIC_UPGRADE_PLAN.md` Task 2 Step 5 的采样器代码块仍是旧形（`WeakHashMap<ServerLevel, Snapshot>` + `Snapshot(TransportSavedData owner, …)`，与紧邻"注意"说明相反）。已把该代码块改为与实装 `TrafficSampler.java` 逐字一致（`owner` 字段与 `ServerLevel` 键由审查修复提交 `6b743f7` 移除），并提交 commit "Correct the plan's sampler snippet to what shipped"。
