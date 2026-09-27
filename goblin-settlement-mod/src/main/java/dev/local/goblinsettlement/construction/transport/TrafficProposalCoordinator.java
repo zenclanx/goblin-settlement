@@ -87,8 +87,9 @@ public final class TrafficProposalCoordinator {
                 BedCensus.shortage(level, settlement));
         if (demand.priority() != SettlementDemand.Priority.TRANSPORT) {
             // Nothing left to connect and nothing more urgent to do: widen what carries the traffic.
-            // READY is the only tier that can be reached here -- this call passes activeConstruction
-            // false, so a busy building site never reaches this point either.
+            // This branch sees every tier other than TRANSPORT (FOOD, SEEDS, BASIC_TOOLS, HOUSING and
+            // the tiers before them); only the inner condition is READY, and this call passes
+            // activeConstruction false, so a busy building site never reaches this point either.
             if (demand.priority() == SettlementDemand.Priority.READY) {
                 proposeWidening(level, settlement, traffic, settlementId);
             }

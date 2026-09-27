@@ -94,7 +94,7 @@ public static List<BlockPos> newLaneFeet(List<BlockPos> route, int fromLanes, in
 
 ## 6. 验证
 
-- **新增第 16 项独立检查 `RoadWideningRulesCheck`**（纯层，覆盖 `RoadLayout` 与加宽几何）：
+- **新增第 16 项独立检查 `RoadLayoutCheck`**（纯层，覆盖 `RoadLayout` 与加宽几何）：
   - 直路：2 → 3 只多一条、3 → 5 两侧各多一条，且索引与上表逐条对齐；
   - 带弯角的阶梯路线：每个弯角处新车道跟着车道对一起旋转（这正是"纯局部规则"做不到的）；
   - 末级路线（端点处理）与单格路线（退化输入）；

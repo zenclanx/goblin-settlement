@@ -52,7 +52,7 @@ public final class RoadLayout {
         return new int[] {-direction[1], direction[0]};
     }
 
-    /** Every walking cell of this road, in centerline order, each cell's offsets in table order. */
+    /** Every walking cell of this road, in centerline order, each distinct cell once. */
     public static List<BlockPos> laneFeet(List<BlockPos> route, int lanes) {
         int[] offsets = laneOffsets(lanes);
         var feet = new LinkedHashSet<BlockPos>();

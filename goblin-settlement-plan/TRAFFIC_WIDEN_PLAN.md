@@ -215,7 +215,6 @@ Expected: `:compileTestJava FAILED`，报错形如 `找不到符号: 类 RoadLay
 ```java
 package dev.local.goblinsettlement.planning.transport;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -268,10 +267,10 @@ public final class RoadLayout {
         return new int[] {-direction[1], direction[0]};
     }
 
-    /** Every walking cell of this road, in centerline order, each cell's offsets in table order. */
+    /** Every walking cell of this road, in centerline order, each distinct cell once. */
     public static List<BlockPos> laneFeet(List<BlockPos> route, int lanes) {
         int[] offsets = laneOffsets(lanes);
-        var feet = new ArrayList<BlockPos>(route.size() * offsets.length);
+        var feet = new LinkedHashSet<BlockPos>();
         for (int index = 0; index < route.size(); index++) {
             int[] side = clockwise(direction(route, index));
             for (int offset : offsets) {
@@ -455,7 +454,7 @@ git commit -m "Put a road's lane geometry and its width in one place each"
                 element.getAsJsonObject().remove("road"));
         var earlier = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, withoutRoad).getOrThrow();
         require(earlier.roadWidth("chain-base") == 2, "a save without the road field falls back to two lanes");
-        require(earlier.roadTraffic("chain-base") == 0, "and has no chain to sum");
+        require(earlier.roadTraffic("chain-base") == 500, "and without a chain it keeps its own samples");
 
         var retirable = new TransportSavedData();
         for (int index = 0; index < 40; index++) {
