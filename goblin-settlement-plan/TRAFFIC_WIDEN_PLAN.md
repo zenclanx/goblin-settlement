@@ -386,6 +386,7 @@ git commit -m "Put a road's lane geometry and its width in one place each"
 **Files:**
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/transport/TransportPlan.java`
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/transport/TransportSavedData.java`
+- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/transport/TransportCoordinator.java`（**仅**两个构造点，见 Step 3g/3h——字段增加强制它们一起改，否则本任务编不过）
 - Modify: `goblin-settlement-mod/src/test/java/dev/local/goblinsettlement/construction/transport/TransportSavedDataCheck.java`
 
 **Interfaces:**
@@ -601,6 +602,27 @@ public record TransportPlan(
 
 3f. `advance()` / `rewind(int)` / `withOpen(boolean)` / `withWorker(Optional<String>)` 四个方法里，把最后的 `targetFacility)` 改成 `targetFacility, road)`（四处各加一个 `road` 实参；其余参数不动）。
 
+3g. `TransportCoordinator.startRoad` 里的计划构造加上 `road`（**这两处是第 12 个分量强制出来的编译修复，不是可选的**）：
+
+```java
+        TransportPlan plan = new TransportPlan(
+                UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.ROAD,
+                List.copyOf(sites.values()), 0, false, List.of(), List.of(), List.of(),
+                Optional.empty(), Optional.of(targetFacility),
+                Optional.of(new TransportPlan.Road(Optional.empty(), RoadUpgradeRules.baseLanes(), route)));
+```
+
+（`route` 与 `RoadUpgradeRules` 在本步之前必须已在 `startRoad` 作用域与 import 里——**若还没有，本步就只加最小 import，不要顺手改车道循环**：那属于 Task 3。）
+
+3h. `TransportCoordinator.startWoodBridge` 里的计划构造**只加最后一个实参**：
+
+```java
+        TransportPlan plan = new TransportPlan(
+                UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.WOOD_BRIDGE,
+                steps, 0, false, barriers, List.copyOf(closure), candidate.surveyedBases(),
+                Optional.empty(), Optional.empty(), Optional.empty());
+```
+
 - [ ] **Step 4: `TransportSavedData` 加链口径**
 
 4a. 在 `recordTraffic` **之后**加：
@@ -756,6 +778,7 @@ Expected: `BUILD SUCCESSFUL`，16 项全部 `*Check passed`。
 ```bash
 git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/transport/TransportPlan.java \
         goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/transport/TransportSavedData.java \
+        goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/transport/TransportCoordinator.java \
         goblin-settlement-mod/src/test/java/dev/local/goblinsettlement/construction/transport/TransportSavedDataCheck.java
 git commit -m "Give a road a chain, a width and a centerline"
 ```
@@ -809,7 +832,9 @@ git commit -m "Give a road a chain, a width and a centerline"
 
 **`laneFeet` 的输出顺序与旧循环逐格相同**（每个中线格先偏移 0 后偏移 1），所以 `sites` 的插入顺序与最终步列表一字不变。
 
-- [ ] **Step 2: `startRoad` 的计划带上中线**
+- [ ] **Step 2: 核对，不要重做——`startRoad` 的计划带上中线（Task 2 的 Step 3g 已落地）**
+
+**本步与 Step 3 已经作为"第 12 个分量强制出来的编译修复"在 Task 2 里执行过了**（见那份任务的 Step 3g/3h）。下面的内容只作核对依据：代码现在应该已经是"替换为"之后的样子。**若发现还是旧的，说明 Task 2 没做全——回报这件事，不要在这里就地补**。
 
 把 `startRoad` 里的
 
@@ -830,7 +855,7 @@ git commit -m "Give a road a chain, a width and a centerline"
                 Optional.of(new TransportPlan.Road(Optional.empty(), RoadUpgradeRules.baseLanes(), route)));
 ```
 
-- [ ] **Step 3: 桥梁计划补上空的 `road`**
+- [ ] **Step 3: 核对——桥梁计划补上空的 `road`（Task 2 的 Step 3h 已落地）**
 
 把 `startWoodBridge` 里的
 
@@ -1204,7 +1229,7 @@ Expected: 推送成功。若被拒，先 `git pull --rebase origin main` 再推�
 
 - `RoadLayout` 五个方法的签名在 Task 1 的定义、`RoadLayoutCheck` 的调用、Task 3/4 的使用三处一致；`direction` 返回 `int[]{dx,dz}`（不是 `Direction`），`clockwise` 吃 `int[]`。
 - `TransportPlan.Road(Optional<String>, int, List<BlockPos>)` 的实参顺序在 Task 2 的 codec、`roads()` 的判定、Task 3 Step 2、Task 4 Step 1 四处一致（`widensFrom` 在前）。
-- `TransportPlan` 由 11 个分量变 12 个：**全部 8 个构造点**都已列出——`TransportPlan` 自己的 `advance`/`rewind`/`withOpen`/`withWorker`（Task 2 Step 3f），`TransportCoordinator` 的 `startRoad`（Task 3 Step 2）与 `startWoodBridge`（Task 3 Step 3），`TransportSavedDataCheck` 的 `roadPlan` 与 `bridgePlan`（Task 2 Step 1）。
+- `TransportPlan` 由 11 个分量变 12 个：**全部 8 个构造点都在 Task 2 里**——`TransportPlan` 自己的 `advance`/`rewind`/`withOpen`/`withWorker`（Step 3f），`TransportCoordinator` 的 `startRoad`（Step 3g）与 `startWoodBridge`（Step 3h），`TransportSavedDataCheck` 的 `roadPlan`/`plan`/`bridgePlan`（Step 1）。**两个施工侧构造点必须跟字段一起改**，否则 Task 2 编不过；原稿把它们放在 Task 3 是计划的缺陷，已修正（Task 3 的 Step 2/3 因此降级为核对）。
 - `roadWidth`/`roadTraffic`/`roads`/`wideningCandidates` 在 Task 2 定义、Task 4（`roadWidth`）、Task 5（四个都用到）、Task 2 的检查里调用，名字与返回类型一致。
 - `startWidening` 的签名 `(ServerLevel, String, TransportPlan) -> StartResult` 在 Task 4 定义、Task 5 调用处一致；`StartResult` 是既有的记录（`accepted`/`reason`/`plan`）。
 - `qualifies` 从吃"计划自己的计数"改成吃"链的口径"，唯一调用点（`trafficLine`）在同一任务里同步改动。
