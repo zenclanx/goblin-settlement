@@ -84,3 +84,17 @@
 - **等待理由变成带物品名**：既有依赖 `"oak planks missing"` 这个字面量的地方（若有测试或文档）需要同步，实现时先 grep 确认。
 - **旧档默认橡木木板**：本轮之前排队的计划仍会铺橡木木板，这是刻意的兼容选择，不是遗漏。
 - **未做游戏内验证**：与本分支既有全部工作一样，本轮只有编译与独立检查的证据。
+
+## 8. 落地结果（实现后补记）
+
+- **材料的唯一出处**：新增 `construction/BuildMaterial`（四个常量逐字保持 `OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH`，带 `block()` / `item()` 两张表）；`TransportPlan` 删掉自己的 `Material` 枚举改用共享的那个，`TransportCoordinator` 的私有 `itemFor` / `blockFor` 删除。**JSON 取值是常量名，因此旧档一字不改仍能读**，既有 `transportSavedDataCheck` 的往返断言继续钉住它。
+- **计划声明建筑件**：`ConstructionPlan` 增 `material` 分量（`optionalFieldOf("material", OAK_PLANKS)`）⇒ 本轮之前的计划仍铺橡木木板，行为不变；`planTwoPlanks` 改名 `planStructure(start, material)`。
+- **工人路径不新增持久字段**：新增 `SettlementSavedData.materialFor(workerId)` 作为"这个工人要铺什么"的唯一出处，`fetchMaterial` / `placeMaterial` 每次从计划重推；`carriedOakPlanks()` 改为 `carried(Item)`；等待理由改成枚举名小写（`oak_planks missing`）。
+- **协调器**：进度判定改 `plan.material().block()`，取仓改 `firstHolding(..., plan.material().item())`。
+- **回收缺陷已修**：`DroppedMaterialLookup.find` 原先两个分支都写死橡木木板，泛化后**会捡错材料**；现在按项目声明的物品匹配，`RecoveryDrop.itemId` 这个错名也改成 `entityId`（**JSON 键仍是 `item_id`**）。
+- **命令**：`plan` 增加材料词参数（大小写不敏感，不认识就明确失败并列出可选值）；`project` 的短缺报告改成**按材料各一行**，每行计划行带上它的材料。
+- **§4 的调用点数目当场更正**：设计 §4 与计划原写回收查找只有协调器一个调用点，实现时发现是**两处**——`ConstructionCoordinator` 的回收分支，与 `GoblinCitizenEntity` 的回收走（它与取料/放置一样经 `materialFor(workerId)` 读同一份声明，取不到声明就按既有的 `ABORTED` 口径结束）。两处都改按声明匹配；设计 §4 与计划已在同轮补记（提交 `e640782` / `11600a4`），在此留一句以免"只有一处"的旧说法继续流传。
+- **两个仓库包装方法删除**：`PublicWarehouseInventory.firstWithOakPlank` 与 `countOakPlanks` 在最后一个调用点消失后删除；取仓与计数的唯一权威现在是 `firstHolding(level, data, Item)` 与 `countOf(level, data, Item)`（提交 `647d3f7`）。
+- **新的固定成本：`BuildMaterial` 把注册表对象带进了枚举**。`block()` / `item()` 持有 `Blocks.*` / `Items.*`，所以任何触碰 `BuildMaterial` 的独立检查都必须先 `SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();`。本轮有三个检查这么做（`ConstructionMaterialCheck`、`TransportSavedDataCheck`、`SettlementSavedDataCheck`），而在此之前本项目的独立检查**一个都没有引导注册表**。这是把映射放在枚举上的真实代价，**新写检查的人必须知道**。
+- **仍未做**：形状仍是 2 格直线（`LENGTH = 2`）；材料种类仍是四种；等待理由的旧字面量若在别处被引用需另行确认。
+- **无游戏内验证**：与本分支既有全部工作一样，本轮只有编译与独立检查的证据。**独立检查覆盖不到、只在游戏内才会真正跑到的面**：工人按声明取料/放置（`fetchMaterial` / `placeMaterial`）、协调器按声明找料（`firstHolding(..., plan.material().item())`）、回收按声明匹配（`DroppedMaterialLookup.find` 的两处调用点）、以及命令的两条显示路径（`plan` 的材料参数解析与 `project` 的按材料分组）。
