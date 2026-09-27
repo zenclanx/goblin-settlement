@@ -250,6 +250,24 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+```
+
+**（控制器补充，来自 Task 1 的评审）**：该检查目前只钉住常量名与"非空"，一个常量若被换成**别的**方块或物品不会触发任何断言。同时把映射也钉住——在 `main` 里加上 `checkEachMaterialMapsToItsOwnBlockAndItem();`，并加这个方法：
+
+```java
+    /** Each material must keep naming its own block and item, not merely some block and some item. */
+    private static void checkEachMaterialMapsToItsOwnBlockAndItem() {
+        require(BuildMaterial.OAK_PLANKS.block() == Blocks.OAK_PLANKS, "oak planks build oak planks");
+        require(BuildMaterial.OAK_LOG.block() == Blocks.OAK_LOG, "oak logs build oak logs");
+        require(BuildMaterial.OAK_FENCE.block() == Blocks.OAK_FENCE, "oak fences build oak fences");
+        require(BuildMaterial.TORCH.block() == Blocks.TORCH, "torches build torches");
+        require(BuildMaterial.OAK_PLANKS.item() == Items.OAK_PLANKS, "oak planks are fetched as oak planks");
+        require(BuildMaterial.OAK_LOG.item() == Items.OAK_LOG, "oak logs are fetched as oak logs");
+        require(BuildMaterial.OAK_FENCE.item() == Items.OAK_FENCE, "oak fences are fetched as oak fences");
+        require(BuildMaterial.TORCH.item() == Items.TORCH, "torches are fetched as torches");
+    }
 ```
 
 - [ ] **Step 2: 运行检查，确认按预期失败**
