@@ -22,11 +22,14 @@
 新增 `housing/BlueprintSet.java`，只含 record 与纯逻辑，不吃 Minecraft 类型：
 
 ```java
-public record BlueprintStep(int x, int y, int z, String block) { }
-public record BlueprintStage(String id, String requires, List<BlueprintStep> steps) { }
-public record BlueprintSet(List<BlueprintStage> capacity, List<BlueprintStage> quality,
+// 复用 HousingRules.Step（本轮为它加上 block 字段，见 §6），
+// 不另造一个字段完全相同的步骤类型——那正是本项目刚在床位判据上修掉的分叉。
+public record Stage(String id, String requires, List<HousingRules.Step> steps) { }
+public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
                            int reserveBasic, int reserveExpanded) { }
 ```
+
+`Stage` 嵌套在 `BlueprintSet` 内（`BlueprintSet.Stage`），与 `HousingRules.Step` 一样是纯 record。
 
 - 每个 record 配 `Codec`，与工程既有写法一致（`com.mojang.serialization` + `JsonOps`；`HousingSavedData.Home` 是同类先例）。
 - `requires` 是**同链内显式的上一级 id**：容量链 `shelter` 为空、`cabin`→`shelter`、`expanded`→`cabin`；品质链 `quality` 为空、`mature`→`quality`。两链各有各的链首——**跨链引用非法**（§4.2）。它的唯一目的是让「升级链无环」**可校验**——纯有序数组天然无环，校验会变成空转。
@@ -61,12 +64,12 @@ public record BlueprintSet(List<BlueprintStage> capacity, List<BlueprintStage> q
 
 ## 4. 校验规则
 
-校验器是纯逻辑，位于 `BlueprintSet`（命名空间、坐标、链结构）与加载器（资源标识解析）之间：`BlueprintSet.validate(Set<String> knownBlocks, Set<String> knownItems)` 收下两份"已知标识集合"再判，从而自己不吃 Minecraft 类型；集合由加载器从 `BuiltInRegistries.BLOCK` / `BuiltInRegistries.ITEM` 取得。
+校验器是纯逻辑：`BlueprintSet.validate(Set<String> knownBlocks)` 收下一份"已知方块标识集合"再判，从而自己不吃 Minecraft 类型；该集合由加载器遍历 `BuiltInRegistries.BLOCK` 建出（**不用 `Identifier.parse`**，规避本版本字符串解析 API 的不确定性）。
 
 ### 4.1 资源标识存在
 
 - 每个 `block` 语法合法（`namespace:path`），且属于 `knownBlocks`；
-- 该方块的**物品形态**属于 `knownItems`（工人搬的是物品，不是方块状态）。
+- 该方块的**物品形态必须存在**（工人搬的是物品）——这项判定需要注册表（`block.asItem() != Items.AIR`），因此落在加载器里，不进纯校验器。
 
 ### 4.2 升级链无环
 
@@ -143,6 +146,6 @@ public record BlueprintSet(List<BlueprintStage> capacity, List<BlueprintStage> q
   - §4.1–§4.4 每条各写正例与反例；
   - §4.5 过渡约束的正反例（写明下一轮删除）；
   - 门洞 BFS 的边界情形：无墙、有门洞、砌死、门洞开在相邻两格之外、锚点被单面墙围死但另一面开口（应通过）。
-- `HousingRulesCheck.checkSteps` 的 `21/92/102/111/121` **保持不变**，作为几何搬迁无损的证据；`checkFirstUnbuilt` 随之适配 `Step` 的新字段。
+- `checkSteps` 与 `checkFirstUnbuilt` **迁到 `BlueprintCheck`**（步骤合成与进度推导现在归 `BlueprintSet` 管），但**断言值一字不改**：`21/92/102/111/121` 与 `firstUnbuilt` 的既有用例原样保留，作为几何搬迁无损的证据。`HousingRulesCheck` 保留 decide / counts / usableBedHead / bedsNear / codec 那几组。
 - **再加一条"数据文件本身"的检查**：`BlueprintCheck` 直接从 classpath 读真实数据文件并跑完整校验（`src/main/resources` 在测试运行期 classpath 上）。这样"受校验的数据文件"在每次构建时都被真正校验，而不是只测校验器。
 - 完整离线构建 + 全部独立检查通过。**不做游戏内验证**（按用户约定，初版代码全部完成后才统一测试）。
