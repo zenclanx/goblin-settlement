@@ -209,6 +209,7 @@ git commit -m "Give every build one shared answer to what it is made of"
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionPlan.java`
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/colony/SettlementSavedData.java`
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionCommands.java`（**仅**最小改动以保持可编译，见 Step 4）
+- Modify: `goblin-settlement-mod/src/test/java/dev/local/goblinsettlement/colony/SettlementSavedDataCheck.java`（**`planTwoPlanks` 的调用点这里还有 8 处**，且它现在会经 codec 碰到 `BuildMaterial`，需要加引导两行）
 - Modify: `goblin-settlement-mod/src/test/java/dev/local/goblinsettlement/construction/ConstructionMaterialCheck.java`
 
 **Interfaces:**
@@ -309,7 +310,10 @@ public record ConstructionPlan(BlockPos start, int completed, Optional<String> w
 - `planTwoPlanks(BlockPos start)` 改名为**公开**的 `planStructure(BlockPos start, BuildMaterial material)`，其内部构造改为 `new ConstructionPlan(start, 0, Optional.empty(), Optional.empty(), Optional.empty(), material)`；
 - `releaseWorker` 里那句内联构造补上 `current.material()`。
 
-4b. `ConstructionCommands`：**只做让它编译的最小改动**——把 `data.planTwoPlanks(start)` 改成 `data.planStructure(start, BuildMaterial.OAK_PLANKS)`（行为与今天一致；材料参数在 Task 5 接）。
+4b. **`planTwoPlanks` 的调用点有两类，都要跟着改**（原稿只说了命令那处，漏了检查里那 8 处——**先 `grep -rn "planTwoPlanks" src/` 自己数一遍**，不要只搜 `src/main`）：
+
+- `ConstructionCommands`：把 `data.planTwoPlanks(start)` 改成 `data.planStructure(start, BuildMaterial.OAK_PLANKS)`（行为与今天一致；材料参数在 Task 5 接）。
+- `SettlementSavedDataCheck`：8 处同样加上 `BuildMaterial.OAK_PLANKS`，**断言一行都不改**（它们钉的是计划的重叠/上限/取消/农田冲突，与材料无关）；并在该检查 `main` 开头补 `SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();`——它的 codec 现在会碰到 `BuildMaterial` 的注册表字段。
 
 - [ ] **Step 5: 跑检查并跑完整构建**
 
@@ -327,6 +331,7 @@ Expected: `BUILD SUCCESSFUL`，18 项全部 `*Check passed`。
 git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionPlan.java \
         goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/colony/SettlementSavedData.java \
         goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionCommands.java \
+        goblin-settlement-mod/src/test/java/dev/local/goblinsettlement/colony/SettlementSavedDataCheck.java \
         goblin-settlement-mod/src/test/java/dev/local/goblinsettlement/construction/ConstructionMaterialCheck.java
 git commit -m "Let a project say what it is built from"
 ```
@@ -830,7 +835,7 @@ Expected: 推送成功。若被拒，先 `git pull --rebase origin main` 再推�
 
 - `BuildMaterial` 的 `block()` / `item()` 在 Task 1 定义，在 Task 1（交通线）、Task 3（工人/协调器）、Task 4（回收）、Task 5（命令与显示）使用，返回类型一致。
 - `ConstructionPlan` 由 5 个分量变 6 个：**全部 7 个构造点**都已列出——record 自己的 `withWorker` / `finishStep` / `withDroppedItem` / `retargetDrop` / `clearRecovery`（Task 2 Step 3d），`SettlementSavedData.planStructure`（原 `planTwoPlanks`）与 `releaseWorker`（Task 2 Step 4a）。**这两个外部构造点必须跟字段一起改**，否则 Task 2 编不过。
-- `planTwoPlanks` → `planStructure(BlockPos, BuildMaterial)` 的调用点（`ConstructionCommands`）在 Task 2 Step 4b 同步做成最小改动，Task 5 再补参数解析——**每个任务结束时树都必须可编译**。
+- `planTwoPlanks` → `planStructure(BlockPos, BuildMaterial)` 的调用点有**两类**：`ConstructionCommands`（1 处，Task 2 Step 4b 做最小改动，Task 5 再补参数解析）与 `SettlementSavedDataCheck`（**8 处**，Task 2 Step 4b 一并改）——**每个任务结束时树都必须可编译**。原稿只搜了 `src/main` 因而漏了检查里那 8 处；今后找调用点一律 `grep -rn … src/`。
 - `DroppedMaterialLookup.find` 由 3 参变 4 参（多一个 `Item`），唯一调用点在 Task 4 Step 2 同步；`RecoveryDrop` 的分量改名后，`ConstructionPlan` 内部两处 `new RecoveryDrop(...)` 与 `SettlementSavedData.recordRecoverableDrop` 的形参名同步，**JSON 键不变**。
 - `carriedOakPlanks()` → `carried(Item)` 的调用点（`ConstructionCommands.carriedBy`）在 Task 3 Step 4 同步。
 - `materialFor(String) -> Optional<BuildMaterial>` 在 Task 3 定义，在 Task 3（entity + `carriedBy`）与 Task 5（显示分组）使用，返回类型一致。
