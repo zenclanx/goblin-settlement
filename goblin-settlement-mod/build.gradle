@@ -141,6 +141,14 @@ tasks.register('trafficDecisionCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.planning.transport.TrafficDecisionCheck'
 }
 
+tasks.register('housingRulesCheck', JavaExec) {
+    group = 'verification'
+    description = 'Runs the standalone two-axis housing rule assertions.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.housing.HousingRulesCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -152,4 +160,5 @@ tasks.named('check') {
     dependsOn tasks.named('trafficTargetRulesCheck')
     dependsOn tasks.named('transportSavedDataCheck')
     dependsOn tasks.named('trafficDecisionCheck')
+    dependsOn tasks.named('housingRulesCheck')
 }

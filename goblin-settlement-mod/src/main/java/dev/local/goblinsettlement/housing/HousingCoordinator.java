@@ -8,8 +8,6 @@ import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
 import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,11 +27,8 @@ import net.minecraft.world.phys.AABB;
 /** One durable residential step per review. Beds, and therefore capacity, are managed separately. */
 public final class HousingCoordinator {
     private static final int INTERVAL_TICKS = 40;
-    private static final List<List<Step>> STAGES = blueprints();
 
     private HousingCoordinator() { }
-
-    private record Step(int x, int y, int z) { }
 
     public static void tick(ServerLevel level) {
         if (level.getGameTime() % INTERVAL_TICKS != 0
@@ -51,7 +46,7 @@ public final class HousingCoordinator {
                 housing.remove(home.bed());
                 return;
             }
-            if (home.stage() < STAGES.size()) {
+            if (home.stage() < HousingRules.stages().size()) {
                 if (advance(level, data, housing, id, home)) return;
             }
         }
@@ -84,7 +79,7 @@ public final class HousingCoordinator {
 
     private static boolean advance(ServerLevel level, SettlementSavedData data,
                                    HousingSavedData housing, String id, HousingSavedData.Home home) {
-        var steps = STAGES.get(home.stage());
+        var steps = HousingRules.stages().get(home.stage());
         if (home.step() >= steps.size()) {
             housing.replace(new HousingSavedData.Home(home.bed(), home.blueprint(), home.stage() + 1, 0));
             return true;
@@ -148,9 +143,10 @@ public final class HousingCoordinator {
         if (settlement.isEmpty()) return false;
         return HousingSavedData.get(level).homes(settlement.orElseThrow().id()).stream()
                 .anyMatch(home -> home.bed().equals(bed) && home.workerId().orElse("").equals(workerId)
-                        && home.stage() < STAGES.size() && home.step() < STAGES.get(home.stage()).size()
+                        && home.stage() < HousingRules.stages().size()
+                        && home.step() < HousingRules.stages().get(home.stage()).size()
                         && site.equals(position(level, bed, home.blueprint(),
-                                STAGES.get(home.stage()).get(home.step()))));
+                                HousingRules.stages().get(home.stage()).get(home.step()))));
     }
 
     public static boolean placeByResident(ServerLevel level, GoblinCitizenEntity worker,
@@ -185,12 +181,12 @@ public final class HousingCoordinator {
                         && level.getBlockState(other).is(BlockTags.BEDS)) return false;
             }
         }
-        for (var stage : STAGES) for (Step step : stage) {
+        for (var stage : HousingRules.stages()) for (HousingRules.Step step : stage) {
             BlockPos site = position(level, bed, variant, step);
             if (site == null || !permitted(level, id, site)) return false;
             var state = level.getBlockState(site);
             if (!state.isAir() && !state.is(Blocks.OAK_PLANKS)) return false;
-            if (step.y == 0) {
+            if (step.y() == 0) {
                 BlockPos ground = site.below();
                 if (!permitted(level, id, ground)
                         || !level.getBlockState(ground).isFaceSturdy(level, ground, Direction.UP)) return false;
@@ -199,14 +195,14 @@ public final class HousingCoordinator {
         return true;
     }
 
-    private static BlockPos position(ServerLevel level, BlockPos bed, int variant, Step step) {
+    static BlockPos position(ServerLevel level, BlockPos bed, int variant, HousingRules.Step step) {
         var state = level.getBlockState(bed);
         if (!state.hasProperty(BedBlock.FACING)) return null;
         Direction south = state.getValue(BedBlock.FACING).getOpposite();
         Direction east = south.getCounterClockWise();
-        int x = variant == 2 ? -step.x : step.x;
-        int z = variant == 1 ? -step.z : step.z;
-        return bed.relative(east, x).relative(south, z).above(step.y);
+        int x = variant == 2 ? -step.x() : step.x();
+        int z = variant == 1 ? -step.z() : step.z();
+        return bed.relative(east, x).relative(south, z).above(step.y());
     }
 
     private static boolean isBedHead(ServerLevel level, String id, BlockPos bed) {
@@ -219,43 +215,5 @@ public final class HousingCoordinator {
     private static boolean permitted(ServerLevel level, String id, BlockPos pos) {
         return WorldModificationPermission.check(level, id, pos)
                 == WorldModificationPermission.Decision.ALLOWED;
-    }
-
-    private static List<List<Step>> blueprints() {
-        var shelter = new ArrayList<Step>();
-        for (int x : new int[] {-1, 1}) for (int z : new int[] {-1, 1})
-            for (int y = 0; y <= 2; y++) shelter.add(new Step(x, y, z));
-        for (int x = -1; x <= 1; x++) for (int z = -1; z <= 1; z++)
-            shelter.add(new Step(x, 3, z));
-        var cabin = new ArrayList<Step>();
-        for (int y = 0; y <= 2; y++) {
-            for (int x = -2; x <= 2; x++) {
-                cabin.add(new Step(x, y, -2));
-                if (x != 0 || y == 2) cabin.add(new Step(x, y, 2));
-            }
-            for (int z = -1; z <= 1; z++) {
-                cabin.add(new Step(-2, y, z));
-                cabin.add(new Step(2, y, z));
-            }
-        }
-        for (int x = -2; x <= 2; x++) for (int z = -2; z <= 2; z++)
-            cabin.add(new Step(x, 3, z));
-        var expanded = new ArrayList<Step>();
-        for (int z = -1; z <= 1; z++) {
-            expanded.add(new Step(3, 0, z));
-            expanded.add(new Step(3, 3, z));
-        }
-        for (int y = 1; y <= 2; y++) {
-            expanded.add(new Step(3, y, -1));
-            expanded.add(new Step(3, y, 1));
-        }
-        var quality = new ArrayList<Step>();
-        for (int x = -2; x <= 2; x++) quality.add(new Step(x, 4, 0));
-        for (int z = -2; z <= 2; z++) quality.add(new Step(0, 4, z));
-        var mature = new ArrayList<Step>();
-        for (int z = -2; z <= 2; z++) mature.add(new Step(-3, 0, z));
-        for (int x = -2; x <= 2; x++) mature.add(new Step(x, 4, -2));
-        return List.of(List.copyOf(shelter), List.copyOf(cabin), List.copyOf(expanded),
-                List.copyOf(quality), List.copyOf(mature));
     }
 }
