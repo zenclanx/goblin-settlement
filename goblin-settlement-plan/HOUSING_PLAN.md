@@ -119,7 +119,7 @@ public final class HousingRulesCheck {
         Set<HousingRules.Step> builtEarly = new HashSet<>(HousingRules.steps(1, 1));
         int next = HousingRules.firstUnbuilt(HousingRules.steps(2, 1), builtEarly).orElseThrow();
         require(next == 92, "raising the capacity target after quality work finds the inserted steps");
-        require(HousingRules.steps(2, 1).get(next) == HousingRules.steps(2, 0).get(92 - 21 - 71 + 71),
+        require(HousingRules.steps(2, 1).get(next) == HousingRules.steps(2, 0).get(21 + 71),
                 "the step found is the first expanded-stage step");
     }
 
@@ -151,7 +151,9 @@ Expected: 编译失败，`cannot find symbol: class HousingRules`。
 
 - [ ] **Step 3: 实现 `HousingRules`**
 
-新建 `HousingRules.java`，把 `HousingCoordinator.blueprints()`（现 `:224-260`）的五个 `List<Step>` **原样搬入**（shelter 21 块 / cabin 71 / expanded 10 / quality 9 / mature 10），并把 `Step` record 一并搬来：
+新建 `HousingRules.java`，把 `HousingCoordinator.blueprints()`（现 `:224-260`）的五个 `List<Step>` 搬入（shelter 21 / cabin 71 / expanded 10 / quality 9 / mature 10），并把 `Step` record 一并搬来。
+
+**一处例外**：原品质级的列表里有 **10 条、但只有 9 个不同坐标**——中心块 `(0,4,0)` 在横排与竖排两个循环里各出现一次。搬入时**去掉这条重复**，只保留 9 个不同块。这在世界里不改变任何结果（重复条目第二次访问时该格已经是木板，原本就会被跳过），但能让步骤数、断言与"前缀闭合"性质都自洽。搬入处的代码里写注释说明这一点。
 
 ```java
 package dev.local.goblinsettlement.housing;
