@@ -360,3 +360,23 @@
 - [2026-09-27 01:00:20 +08:00] 全分支审查发现派工与执行裂脑：ConstructionCoordinator 掉落物回收路径用 WorkKind.RECOVERY 派工（对口搬运员 HAULER），而 GoblinCitizenEntity.workKind 把 RETURNING/RECOVERING 映射到 WorkKind.CONSTRUCTION（对口建筑工 BUILDER），派活时优先选中的搬运员干活时反被判不对口、跑最慢 30 tick 档。已把该行拆成 CONSTRUCTION（FETCHING/DELIVERING/COMPLETE）与 RECOVERY（RETURNING/RECOVERING/RECOVERED/ABORTED）两行，与 PROFESSION_PLAN.md 对照表一致；RECOVERED/ABORTED 永远走不到该闸，一并映射只是记录意图。
 - [2026-09-27 01:01:00 +08:00] 同轮小修：goblinsettlement assign 命令成功输出追加 " (administrator bypass)" 说明，挑选逻辑不动；GoblinRenderer 八张贴图 Identifier（含默认）改为静态 final 常量，getTextureLocation 只查表返回，纹理名与路径未变；PROFESSION_DESIGN.md 第 10 节旧居民补职业耗时改为与实现一致（每 200 tick，最坏约 10 秒）。
 - [2026-09-27 01:01:25 +08:00] 验证：./gradlew check --offline --no-daemon BUILD SUCCESSFUL，7 项独立检查全部打印 *Check passed（PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、WorkerAssignmentRules）。未启动游戏、未运行专用服务端、未触碰常用存档。
+## [2026-09-27 10:12:49 +08:00 – 2026-09-27 10:20:18 +08:00] 第三十八轮：参考图 A 男哥布林美术样板
+
+- [2026-09-27 10:12:49 +08:00] 在用户新建的实例根目录 Models/ 创建 goblin_male_a_source.py，用 24 个长方体组织头、躯干与四肢分组，制作参考图 A 的男哥布林候选；职业外观后续在基础身体上加配饰。
+- [2026-09-27 10:13:43 +08:00] 生成 goblin_male_a.bbmodel、128×128 goblin_male_a.png 与从相同几何/贴图渲染的 goblin_male_a_preview.png；目视检查正面、斜前方与侧面预览。
+- [2026-09-27 10:18:15 +08:00] 将本轮会话中用户选定的参考图 A 复制为 Models/reference_A.png，保留原始生成图。
+- [2026-09-27 10:18:57 +08:00] 添加 Models/README.md；静态检查通过：.bbmodel JSON 可解析、24 个模型方块与分组索引一致、128×128 外置贴图与工程内嵌贴图像素一致。Blockbench 网页版载入超时，未能实际打开模型工程；没有接入模组、启动游戏或碰常用存档，不能视作游戏内验证。
+- [2026-09-27 10:20:18 +08:00] 更新 CURRENT_STATUS.md，将本次资源列为美术候选。待用户审阅造型后，再决定外观调整、Blockbench 打开验证与模组接入。
+## [2026-09-27 10:21:00 +08:00 – 2026-09-27 10:22:34 +08:00] 第三十八轮补记：Blockbench 工程结构修正
+
+- [2026-09-27 10:21:00 +08:00] 对照 Blockbench 官方 bbmodel.js 的 5.0 加载格式发现工程元素需要显式 type=cube；修改生成脚本为每个方块写入 type 与 box_uv，并为贴图补齐尺寸字段，重新生成 .bbmodel 与预览。这是对前段静态检查遗漏的补正；仍未在 Blockbench 中实际打开。
+- [2026-09-27 10:22:34 +08:00] 重新静态验证通过：脚本语法、工程 5.0 元数据、24 个 cube、6 个分组、UV 边界、内嵌/外置贴图像素一致及预览 PNG 可读。未接入模组或做游戏内验证。
+## [2026-09-27 10:32:21 +08:00 – 2026-09-27 10:38:10 +08:00] 第三十九轮：参考图归档与 A 男侧背视图
+
+- [2026-09-27 10:32:21 +08:00] 以已选定的参考图 A 为输入，生成其中成年男性的右侧面参考图；保持主要发型、耳形和服装方向，作为建模资料而非真实三维投影。
+- [2026-09-27 10:32:44 +08:00] 同样生成该成年男性背面参考图；原图未展示的背部结构由图像模型推测，后续建模需统一三视图设定。
+- [2026-09-27 10:34:03 +08:00] 在实例 mods/goblin_settlement_reference_art/ 新建参考图库，将之前的 A–E 哥布林参考图、F 傀儡参考图和新生成的 A 男侧面、背面图复制为 8 张统一命名的 PNG；未改动模组 JAR。
+- [2026-09-27 10:34:16 +08:00] 添加该目录 README.md，逐项说明图片内容、已选 A/F 方向及生成视图的推测性质。
+- [2026-09-27 10:35:24 +08:00] 用 Pillow 检查目录中恰有 8 张 PNG 且均可打开。此验证只涉及图片文件，不代表三视图几何一致或模型可在游戏运行。
+- [2026-09-27 10:37:44 +08:00] 更新 Models/README.md 和 CURRENT_STATUS.md，明确已有 24 方块男哥布林仅为用户未认可的粗模试作，不是正式 A 造型；目前未在 Blockbench 实际打开，也未接入模组或做游戏内验证。
+- [2026-09-27 10:38:10 +08:00] 未完成：高保真男哥布林模型、贴图、动作与实际游戏接入。Blockbench 桌面版及第三方 MCP 仅调查，未安装、未连接或验证；需在取得可视化建模反馈后重新制作，不承诺概念图的逐像素复刻。
