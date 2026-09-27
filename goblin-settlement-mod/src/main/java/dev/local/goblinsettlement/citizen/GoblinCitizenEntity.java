@@ -788,14 +788,24 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 workStage = WorkStage.HOUSING_DELIVERING;
                 return;
             }
+            // assignedSite above already implies this step exists; the guard stays as cheap
+            // defence, because this path has never been exercised in game and a stale step must
+            // degrade to "return the material", not to an exception.
+            var step = HousingCoordinator.assignedStep(level, housingBed, buildPos);
+            if (step.isEmpty()) {
+                workStage = WorkStage.HOUSING_RETURNING;
+                waitReason = "housing assignment changed";
+                return;
+            }
             if (!(level.getBlockEntity(supplyPos) instanceof Container container)) {
                 waitReason = "housing warehouse missing";
                 return;
             }
+            var wanted = step.get().item();
             for (int slot = 0; slot < container.getContainerSize(); slot++) {
-                if (!container.getItem(slot).is(Items.OAK_PLANKS)) continue;
+                if (!container.getItem(slot).is(wanted)) continue;
                 ItemStack withdrawn = container.removeItem(slot, 1);
-                if (withdrawn.is(Items.OAK_PLANKS) && withdrawn.getCount() == 1) {
+                if (withdrawn.is(wanted) && withdrawn.getCount() == 1) {
                     carried = withdrawn;
                     container.setChanged();
                     workStage = WorkStage.HOUSING_DELIVERING;
@@ -803,9 +813,15 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 }
                 return;
             }
-            waitReason = "housing planks missing";
+            waitReason = "housing material missing";
         } else if (workStage == WorkStage.HOUSING_DELIVERING) {
-            if (level.getBlockState(buildPos).is(Blocks.OAK_PLANKS)) {
+            var step = HousingCoordinator.assignedStep(level, housingBed, buildPos);
+            if (step.isEmpty()) {
+                workStage = WorkStage.HOUSING_RETURNING;
+                waitReason = "housing assignment changed";
+                return;
+            }
+            if (level.getBlockState(buildPos).is(step.get().block())) {
                 workStage = WorkStage.HOUSING_RETURNING;
                 return;
             }
@@ -1871,7 +1887,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             ItemStack existing = container.getItem(slot);
             if (existing.isEmpty()) {
                 container.setItem(slot, carried);
-            } else if (existing.is(Items.OAK_PLANKS)
+            } else if (existing.is(carried.getItem())
                     && existing.getCount() < Math.min(existing.getMaxStackSize(), container.getMaxStackSize(existing))) {
                 existing.grow(1);
                 container.setChanged();
