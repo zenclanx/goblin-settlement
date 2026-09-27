@@ -90,6 +90,8 @@ public final class WorkerDispatch {
 | `economy/food/FoodCraftingCoordinator` | `FOOD_CRAFTING` | `warehouse` | `permitted(level, settlementId)` |
 | `economy/tools/ToolCraftingCoordinator` | `TOOL_CRAFTING` | `warehouse` | `permitted(level, settlementId)` |
 
+**不算在"挑人代码"里的两处**：`GoblinSettlement` 里的两条管理员命令也用 `new AABB(...).inflate(16.0)` 找最近的哥布林——`assign`（管理员直派施工，绕过聚落流程）与 `work`（查看某只哥布林的工作状态）。它们**不做职业排序**（没有 `matchRank`），一个是管理员覆写、一个是显示用途，不是"聚落自主派工"，因此既不在 10 处之内，也不该收进本服务。本轮普查以 `matchRank` 为准，正是为了把这一类区分出去。
+
 ## 6. 验证方式：本轮没有新增检查
 
 **必须说清楚**：这是一次纯重构，**不会新增任何独立检查**。
