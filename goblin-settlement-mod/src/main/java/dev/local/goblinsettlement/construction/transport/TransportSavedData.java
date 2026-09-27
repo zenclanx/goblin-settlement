@@ -115,7 +115,7 @@ public final class TransportSavedData extends SavedData {
     /** The finished road's width: the widest completed member of the widening chain it belongs to. */
     public int roadWidth(String planId) {
         int widest = RoadUpgradeRules.baseLanes();
-        for (TransportPlan plan : chain(planId)) {
+        for (TransportPlan plan : chainOf(planId)) {
             if (!plan.isComplete()) {
                 continue;
             }
@@ -127,10 +127,24 @@ public final class TransportSavedData extends SavedData {
     /** The finished road's traffic: every member of its chain contributes the samples it caught. */
     public int roadTraffic(String planId) {
         int total = 0;
-        for (TransportPlan plan : chain(planId)) {
+        for (TransportPlan plan : chainOf(planId)) {
             total += traffic.getOrDefault(plan.id(), 0);
         }
         return total;
+    }
+
+    /**
+     * The facility this road was built to reach. The chain's root registered it; a widening plan
+     * deliberately carries none of its own, so the answer comes from whichever member has one.
+     */
+    public Optional<BlockPos> roadTarget(String planId) {
+        for (TransportPlan plan : chainOf(planId)) {
+            var target = plan.targetFacility();
+            if (target.isPresent()) {
+                return target;
+            }
+        }
+        return Optional.empty();
     }
 
     /**
@@ -146,7 +160,7 @@ public final class TransportSavedData extends SavedData {
             if (plan.widensFrom().filter(parent -> plan(parent).isPresent()).isPresent()) {
                 continue;
             }
-            representatives.add(widestOf(chain(plan.id()), plan));
+            representatives.add(widestOf(chainOf(plan.id()), plan));
         }
         return List.copyOf(representatives);
     }
@@ -169,8 +183,9 @@ public final class TransportSavedData extends SavedData {
     /**
      * The chain a plan belongs to: the plan that widened nothing, plus every plan widened from it. A
      * plan whose parent is missing (a hand-edited save) is its own chain, so nothing is lost silently.
+     * Public so the assembly layer can take one whole road; the chain's rules still live only here.
      */
-    private List<TransportPlan> chain(String planId) {
+    public List<TransportPlan> chainOf(String planId) {
         String root = rootOf(planId);
         var found = new ArrayList<TransportPlan>();
         for (TransportPlan plan : plans) {

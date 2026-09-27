@@ -238,6 +238,22 @@ public final class TransportSavedDataCheck {
         require(protectedChain.plan("keep-base").isPresent(), "a widened road is never retired");
         require(protectedChain.plan("keep-child").isPresent(), "nor is the widening that widened it");
 
+        var targets = new TransportSavedData();
+        require(targets.add(roadPlan("target-base", facility, 1, false, 2, "target-base")),
+                "the road with a target is accepted");
+        require(targets.add(roadPlan("target-child", facility, 1, false, 3, "target-base")),
+                "its widening is accepted");
+        require(targets.plan("target-child").orElseThrow().targetFacility().isEmpty(),
+                "a widening plan names no facility of its own");
+        require(targets.roadTarget("target-base").orElseThrow().equals(facility),
+                "the road reports the facility it was built for");
+        require(targets.roadTarget("target-child").orElseThrow().equals(facility),
+                "and its widening answers with the same facility, from the root");
+        require(targets.chainOf("target-base").size() == 2, "the chain lists both members");
+        require(targets.chainOf("target-child").size() == 2, "from either end");
+        require(targets.chainOf("nobody").isEmpty(), "an unknown id belongs to no chain");
+        require(targets.roadTarget("nobody").isEmpty(), "and reaches no facility");
+
         System.out.println("TransportSavedDataCheck passed");
     }
 
@@ -247,18 +263,26 @@ public final class TransportSavedDataCheck {
 
     private static TransportPlan roadPlan(String id, BlockPos target, int completedSteps, boolean open,
                                           int lanes, String widensFrom) {
+        boolean widens = !widensFrom.equals(id);
         var route = List.of(new BlockPos(10, 64, 10), new BlockPos(11, 64, 10));
-        return plan(id, target, completedSteps, open, Optional.of(new TransportPlan.Road(
-                widensFrom.equals(id) ? Optional.empty() : Optional.of(widensFrom), lanes, route)));
+        return new TransportPlan(id, "settlement-1", TransportPlan.Kind.ROAD, List.of(step()),
+                completedSteps, open, List.of(), List.of(), List.of(), Optional.empty(),
+                widens ? Optional.<BlockPos>empty() : Optional.of(target),
+                Optional.of(new TransportPlan.Road(widens ? Optional.of(widensFrom) : Optional.empty(),
+                        lanes, route)));
     }
 
     private static TransportPlan plan(String id, BlockPos target, int completedSteps, boolean open,
                                       Optional<TransportPlan.Road> road) {
-        var step = new TransportPlan.Step(TransportPlan.Phase.SURFACE,
-                new BlockPos(10, 64, 10), TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND);
+        TransportPlan.Step step = step();
         return new TransportPlan(id, "settlement-1", TransportPlan.Kind.ROAD, List.of(step),
                 completedSteps, open, List.of(), List.of(), List.of(), Optional.empty(), Optional.of(target),
                 road);
+    }
+
+    private static TransportPlan.Step step() {
+        return new TransportPlan.Step(TransportPlan.Phase.SURFACE,
+                new BlockPos(10, 64, 10), TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND);
     }
 
     private static TransportPlan bridgePlan(String id, boolean open) {
