@@ -236,7 +236,7 @@ workIntervalTicks(WorkKind kind, Profession resident) -> int
 ## 12. 范围外（本轮不做）
 
 - 职业熟练度与效率成长（用户明确排除）。
-- 职业名额约束（哨卫每 12 成人 1 名等）。
+- 职业名额约束。**部分完成**（第四十八轮）：名额表机制已落地，`ProfessionRules.ceiling` **只填了文档写明的哨卫上限**（`min(4, 成人 / 12)`）；**其余职业的上限仍未定**——本条原文的"等"字不代表已给全部职业定额，不要误读成"名额已全部做完"。设计见 [PROFESSION_QUOTA_DESIGN.md](PROFESSION_QUOTA_DESIGN.md)。
 - 把 9 个协调器重复的挑人代码重构成统一派工服务。**已完成**（第四十七轮）：10 处挑人代码里 8 处逐字同形，已收进 `colony/WorkerDispatch`；两个异形（掉落物回收的实体锚点、施工派工的"优先续用上次工人"键）保留原代码并注明原因。设计与切分见 [PROFESSION_DISPATCH_DESIGN.md](PROFESSION_DISPATCH_DESIGN.md)。
 - 儿童体型与动作差异。
 - 真实手持工具与盾牌。
