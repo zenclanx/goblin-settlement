@@ -68,7 +68,7 @@ public final class FoodCraftingCoordinator {
     }
 
     public static boolean needsBread(WarehouseSupply stock, SettlementSavedData data) {
-        return SettlementDemand.assess(data.adultCount(), data.childCount(), stock, false).priority()
+        return SettlementDemand.assess(data.adultCount(), data.childCount(), stock, false, false).priority()
                 == SettlementDemand.Priority.FOOD;
     }
 

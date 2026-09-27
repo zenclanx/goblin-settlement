@@ -32,7 +32,7 @@ public final class FarmingCoordinator {
         }
 
         var supply = PublicWarehouseInventory.snapshot(level, data);
-        long seedTarget = SettlementDemand.assess(data.adultCount(), data.childCount(), supply, false).seedTarget();
+        long seedTarget = SettlementDemand.assess(data.adultCount(), data.childCount(), supply, false, false).seedTarget();
         boolean allFarmSitesKnown = true;
         boolean hasGrowingCrop = false;
         int assignedPlantings = 0;

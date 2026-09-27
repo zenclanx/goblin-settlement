@@ -1,5 +1,7 @@
 package dev.local.goblinsettlement.colony;
 
+import dev.local.goblinsettlement.construction.transport.TrafficProposalCoordinator;
+import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.ArrayList;
@@ -33,11 +35,13 @@ public final class ExpansionCoordinator {
         }
         int adults = data.adultCount();
         if (PopulationRules.expansionBudget(adults, data.claimedPlots().size()) == 0
-                || data.plans().stream().anyMatch(plan -> !plan.isComplete())) {
+                || data.plans().stream().anyMatch(plan -> !plan.isComplete())
+                || TransportSavedData.get(level).hasIncomplete()) {
             return;
         }
         var supply = PublicWarehouseInventory.snapshot(level, data);
-        var demand = SettlementDemand.assess(adults, data.childCount(), supply, false);
+        var demand = SettlementDemand.assess(adults, data.childCount(), supply, false,
+                TrafficProposalCoordinator.hasPendingTarget(data, TransportSavedData.get(level)));
         if (demand.priority() != SettlementDemand.Priority.READY || supply.oakPlanks() < 2) {
             return;
         }

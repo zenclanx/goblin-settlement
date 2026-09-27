@@ -20,8 +20,10 @@ import dev.local.goblinsettlement.defense.DefenseCoordinator;
 import dev.local.goblinsettlement.defense.GolemEntities;
 import dev.local.goblinsettlement.construction.ConstructionCommands;
 import dev.local.goblinsettlement.construction.ConstructionCoordinator;
-import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
+import dev.local.goblinsettlement.construction.transport.TrafficProposalCoordinator;
 import dev.local.goblinsettlement.construction.transport.TransportCommands;
+import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
+import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.farming.FarmingCommands;
 import dev.local.goblinsettlement.farming.FarmingCoordinator;
@@ -92,7 +94,9 @@ public final class GoblinSettlement implements ModInitializer {
                             if (settlement.isPresent()) {
                                 var supply = PublicWarehouseInventory.snapshot(level, data);
                                 var demand = SettlementDemand.assess(data.adultCount(), data.childCount(),
-                                        supply, data.plans().stream().anyMatch(plan -> !plan.isComplete()));
+                                        supply, data.plans().stream().anyMatch(plan -> !plan.isComplete()),
+                                        TrafficProposalCoordinator.hasPendingTarget(
+                                                data, TransportSavedData.get(level)));
                                 context.getSource().sendSuccess(() -> Component.literal("Known public stock: food="
                                         + supply.food() + "/" + demand.foodTarget()
                                         + ", wheat seeds=" + supply.wheatSeeds() + "/" + demand.seedTarget()
@@ -101,6 +105,11 @@ public final class GoblinSettlement implements ModInitializer {
                                         + ", containers=" + supply.accessibleContainers()
                                         + ", stock " + (supply.complete() ? "complete" : "incomplete")
                                         + ", next priority=" + demand.priority()), false);
+                                context.getSource().sendSuccess(() -> Component.literal(
+                                        TrafficProposalCoordinator.nearestUnservedFacility(
+                                                data, TransportSavedData.get(level))
+                                                .map(pos -> "Next traffic target: " + pos.toShortString())
+                                                .orElse("No pending traffic target")), false);
                                 var professions = data.assignedProfessions();
                                 StringBuilder trades = new StringBuilder();
                                 for (var profession : Profession.values()) {
