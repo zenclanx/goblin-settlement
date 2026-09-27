@@ -16,6 +16,7 @@
 - **邻接规则**：水平四邻（**对角不算**），**允许上下差 1 格**（台阶/坡/桥面高于两岸都要算通），差 2 格不算。这条不能省——桥面比两岸高，只走同一层会把每座桥判成不通。
 - **只收计划自己声明的走格**，不引入计划之外的格子；一格可行走 = 该处是空气，**或**该格是 `barrierFeet()` 之一且那里是我们自己的 `OAK_FENCE`（施工标记不是地形）。脚下那块是不是声明方块由既有的 `firstMissingStructuralStep` 负责，本判据不重做。
 - **判定是只读的**：不放置/破坏方块、不清栅栏、不改存档。桥的判定因此排在 `clearFinishedBarriers` **之前**——不连通时栅栏留在桥上，看上去仍在施工。
+- **判定前必须过 `shouldTickBlocksAt`**：`TransportCoordinator` 的两个判定会读方块，tick 路径上调用点已被 `footprintAccess` 挡过，但 `status` 是**只读命令**，绝不能因为判定而强制加载区块。所以显示层对每一条链接先检查"它的声明走格是否都在可 tick 的区块里"，不在的**跳过判定并单独计数**（`n not loaded`），不与"已判定为连通"混为一谈。
 - **路的判定按链**：加宽计划自身没有 `targetFacility`、走格也只有新增的那一条，只有整条链才是"这条路"。
 - **不新增持久字段、不升 schema**、不新增巡检节拍（桥的闸门在"要开通"那一刻天然只跑一次；路的结论命令触发时现算）。
 - **一份事实只留一处**：连通判据只在 `TransportConnectivity.connects`；"哪些格是走格""近岸/对岸怎么定"只在 `TransportCoordinator` 的装配里；"结构是否完整"只由 `firstMissingStructuralStep` 回答。
@@ -607,9 +608,14 @@ git commit -m "Judge a bridge's crossing and a road's reach from the cells it bu
         BlockPos anchor = settlement.settlement().orElseThrow().anchor();
         var traffic = TransportSavedData.get(level);
         var broken = new java.util.ArrayList<TransportPlan>();
-        int total = 0;
+        int loaded = 0;
+        int skipped = 0;
         for (TransportPlan road : traffic.roads()) {
-            total++;
+            if (!loaded(level, traffic.chainOf(road.id()))) {
+                skipped++;
+                continue;
+            }
+            loaded++;
             if (!TransportCoordinator.roadConnects(level, traffic, road, anchor)
                     || !chainIntact(level, traffic, road)) {
                 broken.add(road);
@@ -620,16 +626,21 @@ git commit -m "Judge a bridge's crossing and a road's reach from the cells it bu
                     || plan.completedSteps() != plan.steps().size()) {
                 continue;
             }
-            total++;
+            if (!loaded(level, List.of(plan))) {
+                skipped++;
+                continue;
+            }
+            loaded++;
             if (!TransportCoordinator.bridgeConnects(level, plan, anchor)) {
                 broken.add(plan);
             }
         }
+        String unloaded = skipped == 0 ? "" : ", " + skipped + " not loaded";
         if (broken.isEmpty()) {
-            return "Links: all " + total + " verified";
+            return "Links: all " + loaded + " loaded verified" + unloaded;
         }
         broken.sort((left, right) -> left.id().compareTo(right.id()));
-        var builder = new StringBuilder("Links: ").append(broken.size()).append(" of ").append(total)
+        var builder = new StringBuilder("Links: ").append(broken.size()).append(" of ").append(loaded)
                 .append(" not connected: ");
         int shown = Math.min(STATUS_LINK_LIMIT, broken.size());
         for (int index = 0; index < shown; index++) {
@@ -644,7 +655,26 @@ git commit -m "Judge a bridge's crossing and a road's reach from the cells it bu
         if (broken.size() > shown) {
             builder.append(", +").append(broken.size() - shown).append(" more");
         }
-        return builder.toString();
+        return builder.toString() + unloaded;
+    }
+
+    /**
+     * Whether every declared walking cell of these plans sits in a ticking chunk. A status command must
+     * never force a chunk to load, so a link in an inactive area is counted and left unjudged rather
+     * than silently judged from unloaded blocks.
+     */
+    private static boolean loaded(ServerLevel level, List<TransportPlan> plans) {
+        for (TransportPlan plan : plans) {
+            for (TransportPlan.Step step : plan.steps()) {
+                if (step.phase() == TransportPlan.Phase.BARRIERS) {
+                    continue;
+                }
+                if (!level.shouldTickBlocksAt(step.site().above())) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** 缺口 = a declared cell is missing and the rebuild path will fix it; 受阻 = something foreign is in the way. */
@@ -685,6 +715,10 @@ Expected: `BUILD SUCCESSFUL`，17 项全部 `*Check passed`。
 Run: `grep -rn "shouldUpgrade\|TransportConnectivity.connects\|setBlock" src/main/java/dev/local/goblinsettlement/construction/transport/TransportCommands.java`
 
 Expected: **一条都没有**——显示层不算阈值、不做连通 BFS、不碰世界。三个判定全部来自 `TransportCoordinator`。
+
+再 Run: `grep -c "shouldTickBlocksAt" src/main/java/dev/local/goblinsettlement/construction/transport/TransportCommands.java`
+
+Expected: **1**——只出现在 `loaded(...)` 里。这是"只读命令不加载区块"的唯一防线，不能少于它，也不该散落多处。
 
 - [ ] **Step 5: 提交**
 
