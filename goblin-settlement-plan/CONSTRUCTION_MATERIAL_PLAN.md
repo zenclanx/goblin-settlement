@@ -512,6 +512,9 @@ git commit -m "Fetch, carry and place whatever the project declares"
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/economy/DroppedMaterialLookup.java`
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionCoordinator.java`
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionPlan.java`
+- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/colony/SettlementSavedData.java`（只改 `retargetRecoveryDrop` 的两个形参名）
+- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/citizen/GoblinCitizenEntity.java`（**回收走的第二个调用点，见 Step 2b/2c**）
+- Modify: `goblin-settlement-mod/src/test/java/dev/local/goblinsettlement/colony/SettlementSavedDataCheck.java`（一处夹具措辞，见 Step 4）
 
 **Interfaces:**
 - Consumes: `ConstructionPlan.material()`（Task 2）
@@ -561,9 +564,11 @@ public final class DroppedMaterialLookup {
 }
 ```
 
-- [ ] **Step 2: 调用点传声明的物品**
+- [ ] **Step 2: 两个调用点都传声明的物品**
 
-`ConstructionCoordinator` 的回收分支里
+原稿说"唯一调用点"，**是错的**——`grep -rn "DroppedMaterialLookup.find" src/` 会给出**两处**：协调器的回收分支，以及工人自己那条回收走的 `recoverDroppedItem`。两处都要改。
+
+2a. `ConstructionCoordinator` 的回收分支里
 
 ```java
             var found = DroppedMaterialLookup.find(level, drop.itemId(), drop.pos());
@@ -574,6 +579,33 @@ public final class DroppedMaterialLookup {
 ```java
             var found = DroppedMaterialLookup.find(level, drop.entityId(), plan.material().item(), drop.pos());
 ```
+
+2b. `GoblinCitizenEntity.recoverDroppedItem` 里（`pickupItemId` 是掉落物的实体 id），把
+
+```java
+        var found = DroppedMaterialLookup.find(level, pickupItemId, buildPos);
+```
+
+替换为（材质取自 Task 3 建立的同一个出处；取不到就按既有的 `ABORTED` 口径结束，不硬撑）：
+
+```java
+        var planned = SettlementSavedData.get(level).materialFor(getUUID().toString());
+        if (planned.isEmpty()) {
+            workStage = WorkStage.ABORTED;
+            waitReason = "no project for this worker";
+            return;
+        }
+        BuildMaterial building = planned.orElseThrow();
+        var found = DroppedMaterialLookup.find(level, pickupItemId, building.item(), buildPos);
+```
+
+2c. 同一方法里 **`:2016` 那处写死的橡木**（Task 3 的 brief 把它留给了本任务，原稿没接）：
+
+```java
+        if (!item.getItem().is(Items.OAK_PLANKS)) {
+```
+
+改为用同一个 `building.item()`：`if (!item.getItem().is(building.item())) {`——`ABORTED` 与 `"dropped item changed"` 的行为不变，只换它比的物品。
 
 - [ ] **Step 3: `RecoveryDrop` 的分量改名（JSON 键不动）**
 
