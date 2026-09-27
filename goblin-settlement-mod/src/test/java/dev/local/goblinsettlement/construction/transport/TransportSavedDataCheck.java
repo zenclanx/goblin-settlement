@@ -148,14 +148,99 @@ public final class TransportSavedDataCheck {
         require(!retired.traffic().containsKey("road-0"), "a retired road's counter is pruned");
         require(retired.traffic().containsKey("road-32"), "the newest road keeps its counter");
 
+        var chained = new TransportSavedData();
+        TransportPlan base = roadPlan("chain-base", facility, 1, false, 2, "chain-base");
+        require(chained.add(base), "the base road is accepted");
+        chained.recordTraffic(Map.of("chain-base", 300));
+        require(chained.roadWidth("chain-base") == 2, "a lone road is as wide as it was built");
+        require(chained.roadTraffic("chain-base") == 300, "a lone road reports its own samples");
+        require(chained.wideningCandidates().size() == 1, "and it qualifies for its first widening");
+
+        TransportPlan widened = roadPlan("chain-widened", facility, 1, false, 3, "chain-base");
+        require(chained.add(widened), "the widening plan is accepted");
+        chained.recordTraffic(Map.of("chain-widened", 90));
+        require(chained.roadWidth("chain-base") == 3, "the chain reports its widest member");
+        require(chained.roadWidth("chain-widened") == 3, "from either end of the chain");
+        require(chained.roadTraffic("chain-base") == 390, "the chain sums every member's samples");
+        require(chained.roadTraffic("chain-widened") == 390, "so a widening never resets the road's traffic");
+        require(chained.wideningCandidates().isEmpty(),
+                "three lanes and 390 samples is short of the two shares a road needs");
+        require(chained.roads().size() == 1, "the chain is one road, not two");
+        require(chained.roads().get(0).id().equals("chain-widened"),
+                "and the widest member represents it");
+
+        chained.recordTraffic(Map.of("chain-base", 200));
+        require(chained.wideningCandidates().size() == 1, "past two shares it qualifies again");
+        TransportPlan street = roadPlan("chain-street", facility, 1, false, 5, "chain-widened");
+        require(chained.add(street), "the second widening is accepted");
+        chained.recordTraffic(Map.of("chain-street", 4000));
+        require(chained.roadWidth("chain-base") == 5, "the widest street is the chain's width");
+        require(chained.wideningCandidates().isEmpty(), "and the widest street never widens again");
+
+        var missingRoute = new TransportSavedData();
+        require(missingRoute.add(roadPlan("no-route", facility, 1, false)), "an old-style road loads");
+        require(missingRoute.plan("no-route").orElseThrow().lanes() == 2,
+                "a plan written before widening is two lanes");
+        require(missingRoute.plan("no-route").orElseThrow().route().isEmpty(),
+                "and has no centerline, so it can never be widened");
+        require(missingRoute.plan("no-route").orElseThrow().widensFrom().isEmpty(),
+                "and widens nothing");
+
+        var chainedJson = TransportSavedData.CODEC.encodeStart(JsonOps.INSTANCE, chained).getOrThrow();
+        var chainedReload = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, chainedJson).getOrThrow();
+        require(chainedReload.roadWidth("chain-base") == 5, "chain widths survive reload");
+        require(chainedReload.roadTraffic("chain-base") == 300 + 200 + 90 + 4000,
+                "chain traffic survives reload");
+        require(chainedReload.plan("chain-street").orElseThrow().route()
+                        .equals(chained.plan("chain-street").orElseThrow().route()),
+                "the centerline survives reload");
+        JsonObject withoutRoad = chainedJson.getAsJsonObject().deepCopy();
+        withoutRoad.getAsJsonArray("plans").forEach(element ->
+                element.getAsJsonObject().remove("road"));
+        var earlier = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, withoutRoad).getOrThrow();
+        require(earlier.roadWidth("chain-base") == 2, "a save without the road field falls back to two lanes");
+        require(earlier.roadTraffic("chain-base") == 500, "and without a chain it keeps its own samples");
+
+        var retirable = new TransportSavedData();
+        for (int index = 0; index < 40; index++) {
+            String id = "plain-" + index;
+            require(retirable.add(roadPlan(id, facility, 1, false)), "plain road " + index + " accepted");
+        }
+        require(retirable.plan("plain-0").isEmpty(),
+                "plain roads are still retired once there are too many");
+        var protectedChain = new TransportSavedData();
+        require(protectedChain.add(roadPlan("keep-base", facility, 1, false, 2, "keep-base")),
+                "chain base accepted");
+        require(protectedChain.add(roadPlan("keep-child", facility, 1, false, 3, "keep-base")),
+                "chain child accepted");
+        for (int index = 0; index < 40; index++) {
+            String id = "filler-" + index;
+            require(protectedChain.add(roadPlan(id, facility, 1, false)), "filler " + index + " accepted");
+        }
+        require(protectedChain.plan("keep-base").isPresent(), "a widened road is never retired");
+        require(protectedChain.plan("keep-child").isPresent(), "nor is the widening that widened it");
+
         System.out.println("TransportSavedDataCheck passed");
     }
 
     private static TransportPlan roadPlan(String id, BlockPos target, int completedSteps, boolean open) {
+        return plan(id, target, completedSteps, open, Optional.empty());
+    }
+
+    private static TransportPlan roadPlan(String id, BlockPos target, int completedSteps, boolean open,
+                                          int lanes, String widensFrom) {
+        var route = List.of(new BlockPos(10, 64, 10), new BlockPos(11, 64, 10));
+        return plan(id, target, completedSteps, open, Optional.of(new TransportPlan.Road(
+                widensFrom.equals(id) ? Optional.empty() : Optional.of(widensFrom), lanes, route)));
+    }
+
+    private static TransportPlan plan(String id, BlockPos target, int completedSteps, boolean open,
+                                      Optional<TransportPlan.Road> road) {
         var step = new TransportPlan.Step(TransportPlan.Phase.SURFACE,
                 new BlockPos(10, 64, 10), TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND);
         return new TransportPlan(id, "settlement-1", TransportPlan.Kind.ROAD, List.of(step),
-                completedSteps, open, List.of(), List.of(), List.of(), Optional.empty(), Optional.of(target));
+                completedSteps, open, List.of(), List.of(), List.of(), Optional.empty(), Optional.of(target),
+                road);
     }
 
     private static TransportPlan bridgePlan(String id, boolean open) {
@@ -169,7 +254,8 @@ public final class TransportSavedDataCheck {
                 completedSteps, open,
                 List.of(new BlockPos(1, 64, 1), new BlockPos(2, 64, 1),
                         new BlockPos(3, 64, 1), new BlockPos(4, 64, 1)),
-                List.of(new BlockPos(5, 65, 1)), List.of(), Optional.empty(), Optional.empty());
+                List.of(new BlockPos(5, 65, 1)), List.of(), Optional.empty(), Optional.empty(),
+                Optional.empty());
     }
 
     private static void require(boolean condition, String message) {

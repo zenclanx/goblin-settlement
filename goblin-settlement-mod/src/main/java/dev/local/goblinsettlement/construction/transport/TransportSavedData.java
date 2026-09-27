@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.construction.transport;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.local.goblinsettlement.planning.transport.RoadUpgradeRules;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -109,6 +110,99 @@ public final class TransportSavedData extends SavedData {
             traffic = Map.copyOf(updated);
             setDirty();
         }
+    }
+
+    /** The finished road's width: the widest member of the widening chain it belongs to. */
+    public int roadWidth(String planId) {
+        int widest = RoadUpgradeRules.baseLanes();
+        for (TransportPlan plan : chain(planId)) {
+            widest = Math.max(widest, plan.lanes());
+        }
+        return widest;
+    }
+
+    /** The finished road's traffic: every member of its chain contributes the samples it caught. */
+    public int roadTraffic(String planId) {
+        int total = 0;
+        for (TransportPlan plan : chain(planId)) {
+            total += traffic.getOrDefault(plan.id(), 0);
+        }
+        return total;
+    }
+
+    /**
+     * One entry per finished road, in the order the roads were built: the chain's widest member, the
+     * smaller id breaking a tie. A widening is folded into the road it widens rather than listed twice.
+     */
+    public List<TransportPlan> roads() {
+        var representatives = new ArrayList<TransportPlan>();
+        for (TransportPlan plan : plans) {
+            if (plan.kind() != TransportPlan.Kind.ROAD || !plan.isComplete()) {
+                continue;
+            }
+            if (plan.widensFrom().filter(parent -> plan(parent).isPresent()).isPresent()) {
+                continue;
+            }
+            representatives.add(widestOf(chain(plan.id()), plan));
+        }
+        return List.copyOf(representatives);
+    }
+
+    /** The finished roads whose measured traffic has earned a widening, heaviest first. */
+    public List<TransportPlan> wideningCandidates() {
+        var candidates = new ArrayList<TransportPlan>();
+        for (TransportPlan road : roads()) {
+            if (RoadUpgradeRules.shouldUpgrade(roadWidth(road.id()), roadTraffic(road.id()))) {
+                candidates.add(road);
+            }
+        }
+        candidates.sort((left, right) -> {
+            int byTraffic = Integer.compare(roadTraffic(right.id()), roadTraffic(left.id()));
+            return byTraffic != 0 ? byTraffic : left.id().compareTo(right.id());
+        });
+        return List.copyOf(candidates);
+    }
+
+    /**
+     * The chain a plan belongs to: the plan that widened nothing, plus every plan widened from it. A
+     * plan whose parent is missing (a hand-edited save) is its own chain, so nothing is lost silently.
+     */
+    private List<TransportPlan> chain(String planId) {
+        String root = rootOf(planId);
+        var found = new ArrayList<TransportPlan>();
+        for (TransportPlan plan : plans) {
+            if (root.equals(rootOf(plan.id()))) {
+                found.add(plan);
+            }
+        }
+        return List.copyOf(found);
+    }
+
+    private String rootOf(String planId) {
+        String current = planId;
+        for (int step = 0; step <= plans.size(); step++) {
+            var found = plan(current);
+            if (found.isEmpty()) {
+                return planId;
+            }
+            var parent = found.orElseThrow().widensFrom();
+            if (parent.isEmpty()) {
+                return current;
+            }
+            current = parent.orElseThrow();
+        }
+        return planId; // a cycle cannot be written here, but a hand-edited save must not hang the server
+    }
+
+    private static TransportPlan widestOf(List<TransportPlan> chain, TransportPlan fallback) {
+        TransportPlan widest = fallback;
+        for (TransportPlan plan : chain) {
+            if (plan.lanes() > widest.lanes()
+                    || (plan.lanes() == widest.lanes() && plan.id().compareTo(widest.id()) < 0)) {
+                widest = plan;
+            }
+        }
+        return widest;
     }
 
     /**
@@ -231,6 +325,7 @@ public final class TransportSavedData extends SavedData {
         }
         var updated = new ArrayList<>(plans);
         updated.add(plan);
+        trimCompletedRoads(updated);
         plans = List.copyOf(updated);
         revision++;
         index(plan);
@@ -307,19 +402,34 @@ public final class TransportSavedData extends SavedData {
         }
     }
 
+    /**
+     * Retire the oldest finished roads once there are more than MAX_COMPLETED_ROADS of them. Roads on a
+     * widening chain are kept: the busiest roads are also the oldest, so retiring one would drop both
+     * its samples and its only chance of ever being widened.
+     */
     private static void trimCompletedRoads(List<TransportPlan> updated) {
-        long completedRoads = updated.stream().filter(plan ->
-                plan.kind() == TransportPlan.Kind.ROAD && plan.isComplete()).count();
-        if (completedRoads <= MAX_COMPLETED_ROADS) {
+        long retirable = updated.stream().filter(plan -> isRetirable(plan, updated)).count();
+        if (retirable <= MAX_COMPLETED_ROADS) {
             return;
         }
         var iterator = updated.iterator();
-        while (iterator.hasNext() && completedRoads > MAX_COMPLETED_ROADS) {
+        while (iterator.hasNext() && retirable > MAX_COMPLETED_ROADS) {
             TransportPlan plan = iterator.next();
-            if (plan.kind() == TransportPlan.Kind.ROAD && plan.isComplete()) {
+            if (isRetirable(plan, updated)) {
                 iterator.remove();
-                completedRoads--;
+                retirable--;
             }
         }
+    }
+
+    /** A finished road on no widening chain -- the only kind the trim may retire. */
+    private static boolean isRetirable(TransportPlan plan, List<TransportPlan> plans) {
+        if (plan.kind() != TransportPlan.Kind.ROAD || !plan.isComplete()) {
+            return false;
+        }
+        if (plan.widensFrom().isPresent()) {
+            return false;
+        }
+        return plans.stream().noneMatch(other -> other.widensFrom().equals(Optional.of(plan.id())));
     }
 }

@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.construction.transport;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.local.goblinsettlement.planning.transport.RoadUpgradeRules;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -12,9 +13,31 @@ public record TransportPlan(
         String id, String settlementId, Kind kind, List<Step> steps,
         int completedSteps, boolean open, List<BlockPos> barrierFeet,
         List<BlockPos> closedFootprint, List<BlockPos> foundationBases,
-        Optional<String> workerId, Optional<BlockPos> targetFacility) {
+        Optional<String> workerId, Optional<BlockPos> targetFacility,
+        Optional<Road> road) {
     public enum Kind {
         ROAD, WOOD_BRIDGE
+    }
+
+    /**
+     * The road this plan builds: its centerline, how wide it ends up, and the plan it widens. Empty for
+     * bridges, and empty for every plan written before the widening round -- such a road is two lanes
+     * and has no centerline, so it can never be widened.
+     */
+    public record Road(Optional<String> widensFrom, int lanes, List<BlockPos> route) {
+        static final Codec<Road> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+                Codec.STRING.optionalFieldOf("widens_from").forGetter(Road::widensFrom),
+                Codec.INT.optionalFieldOf("lanes", RoadUpgradeRules.baseLanes()).forGetter(Road::lanes),
+                BlockPos.CODEC.listOf().optionalFieldOf("route", List.of()).forGetter(Road::route)
+        ).apply(instance, Road::new));
+
+        public Road {
+            Objects.requireNonNull(widensFrom, "widensFrom");
+            if (lanes < 1) {
+                throw new IllegalArgumentException("A road needs at least one lane");
+            }
+            route = immutablePositions(route);
+        }
     }
 
     public enum Phase {
@@ -64,7 +87,8 @@ public record TransportPlan(
             BlockPos.CODEC.listOf().fieldOf("closed_footprint").forGetter(TransportPlan::closedFootprint),
             BlockPos.CODEC.listOf().fieldOf("foundation_bases").forGetter(TransportPlan::foundationBases),
             Codec.STRING.optionalFieldOf("worker_id").forGetter(TransportPlan::workerId),
-            BlockPos.CODEC.optionalFieldOf("target_facility").forGetter(TransportPlan::targetFacility)
+            BlockPos.CODEC.optionalFieldOf("target_facility").forGetter(TransportPlan::targetFacility),
+            Road.CODEC.optionalFieldOf("road").forGetter(TransportPlan::road)
     ).apply(instance, TransportPlan::new));
 
     public TransportPlan {
@@ -79,6 +103,10 @@ public record TransportPlan(
         workerId = Objects.requireNonNull(workerId, "workerId");
         targetFacility = (targetFacility == null ? Optional.<BlockPos>empty() : targetFacility)
                 .map(BlockPos::immutable);
+        road = Objects.requireNonNull(road, "road");
+        if (kind != Kind.ROAD && road.isPresent()) {
+            throw new IllegalArgumentException("Only roads carry a road shape");
+        }
         if (completedSteps < 0 || completedSteps > steps.size()) {
             throw new IllegalArgumentException("Invalid transport progress");
         }
@@ -97,6 +125,21 @@ public record TransportPlan(
         return positions.stream().map(pos -> Objects.requireNonNull(pos, "position").immutable()).toList();
     }
 
+    /** The road's width; a plan written before the widening round is two lanes. */
+    public int lanes() {
+        return road.map(Road::lanes).orElse(RoadUpgradeRules.baseLanes());
+    }
+
+    /** The road's centerline, empty when this plan predates the widening round. */
+    public List<BlockPos> route() {
+        return road.map(Road::route).orElse(List.of());
+    }
+
+    /** The plan this one widens, empty when it widens nothing. */
+    public Optional<String> widensFrom() {
+        return road.flatMap(Road::widensFrom);
+    }
+
     public boolean isComplete() {
         return kind == Kind.ROAD ? completedSteps == steps.size() : open;
     }
@@ -106,7 +149,7 @@ public record TransportPlan(
             return this;
         }
         return new TransportPlan(id, settlementId, kind, steps, completedSteps + 1,
-                false, barrierFeet, closedFootprint, foundationBases, Optional.empty(), targetFacility);
+                false, barrierFeet, closedFootprint, foundationBases, Optional.empty(), targetFacility, road);
     }
 
     public TransportPlan rewind(int stepIndex) {
@@ -114,16 +157,16 @@ public record TransportPlan(
             throw new IllegalArgumentException("Invalid rewind index");
         }
         return new TransportPlan(id, settlementId, kind, steps, stepIndex,
-                false, barrierFeet, closedFootprint, foundationBases, Optional.empty(), targetFacility);
+                false, barrierFeet, closedFootprint, foundationBases, Optional.empty(), targetFacility, road);
     }
 
     public TransportPlan withOpen(boolean value) {
         return new TransportPlan(id, settlementId, kind, steps, completedSteps,
-                value, barrierFeet, closedFootprint, foundationBases, Optional.empty(), targetFacility);
+                value, barrierFeet, closedFootprint, foundationBases, Optional.empty(), targetFacility, road);
     }
 
     public TransportPlan withWorker(Optional<String> value) {
         return new TransportPlan(id, settlementId, kind, steps, completedSteps,
-                open, barrierFeet, closedFootprint, foundationBases, value, targetFacility);
+                open, barrierFeet, closedFootprint, foundationBases, value, targetFacility, road);
     }
 }

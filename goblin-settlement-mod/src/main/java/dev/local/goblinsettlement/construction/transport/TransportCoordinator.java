@@ -9,6 +9,7 @@ import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
 import dev.local.goblinsettlement.planning.road.RoadPlanner;
+import dev.local.goblinsettlement.planning.transport.RoadUpgradeRules;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -85,7 +86,8 @@ public final class TransportCoordinator {
         TransportPlan plan = new TransportPlan(
                 UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.ROAD,
                 List.copyOf(sites.values()), 0, false, List.of(), List.of(), List.of(),
-                Optional.empty(), Optional.of(targetFacility));
+                Optional.empty(), Optional.of(targetFacility),
+                Optional.of(new TransportPlan.Road(Optional.empty(), RoadUpgradeRules.baseLanes(), route)));
         if (!traffic.add(plan)) {
             return rejected("TRAFFIC_WORK_ACTIVE_OR_LIMIT");
         }
@@ -171,7 +173,7 @@ public final class TransportCoordinator {
         TransportPlan plan = new TransportPlan(
                 UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.WOOD_BRIDGE,
                 steps, 0, false, barriers, List.copyOf(closure), candidate.surveyedBases(),
-                Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), Optional.empty());
         if (!traffic.add(plan)) {
             return rejected("TRAFFIC_WORK_ACTIVE_OR_LIMIT");
         }
