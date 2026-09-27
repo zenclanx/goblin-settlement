@@ -189,6 +189,14 @@ tasks.register('roadLayoutCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.planning.transport.RoadLayoutCheck'
 }
 
+tasks.register('transportConnectivityCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks where a walker can get along a road or across a bridge.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.planning.transport.TransportConnectivityCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -206,4 +214,5 @@ tasks.named('check') {
     dependsOn tasks.named('shelterRulesCheck')
     dependsOn tasks.named('roadUpgradeRulesCheck')
     dependsOn tasks.named('roadLayoutCheck')
+    dependsOn tasks.named('transportConnectivityCheck')
 }
