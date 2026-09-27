@@ -61,6 +61,7 @@ public final class BedProvisioningCoordinator {
                     scan.next = 0;
                     scan.count = 0;
                     scan.beds.clear();
+                    scan.heads.clear();
                     return;
                 }
             } else if (!countBeds(level, scan, plot)) {
@@ -75,6 +76,7 @@ public final class BedProvisioningCoordinator {
             if (scan.count >= data.occupiedPopulationSlots() + 1) {
                 SCANS.remove(level);
             } else {
+                scan.spareAnchors = spareCapacityAnchors(level, id, scan.heads);
                 scan.phase = Phase.FIND;
                 scan.next = 0;
             }
@@ -82,9 +84,11 @@ public final class BedProvisioningCoordinator {
             SCANS.remove(level);
         } else {
             // Only a complete second count may authorize a real withdrawal.
+            scan.spareAnchors = spareCapacityAnchors(level, id, scan.heads);
             if (scan.count < data.occupiedPopulationSlots() + 1
                     && PublicWarehouseInventory.snapshot(level, data).complete()
-                    && siteSuitable(level, data, id, scan.site.foot(), scan.site.head(), scan.beds)) {
+                    && siteSuitable(level, data, id, scan.site.foot(), scan.site.head(), scan.beds,
+                            scan.spareAnchors)) {
                 placeFromWarehouse(level, data, id, scan.site.foot(), scan.site.head(), scan.site.facing());
             }
             SCANS.remove(level);
@@ -106,11 +110,38 @@ public final class BedProvisioningCoordinator {
                             && permitted(level, scan.id, pos.above())
                             && permitted(level, scan.id, pos.above(2))
                             && level.getBlockState(pos.above()).isAir()
-                            && level.getBlockState(pos.above(2)).isAir()) scan.count++;
+                            && level.getBlockState(pos.above(2)).isAir()) {
+                        scan.count++;
+                        scan.heads.add(pos);
+                    }
                 }
             }
         }
         return true;
+    }
+
+    /**
+     * Anchor beds of homes that still host room: used beds near the anchor stay below the capacity
+     * the finished geometry actually provides. Capacity counts built stages, not the target alone,
+     * so raising a target never admits beds before the blocks exist.
+     */
+    private static List<BlockPos> spareCapacityAnchors(ServerLevel level, String id, List<BlockPos> heads) {
+        List<int[]> axes = new ArrayList<>();
+        for (BlockPos head : heads) {
+            axes.add(new int[] {head.getX(), head.getY(), head.getZ()});
+        }
+        List<BlockPos> result = new ArrayList<>();
+        for (var home : HousingSavedData.get(level).homes(id)) {
+            int used = HousingRules.bedsNear(axes, home.bed().getX(), home.bed().getY(),
+                    home.bed().getZ(), HousingRules.BIND_RADIUS);
+            int capacity = HousingRules.builtCapacity(home.capacityTarget(),
+                    HousingCoordinator.stageFullyBuilt(level, home, 1),
+                    HousingCoordinator.stageFullyBuilt(level, home, 2));
+            if (used < capacity) {
+                result.add(home.bed());
+            }
+        }
+        return result;
     }
 
     private static Site findSite(ServerLevel level, SettlementSavedData data, Scan scan,
@@ -121,7 +152,7 @@ public final class BedProvisioningCoordinator {
                     BlockPos foot = new BlockPos(x, scan.y + dy, z);
                     for (Direction facing : DIRECTIONS) {
                         BlockPos head = foot.relative(facing);
-                        if (siteSuitable(level, data, scan.id, foot, head, scan.beds)) {
+                        if (siteSuitable(level, data, scan.id, foot, head, scan.beds, scan.spareAnchors)) {
                             return new Site(foot, head, facing);
                         }
                     }
@@ -140,6 +171,8 @@ public final class BedProvisioningCoordinator {
         private final int y;
         private final List<SettlementSavedData.Plot> plots;
         private final List<BlockPos> beds = new ArrayList<>();
+        private final List<BlockPos> heads = new ArrayList<>();
+        private List<BlockPos> spareAnchors = List.of();
         private Phase phase = Phase.COUNT;
         private int next;
         private int count;
@@ -152,7 +185,8 @@ public final class BedProvisioningCoordinator {
         }
     }
     private static boolean siteSuitable(ServerLevel level, SettlementSavedData data, String id,
-                                        BlockPos foot, BlockPos head, List<BlockPos> beds) {
+                                        BlockPos foot, BlockPos head, List<BlockPos> beds,
+                                        List<BlockPos> spareAnchors) {
         for (BlockPos pos : List.of(foot, head)) {
             // Reject occupied and weak ground before the more expensive permission checks.
             if (!level.shouldTickBlocksAt(pos)
@@ -163,6 +197,11 @@ public final class BedProvisioningCoordinator {
                     || !level.getFluidState(pos.below()).isEmpty()
                     || !level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP)
                     || nearFacilities(data, pos) || nearBed(beds, pos)
+                    // While any home has spare capacity, a new bed must sit in some such home's
+                    // binding radius; with no spare home anywhere (including none), binding is off.
+                    || (!spareAnchors.isEmpty() && spareAnchors.stream()
+                            .noneMatch(anchor -> near(foot, anchor, HousingRules.BIND_RADIUS)
+                                    || near(head, anchor, HousingRules.BIND_RADIUS)))
                     || !permitted(level, id, pos) || !permitted(level, id, pos.below())
                     || !permitted(level, id, pos.above()) || !permitted(level, id, pos.above(2))) {
                 return false;
