@@ -8,6 +8,7 @@ import dev.local.goblinsettlement.colony.WorkerDispatch;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
+import dev.local.goblinsettlement.planning.transport.RoadLayout;
 import dev.local.goblinsettlement.planning.road.RoadPlanner;
 import dev.local.goblinsettlement.planning.transport.RoadUpgradeRules;
 import java.util.ArrayList;
@@ -64,20 +65,14 @@ public final class TransportCoordinator {
         }
         List<BlockPos> route = result.candidate().orElseThrow().centerline();
         Map<BlockPos, TransportPlan.Step> sites = new LinkedHashMap<>();
-        for (int index = 0; index < route.size(); index++) {
-            BlockPos foot = route.get(index);
-            Direction forward = roadDirection(route, index);
-            Direction side = forward.getClockWise();
-            // Two lanes, which is what RoadUpgradeRules.BUILT_ROAD_LANES describes.
-            for (BlockPos lane : List.of(foot, foot.relative(side))) {
-                if (!safeRoadFoot(level, settlementId, lane)) {
-                    return rejected("UNSAFE_TWO_LANE_FOOTPRINT");
-                }
-                BlockPos ground = lane.below().immutable();
-                sites.putIfAbsent(ground, new TransportPlan.Step(
-                        TransportPlan.Phase.SURFACE, ground,
-                        TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND));
+        for (BlockPos foot : RoadLayout.laneFeet(route, RoadUpgradeRules.baseLanes())) {
+            if (!safeRoadFoot(level, settlementId, foot)) {
+                return rejected("UNSAFE_TWO_LANE_FOOTPRINT");
             }
+            BlockPos ground = foot.below().immutable();
+            sites.putIfAbsent(ground, new TransportPlan.Step(
+                    TransportPlan.Phase.SURFACE, ground,
+                    TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND));
         }
         if (sites.isEmpty() || conflictsWithExistingWork(
                 SettlementSavedData.get(level), sites.keySet())) {
@@ -359,17 +354,6 @@ public final class TransportCoordinator {
 
     private static StartResult rejected(String reason) {
         return new StartResult(false, reason, Optional.empty());
-    }
-
-    private static Direction roadDirection(List<BlockPos> route, int index) {
-        BlockPos from = route.get(index == route.size() - 1 && index > 0 ? index - 1 : index);
-        BlockPos to = route.get(index == route.size() - 1 && index > 0 ? index : Math.min(index + 1, route.size() - 1));
-        int dx = Integer.compare(to.getX(), from.getX());
-        int dz = Integer.compare(to.getZ(), from.getZ());
-        if (dx > 0) return Direction.EAST;
-        if (dx < 0) return Direction.WEST;
-        if (dz > 0) return Direction.SOUTH;
-        return Direction.NORTH;
     }
 
     private static boolean safeRoadFoot(ServerLevel level, String id, BlockPos foot) {
