@@ -13,7 +13,6 @@ import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
 
 /** Visits each small project once per second; all projects share real warehouse containers. */
@@ -50,7 +49,7 @@ public final class ConstructionCoordinator {
                 var entity = level.getEntity(UUID.fromString(workerId));
                 if (entity instanceof GoblinCitizenEntity goblin
                         && goblin.completedConstruction(settlementId, site)
-                        && level.getBlockState(site).is(Blocks.OAK_PLANKS)) {
+                        && level.getBlockState(site).is(plan.material().block())) {
                     data.finishStep(workerId, site);
                 } else if (entity instanceof GoblinCitizenEntity goblin && goblin.recoveryEnded(settlementId)) {
                     if (goblin.recoverySucceeded()) {
@@ -113,7 +112,7 @@ public final class ConstructionCoordinator {
         if (!level.getBlockState(below).isFaceSturdy(level, below, Direction.UP)) {
             return;
         }
-        var supply = PublicWarehouseInventory.firstWithOakPlank(level, data);
+        var supply = PublicWarehouseInventory.firstHolding(level, data, plan.material().item());
         if (supply.isEmpty()) {
             return;
         }

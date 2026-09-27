@@ -636,6 +636,14 @@ public final class SettlementSavedData extends SavedData {
                 Optional.empty(), current.recoveryDrop(), current.lastWorkerId(), current.material()));
     }
 
+    /** What the project this worker holds is built from; empty when the worker holds no project. */
+    public Optional<BuildMaterial> materialFor(String workerId) {
+        return plans.stream()
+                .filter(candidate -> candidate.workerId().equals(Optional.of(workerId)))
+                .map(ConstructionPlan::material)
+                .findFirst();
+    }
+
     public boolean recordRecoverableDrop(String workerId, String itemId, BlockPos pos) {
         var target = plans.stream().filter(candidate -> candidate.workerId()
                 .equals(Optional.of(workerId))).findFirst();

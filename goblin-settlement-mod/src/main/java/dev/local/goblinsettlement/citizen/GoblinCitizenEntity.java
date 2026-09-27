@@ -6,6 +6,7 @@ import dev.local.goblinsettlement.colony.ProfessionRules;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.WorkKind;
+import dev.local.goblinsettlement.construction.BuildMaterial;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
 import dev.local.goblinsettlement.construction.transport.TransportPlan;
@@ -28,6 +29,7 @@ import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.mining.MiningWorksite;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -567,8 +569,9 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
     }
 
-    public int carriedOakPlanks() {
-        return carried.is(Items.OAK_PLANKS) ? carried.getCount() : 0;
+    /** How many of this item the resident is carrying, for a project's shortage report. */
+    public int carried(Item item) {
+        return carried.is(item) ? carried.getCount() : 0;
     }
 
     public void applyProjectCancellation(ServerLevel level) {
@@ -2086,12 +2089,18 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             workStage = WorkStage.DELIVERING;
             return;
         }
+        var material = SettlementSavedData.get(level).materialFor(getUUID().toString());
+        if (material.isEmpty()) {
+            waitReason = "no project for this worker";
+            return;
+        }
+        BuildMaterial building = material.orElseThrow();
         if (!(level.getBlockEntity(supplyPos) instanceof Container container)) {
             waitReason = "supply container missing";
             return;
         }
         for (int slot = 0; slot < container.getContainerSize(); slot++) {
-            if (container.getItem(slot).is(Items.OAK_PLANKS)) {
+            if (container.getItem(slot).is(building.item())) {
                 ItemStack removed = container.removeItem(slot, 1);
                 if (!removed.isEmpty()) {
                     carried = removed;
@@ -2102,11 +2111,18 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 return;
             }
         }
-        waitReason = "oak planks missing";
+        waitReason = building.name().toLowerCase(Locale.ROOT) + " missing";
     }
 
     private void placeMaterial(ServerLevel level) {
-        if (!carried.is(Items.OAK_PLANKS)) {
+        var planned = SettlementSavedData.get(level).materialFor(getUUID().toString());
+        if (planned.isEmpty()) {
+            workStage = WorkStage.FETCHING;
+            waitReason = "no project for this worker";
+            return;
+        }
+        BuildMaterial building = planned.orElseThrow();
+        if (!carried.is(building.item())) {
             workStage = WorkStage.FETCHING;
             waitReason = "material lost";
             return;
@@ -2125,7 +2141,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             waitReason = "land permission changed";
             return;
         }
-        if (level.setBlock(buildPos, Blocks.OAK_PLANKS.defaultBlockState(), 3)) {
+        if (level.setBlock(buildPos, building.block().defaultBlockState(), 3)) {
             carried = ItemStack.EMPTY;
             workStage = WorkStage.COMPLETE;
             waitReason = "";

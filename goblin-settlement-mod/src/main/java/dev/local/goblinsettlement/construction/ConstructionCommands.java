@@ -178,8 +178,9 @@ public final class ConstructionCommands {
     private static Optional<Integer> carriedBy(ServerLevel level, String workerId) {
         try {
             var entity = level.getEntity(UUID.fromString(workerId));
-            return entity instanceof GoblinCitizenEntity goblin
-                    ? Optional.of(goblin.carriedOakPlanks()) : Optional.empty();
+            var material = SettlementSavedData.get(level).materialFor(workerId);
+            return entity instanceof GoblinCitizenEntity goblin && material.isPresent()
+                    ? Optional.of(goblin.carried(material.orElseThrow().item())) : Optional.empty();
         } catch (IllegalArgumentException ignored) {
             return Optional.empty();
         }
