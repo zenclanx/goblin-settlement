@@ -16,15 +16,15 @@ import net.minecraft.server.level.ServerLevel;
 public final class TrafficSampler {
     /**
      * Ticks between samples. INVENTED, and it is half of the judgement: RoadUpgradeRules compares
-     * sample hits against a threshold, so changing this changes what that threshold means. Re-choose
-     * both together (TRAFFIC_UPGRADE_DESIGN section 2).
+     * sample hits against RoadUpgradeRules.TRAFFIC_PER_LANE, so changing this changes what that
+     * threshold means. Re-choose both together (TRAFFIC_UPGRADE_DESIGN section 2).
      */
     private static final int SAMPLE_INTERVAL_TICKS = 100;
 
     private static final WeakHashMap<TransportSavedData, Snapshot> SNAPSHOTS = new WeakHashMap<>();
 
-    /** Road surface blocks for one owner and one revision of the plan list. */
-    private record Snapshot(TransportSavedData owner, int revision, Map<BlockPos, String> roadSurface) {
+    /** Road surface blocks for one revision of the plan list. */
+    private record Snapshot(int revision, Map<BlockPos, String> roadSurface) {
     }
 
     private TrafficSampler() {
@@ -53,12 +53,11 @@ public final class TrafficSampler {
 
     /**
      * The SURFACE cell of every finished road, keyed by the block a walker stands on. Rebuilt only when
-     * the plan list changes; the owner check also covers a reload, which hands out a new instance whose
-     * revision counter has started over.
+     * the plan list changes; a reload hands out a new instance whose revision counter has started over.
      */
     private static Map<BlockPos, String> surfaceIndex(TransportSavedData traffic) {
         Snapshot snapshot = SNAPSHOTS.get(traffic);
-        if (snapshot != null && snapshot.owner() == traffic && snapshot.revision() == traffic.revision()) {
+        if (snapshot != null && snapshot.revision() == traffic.revision()) {
             return snapshot.roadSurface();
         }
         var index = new HashMap<BlockPos, String>();
@@ -72,7 +71,7 @@ public final class TrafficSampler {
                 }
             }
         }
-        var rebuilt = new Snapshot(traffic, traffic.revision(), Map.copyOf(index));
+        var rebuilt = new Snapshot(traffic.revision(), Map.copyOf(index));
         SNAPSHOTS.put(traffic, rebuilt);
         return rebuilt.roadSurface();
     }
