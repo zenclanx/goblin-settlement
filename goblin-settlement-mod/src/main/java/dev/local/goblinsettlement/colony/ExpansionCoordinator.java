@@ -3,6 +3,8 @@ package dev.local.goblinsettlement.colony;
 import dev.local.goblinsettlement.construction.transport.TrafficProposalCoordinator;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
+import dev.local.goblinsettlement.housing.BedCensus;
+import dev.local.goblinsettlement.housing.HousingCoordinator;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -42,8 +44,14 @@ public final class ExpansionCoordinator {
         var supply = PublicWarehouseInventory.snapshot(level, data);
         var demand = SettlementDemand.assess(adults, data.childCount(), supply, false,
                 TrafficProposalCoordinator.hasPendingTarget(data, TransportSavedData.get(level),
-                        level.getGameTime()));
-        if (demand.priority() != SettlementDemand.Priority.READY || supply.oakPlanks() < 2) {
+                        level.getGameTime()),
+                BedCensus.shortage(level, data));
+        // A bed shortage blocks expansion only while a home can still grow capacity;
+        // when no home can, claiming new land is the sole way out of the shortage.
+        boolean ready = demand.priority() == SettlementDemand.Priority.READY
+                || (demand.priority() == SettlementDemand.Priority.HOUSING
+                    && !HousingCoordinator.hasCapacityGain(level, data));
+        if (!ready || supply.oakPlanks() < 2) {
             return;
         }
         int freeCells = freeBuildCells(level, data, settlement.get().id(), settlement.get().anchor().getY());

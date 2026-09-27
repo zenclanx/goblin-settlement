@@ -8,6 +8,7 @@ import dev.local.goblinsettlement.colony.ResidentWorkLookup;
 import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseSupply;
+import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.Comparator;
 import java.util.Optional;
@@ -34,7 +35,7 @@ public final class FoodCraftingCoordinator {
             return;
         }
         WarehouseSupply stock = PublicWarehouseInventory.snapshot(level, data);
-        if (!needsBread(stock, data)) {
+        if (!needsBread(stock, data, BedCensus.shortage(level, data))) {
             return;
         }
         String settlementId = settlement.get().id();
@@ -67,9 +68,9 @@ public final class FoodCraftingCoordinator {
         }
     }
 
-    public static boolean needsBread(WarehouseSupply stock, SettlementSavedData data) {
-        return SettlementDemand.assess(data.adultCount(), data.childCount(), stock, false, false).priority()
-                == SettlementDemand.Priority.FOOD;
+    public static boolean needsBread(WarehouseSupply stock, SettlementSavedData data, boolean housingShortage) {
+        return SettlementDemand.assess(data.adultCount(), data.childCount(), stock, false, false,
+                housingShortage).priority() == SettlementDemand.Priority.FOOD;
     }
 
     private static boolean hasWheat(Container container) {

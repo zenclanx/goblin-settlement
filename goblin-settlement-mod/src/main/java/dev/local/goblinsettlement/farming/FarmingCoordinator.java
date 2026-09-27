@@ -6,6 +6,7 @@ import dev.local.goblinsettlement.colony.SettlementDemand;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
+import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.Comparator;
 import java.util.UUID;
@@ -32,7 +33,8 @@ public final class FarmingCoordinator {
         }
 
         var supply = PublicWarehouseInventory.snapshot(level, data);
-        long seedTarget = SettlementDemand.assess(data.adultCount(), data.childCount(), supply, false, false).seedTarget();
+        long seedTarget = SettlementDemand.assess(data.adultCount(), data.childCount(), supply,
+                false, false, BedCensus.shortage(level, data)).seedTarget();
         boolean allFarmSitesKnown = true;
         boolean hasGrowingCrop = false;
         int assignedPlantings = 0;

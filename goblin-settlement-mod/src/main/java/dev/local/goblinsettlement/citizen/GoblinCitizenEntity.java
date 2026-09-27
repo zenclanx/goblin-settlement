@@ -18,6 +18,7 @@ import dev.local.goblinsettlement.economy.tools.ToolCraftingCoordinator;
 import dev.local.goblinsettlement.economy.tools.WoodToolKind;
 import dev.local.goblinsettlement.forestry.ForestryCoordinator;
 import dev.local.goblinsettlement.forestry.ForestrySavedData;
+import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.housing.HousingCoordinator;
 import dev.local.goblinsettlement.housing.HousingSavedData;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -1332,7 +1333,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             waitReason = "warehouse stock incomplete";
             return;
         }
-        if (!FoodCraftingCoordinator.needsBread(stock, data)) {
+        if (!FoodCraftingCoordinator.needsBread(stock, data, BedCensus.shortage(level, data))) {
             workStage = WorkStage.FOOD_COMPLETE;
             waitReason = "food target reached";
             return;
@@ -1374,7 +1375,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             waitReason = "warehouse stock incomplete";
             return;
         }
-        if (!FoodCraftingCoordinator.needsBread(stock, data)) {
+        if (!FoodCraftingCoordinator.needsBread(stock, data, BedCensus.shortage(level, data))) {
             workStage = WorkStage.FOOD_RETURNING;
             waitReason = "food target reached, returning wheat";
             return;

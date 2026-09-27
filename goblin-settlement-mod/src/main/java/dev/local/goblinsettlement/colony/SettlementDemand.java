@@ -5,7 +5,7 @@ import dev.local.goblinsettlement.economy.WarehouseSupply;
 /** Advisory priority from a live supply snapshot; it never creates or consumes items. */
 public final class SettlementDemand {
     public enum Priority {
-        NO_WORKFORCE, STOCK_UNKNOWN, WAREHOUSE_REQUIRED, FOOD, SEEDS, BASIC_TOOLS, TRANSPORT, CONSTRUCTION, READY
+        NO_WORKFORCE, STOCK_UNKNOWN, WAREHOUSE_REQUIRED, FOOD, SEEDS, BASIC_TOOLS, TRANSPORT, HOUSING, CONSTRUCTION, READY
     }
 
     public record Assessment(Priority priority, long foodTarget, long seedTarget) {
@@ -15,7 +15,8 @@ public final class SettlementDemand {
     }
 
     public static Assessment assess(int adults, int children, WarehouseSupply supply,
-                                    boolean activeConstruction, boolean trafficPending) {
+                                    boolean activeConstruction, boolean trafficPending,
+                                    boolean housingShortage) {
         if (adults < 0 || children < 0 || supply == null) {
             throw new IllegalArgumentException("Population and supply snapshot are required");
         }
@@ -41,6 +42,9 @@ public final class SettlementDemand {
         }
         if (trafficPending) {
             return new Assessment(Priority.TRANSPORT, foodTarget, seedTarget);
+        }
+        if (housingShortage) {
+            return new Assessment(Priority.HOUSING, foodTarget, seedTarget);
         }
         return new Assessment(activeConstruction ? Priority.CONSTRUCTION : Priority.READY,
                 foodTarget, seedTarget);

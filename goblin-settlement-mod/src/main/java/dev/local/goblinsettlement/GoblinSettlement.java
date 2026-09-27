@@ -34,8 +34,9 @@ import dev.local.goblinsettlement.citizen.ModEntities;
 import dev.local.goblinsettlement.interaction.ProtectedRectangle;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.mining.MiningCoordinator;
-import dev.local.goblinsettlement.housing.HousingCoordinator;
+import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.housing.BedProvisioningCoordinator;
+import dev.local.goblinsettlement.housing.HousingCoordinator;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
 import dev.local.goblinsettlement.social.GiftTradeCommands;
 import dev.local.goblinsettlement.social.WarehouseWithdrawalObserver;
@@ -96,7 +97,8 @@ public final class GoblinSettlement implements ModInitializer {
                                 var demand = SettlementDemand.assess(data.adultCount(), data.childCount(),
                                         supply, data.plans().stream().anyMatch(plan -> !plan.isComplete()),
                                         TrafficProposalCoordinator.hasPendingTarget(
-                                                data, TransportSavedData.get(level), level.getGameTime()));
+                                                data, TransportSavedData.get(level), level.getGameTime()),
+                                        BedCensus.shortage(level, data));
                                 context.getSource().sendSuccess(() -> Component.literal("Known public stock: food="
                                         + supply.food() + "/" + demand.foodTarget()
                                         + ", wheat seeds=" + supply.wheatSeeds() + "/" + demand.seedTarget()

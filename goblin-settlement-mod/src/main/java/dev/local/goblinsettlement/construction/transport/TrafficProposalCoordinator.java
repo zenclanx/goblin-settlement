@@ -3,6 +3,7 @@ package dev.local.goblinsettlement.construction.transport;
 import dev.local.goblinsettlement.colony.SettlementDemand;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
+import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
 import dev.local.goblinsettlement.planning.transport.StraightLineProbe;
 import dev.local.goblinsettlement.planning.transport.TrafficDecision;
@@ -82,7 +83,8 @@ public final class TrafficProposalCoordinator {
         String settlementId = settlement.settlement().orElseThrow().id();
         var supply = PublicWarehouseInventory.snapshot(level, settlement);
         var demand = SettlementDemand.assess(settlement.adultCount(), settlement.childCount(),
-                supply, false, hasPendingTarget(settlement, traffic, level.getGameTime()));
+                supply, false, hasPendingTarget(settlement, traffic, level.getGameTime()),
+                BedCensus.shortage(level, settlement));
         if (demand.priority() != SettlementDemand.Priority.TRANSPORT) {
             return;                                        // gate 3: demand tier
         }
