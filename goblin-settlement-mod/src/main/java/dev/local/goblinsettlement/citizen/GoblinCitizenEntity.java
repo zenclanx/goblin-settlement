@@ -37,11 +37,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -114,6 +116,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private String waitReason = "";
     /** Index into the patrol route. Deliberately not persisted: the route is re-derived from the world. */
     private int patrolIndex;
+    private int retaliationTicks;
 
     public GoblinCitizenEntity(EntityType<? extends GoblinCitizenEntity> type, Level level) {
         super(type, level);
@@ -128,7 +131,8 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     public static AttributeSupplier.Builder createAttributes() {
         return PathfinderMob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 16.0)
-                .add(Attributes.MOVEMENT_SPEED, 0.28);
+                .add(Attributes.MOVEMENT_SPEED, 0.28)
+                .add(Attributes.ATTACK_DAMAGE, RETALIATION_ATTACK_DAMAGE);
     }
 
     @Override
@@ -144,8 +148,11 @@ public final class GoblinCitizenEntity extends PathfinderMob {
 
     @Override
     protected void registerGoals() {
-        goalSelector.addGoal(0, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        goalSelector.addGoal(1, new RandomLookAroundGoal(this));
+        // Same order as a golem: melee first, then the two idle looks. The melee goal is inert with no
+        // target, and only a sentry is ever given one.
+        goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.0, true));
+        goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 6.0F));
+        goalSelector.addGoal(3, new RandomLookAroundGoal(this));
     }
 
     public boolean assignConstruction(String id, BlockPos supply, BlockPos site) {
@@ -233,6 +240,41 @@ public final class GoblinCitizenEntity extends PathfinderMob {
 
     public boolean hasPatrolWork(String id) {
         return settlementId.equals(id) && workStage == WorkStage.PATROL_WALKING;
+    }
+
+    /**
+     * Called when this resident is attacked. Only a sentry hits back: everyone else relies on the
+     * golems, which is what GAME_DESIGN means by sentries keeping watch and golems doing the fighting.
+     * Returns whether a target was taken.
+     */
+    public boolean retaliateAgainst(LivingEntity attacker) {
+        if (profession() != Profession.SENTRY || attacker == null || !attacker.isAlive()
+                || attacker.level() != level()
+                || !DefenseCoordinator.isPermittedAttacker(attacker)
+                || distanceToSqr(attacker) > RETALIATION_RANGE * RETALIATION_RANGE) {
+            return false;
+        }
+        setTarget(attacker);
+        retaliationTicks = RETALIATION_TICKS;
+        return true;
+    }
+
+    /** Drops the target once the fight is over, the attacker is out of reach, or the clock runs out. */
+    private void maintainRetaliation(ServerLevel level) {
+        LivingEntity target = getTarget();
+        if (target == null) {
+            retaliationTicks = 0;
+            return;
+        }
+        boolean expired = retaliationTicks <= 0 || !target.isAlive() || target.level() != level
+                || distanceToSqr(target) > RETALIATION_RANGE * RETALIATION_RANGE;
+        if (expired) {
+            setTarget(null);
+            getNavigation().stop();
+            retaliationTicks = 0;
+            return;
+        }
+        retaliationTicks--;
     }
 
     /** Smelting books a global one-batch reservation, so this work ends itself once the batch is collected. */
@@ -569,6 +611,13 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         getEntityData().set(DATA_PROFESSION, profession().name());
         if (settlementData.isCancelledWorker(getUUID().toString())) {
             applyProjectCancellation(level);
+            return;
+        }
+        maintainRetaliation(level);
+        if (getTarget() != null) {
+            // The melee goal owns the navigation while a fight lasts; work must not wrestle it for the
+            // wheel. Registration and cancellation above still run.
+            waitReason = "fighting back";
             return;
         }
         if (workStage == WorkStage.IDLE || workStage == WorkStage.COMPLETE
@@ -998,6 +1047,13 @@ public final class GoblinCitizenEntity extends PathfinderMob {
 
     /** Two blocks is close enough to call a waypoint reached; the route only needs the sentry to pass by. */
     private static final double PATROL_ARRIVE_DISTANCE_SQ = 4.0;
+
+    /** How far a sentry will step to hit back. Far shorter than a golem's DEFENSE_RADIUS of 24. */
+    private static final double RETALIATION_RANGE = 8.0;
+    /** The same fifteen seconds a golem holds an alert. */
+    private static final int RETALIATION_TICKS = 20 * 15;
+    /** This design's own number -- half the weakest golem's attack damage, with nothing behind it. */
+    private static final double RETALIATION_ATTACK_DAMAGE = 2.0;
 
     private void tickPatrolWork(ServerLevel level) {
         // Reported before the movement branches: arriving at a waypoint returns early, and standing at a

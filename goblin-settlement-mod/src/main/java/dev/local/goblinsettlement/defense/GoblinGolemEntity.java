@@ -5,7 +5,6 @@ import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -16,7 +15,6 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
-import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
@@ -92,7 +90,7 @@ public final class GoblinGolemEntity extends PathfinderMob {
                 || victim == null || victim.level() != level) {
             return false;
         }
-        if (!(cause instanceof LivingEntity attacker) || !isPermittedAttacker(attacker)
+        if (!(cause instanceof LivingEntity attacker) || !DefenseCoordinator.isPermittedAttacker(attacker)
                 || !attacker.isAlive() || attacker.level() != level
                 || distanceToSqr(attacker) > DEFENSE_RADIUS * DEFENSE_RADIUS
                 || attacker.distanceToSqr(home.getX() + 0.5, home.getY() + 0.5, home.getZ() + 0.5)
@@ -118,7 +116,7 @@ public final class GoblinGolemEntity extends PathfinderMob {
     public boolean alertToSighting(LivingEntity threat) {
         if (threat == null || !(level() instanceof ServerLevel level) || settlementId.isBlank()
                 || !threat.isAlive() || threat.level() != level
-                || !isPermittedAttacker(threat)
+                || !DefenseCoordinator.isPermittedAttacker(threat)
                 || distanceToSqr(threat) > DEFENSE_RADIUS * DEFENSE_RADIUS
                 || threat.distanceToSqr(home.getX() + 0.5, home.getY() + 0.5, home.getZ() + 0.5)
                         > DEFENSE_RADIUS * DEFENSE_RADIUS) {
@@ -131,11 +129,6 @@ public final class GoblinGolemEntity extends PathfinderMob {
         setTarget(threat);
         alertTicks = ALERT_TICKS;
         return true;
-    }
-
-    static boolean isPermittedAttacker(LivingEntity entity) {
-        return entity instanceof Monster || entity instanceof ServerPlayer player
-                && !player.isCreative() && !player.isSpectator();
     }
 
     @Override
@@ -152,7 +145,7 @@ public final class GoblinGolemEntity extends PathfinderMob {
         LivingEntity target = getTarget();
         if (target != null) {
             boolean expired = alertTicks <= 0 || !target.isAlive() || target.level() != level
-                    || !isPermittedAttacker(target)
+                    || !DefenseCoordinator.isPermittedAttacker(target)
                     || distanceToSqr(target) > DEFENSE_RADIUS * DEFENSE_RADIUS
                     || target.distanceToSqr(home.getX() + 0.5, home.getY() + 0.5, home.getZ() + 0.5)
                             > DEFENSE_RADIUS * DEFENSE_RADIUS;

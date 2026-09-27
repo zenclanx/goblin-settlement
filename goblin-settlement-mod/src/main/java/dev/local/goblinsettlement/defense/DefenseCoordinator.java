@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -117,6 +118,11 @@ public final class DefenseCoordinator {
                 || attacker.level() != level) {
             return;
         }
+        // Whether to hit back is the resident's own call: it knows its trade. The golems below are
+        // summoned regardless.
+        if (attacker instanceof LivingEntity living) {
+            victim.retaliateAgainst(living);
+        }
         for (GoblinGolemEntity golem : level.getEntitiesOfClass(GoblinGolemEntity.class,
                 new AABB(victim.blockPosition()).inflate(GoblinGolemEntity.DEFENSE_RADIUS),
                 golem -> golem.isAlive() && !golem.settlementId().isBlank())) {
@@ -156,6 +162,19 @@ public final class DefenseCoordinator {
         // Vanilla iron golems are left out on purpose: their bridge takes a victim, and a sighting has
         // none. They still defend themselves when something actually hits them.
         return alerted;
+    }
+
+    /**
+     * Who counts as an attacker: monsters, and players who are neither creative nor spectators. This is
+     * the one definition -- the golems' alert guards and a resident's decision to hit back both use it.
+     *
+     * Not the same question as the sighting filter in reportSighting, which admits monsters only:
+     * GAME_DESIGN says a player who merely walks past is not an enemy, while a player who does attack
+     * is handled by onResidentAttack.
+     */
+    public static boolean isPermittedAttacker(LivingEntity entity) {
+        return entity instanceof Monster || entity instanceof ServerPlayer player
+                && !player.isCreative() && !player.isSpectator();
     }
 
     private static boolean accessibleWarehouse(ServerLevel level, SettlementSavedData settlement,
