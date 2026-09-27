@@ -15,29 +15,61 @@ public final class HousingSavedData extends SavedData {
     public static final int SCHEMA_VERSION = 1;
     public static final int MAX_HOMES = 48;
 
-    public record Home(BlockPos bed, int blueprint, int stage, int step, Optional<String> workerId) {
-        public static final Codec<Home> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+    /** Durable two-axis housing targets. Progress itself is derived from world blocks. */
+    public record Home(BlockPos bed, int variant, int capacityTarget, int qualityTarget,
+                       Optional<String> workerId) {
+        static final Codec<Home> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 BlockPos.CODEC.fieldOf("bed").forGetter(Home::bed),
-                Codec.INT.fieldOf("blueprint").forGetter(Home::blueprint),
-                Codec.INT.fieldOf("stage").forGetter(Home::stage),
-                Codec.INT.fieldOf("step").forGetter(Home::step),
+                Codec.INT.fieldOf("blueprint").forGetter(Home::variant),
+                Codec.INT.optionalFieldOf("capacity_target").forGetter(home -> Optional.of(home.capacityTarget())),
+                Codec.INT.optionalFieldOf("quality_target").forGetter(home -> Optional.of(home.qualityTarget())),
+                Codec.INT.optionalFieldOf("stage").forGetter(home -> Optional.<Integer>empty()),
+                Codec.INT.optionalFieldOf("step").forGetter(home -> Optional.<Integer>empty()),
                 Codec.STRING.optionalFieldOf("worker_id").forGetter(Home::workerId)
-        ).apply(instance, Home::new));
+        ).apply(instance, Home::migrate));
 
-        public Home(BlockPos bed, int blueprint, int stage, int step) {
-            this(bed, blueprint, stage, step, Optional.empty());
+        public Home(BlockPos bed, int variant, int capacityTarget, int qualityTarget) {
+            this(bed, variant, capacityTarget, qualityTarget, Optional.empty());
         }
 
         public Home {
             bed = bed.immutable();
             workerId = java.util.Objects.requireNonNull(workerId, "workerId");
-            if (blueprint < 0 || blueprint > 2 || stage < 0 || stage > 5 || step < 0 || step > 256) {
-                throw new IllegalArgumentException("Invalid housing progress");
+            if (variant < 0 || variant > 2
+                    || capacityTarget < 0 || capacityTarget > HousingRules.MAX_CAPACITY_TARGET
+                    || qualityTarget < 0 || qualityTarget > HousingRules.MAX_QUALITY_TARGET) {
+                throw new IllegalArgumentException("Invalid housing targets");
             }
         }
 
+        /**
+         * Legacy saves carried a single stage and a build cursor. Stage 5 was reachable (the old
+         * advance loop incremented unconditionally and the validator allowed it) and is identical
+         * to stage 4 in geometry. The cursor is dropped: progress is derived from the world.
+         */
+        private static Home migrate(BlockPos bed, int variant, Optional<Integer> capacityTarget,
+                                    Optional<Integer> qualityTarget, Optional<Integer> legacyStage,
+                                    Optional<Integer> legacyStep, Optional<String> workerId) {
+            if (legacyStage.isPresent()) {
+                int stage = legacyStage.orElseThrow();
+                if (stage < 0 || stage > 5) {
+                    throw new IllegalArgumentException("Invalid legacy housing stage: " + stage);
+                }
+                return new Home(bed, variant, Math.min(stage, 2), Math.min(2, Math.max(0, stage - 2)), workerId);
+            }
+            return new Home(bed, variant, capacityTarget.orElse(0), qualityTarget.orElse(0), workerId);
+        }
+
         public Home withWorker(Optional<String> value) {
-            return new Home(bed, blueprint, stage, step, value);
+            return new Home(bed, variant, capacityTarget, qualityTarget, value);
+        }
+
+        public Home withCapacityTarget(int value) {
+            return new Home(bed, variant, value, qualityTarget, workerId);
+        }
+
+        public Home withQualityTarget(int value) {
+            return new Home(bed, variant, capacityTarget, value, workerId);
         }
     }
 

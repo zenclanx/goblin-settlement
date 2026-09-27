@@ -11,6 +11,7 @@ public final class HousingRulesCheck {
         checkFirstUnbuilt();
         checkCounts();
         checkBedsNear();
+        checkHomeCodec();
         System.out.println("HousingRulesCheck passed");
     }
 
@@ -91,6 +92,35 @@ public final class HousingRulesCheck {
                 new int[] {10, 25, 30}, new int[] {10, 20, 22}, new int[] {10, 20, 21}),
                 10, 20, 30, 8) == 3, "the window follows the anchor, not the origin");
         require(HousingRules.bedsNear(List.of(), 0, 0, 0, 8) == 0, "no heads, no count");
+    }
+
+    private static void checkHomeCodec() {
+        var bed = new net.minecraft.core.BlockPos(10, 64, 10);
+        var modern = new HousingSavedData.Home(bed, 1, 2, 1, java.util.Optional.empty());
+        var json = HousingSavedData.Home.CODEC
+                .encodeStart(com.mojang.serialization.JsonOps.INSTANCE, modern).getOrThrow();
+        require(!json.getAsJsonObject().has("stage"),
+                "the legacy stage key is never written back");
+        require(!json.getAsJsonObject().has("step"),
+                "the dropped cursor is never written back");
+        var reloaded = HousingSavedData.Home.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow();
+        require(reloaded.capacityTarget() == 2 && reloaded.qualityTarget() == 1,
+                "two-axis targets survive a round trip");
+
+        int[][] expected = {{0, 0}, {1, 0}, {2, 0}, {2, 1}, {2, 2}, {2, 2}};
+        for (int stage = 0; stage <= 5; stage++) {
+            var legacy = json.getAsJsonObject().deepCopy();
+            legacy.remove("capacity_target");
+            legacy.remove("quality_target");
+            legacy.addProperty("stage", stage);
+            legacy.addProperty("step", 7);
+            var migrated = HousingSavedData.Home.CODEC
+                    .parse(com.mojang.serialization.JsonOps.INSTANCE, legacy).getOrThrow();
+            require(migrated.capacityTarget() == expected[stage][0]
+                            && migrated.qualityTarget() == expected[stage][1],
+                    "legacy stage " + stage + " maps onto the two axes");
+        }
     }
 
     private static void require(boolean condition, String message) {

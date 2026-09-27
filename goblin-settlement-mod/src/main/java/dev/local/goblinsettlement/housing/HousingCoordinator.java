@@ -8,6 +8,7 @@ import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
 import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,7 +25,7 @@ import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
-/** One durable residential step per review. Beds, and therefore capacity, are managed separately. */
+/** Each review raises one housing target or dispatches one site derived from the world. */
 public final class HousingCoordinator {
     private static final int INTERVAL_TICKS = 40;
 
@@ -40,15 +41,24 @@ public final class HousingCoordinator {
         String id = settlement.get().id();
         var housing = HousingSavedData.get(level);
         housing.useSettlement(id);
+        int occupied = data.occupiedPopulationSlots();
+        int beds = BedCensus.count(level, data);
         for (var home : housing.homes(id)) {
             if (!level.shouldTickBlocksAt(home.bed())) continue;
             if (!isBedHead(level, id, home.bed())) {
                 housing.remove(home.bed());
                 return;
             }
-            if (home.stage() < HousingRules.stages().size()) {
-                if (advance(level, data, housing, id, home)) return;
+            var action = HousingRules.decide(beds, occupied, home.capacityTarget(), home.qualityTarget());
+            if (action == HousingRules.HomeAction.EXPAND_CAPACITY) {
+                housing.replace(home.withCapacityTarget(home.capacityTarget() + 1));
+                return;
             }
+            if (action == HousingRules.HomeAction.IMPROVE_QUALITY) {
+                housing.replace(home.withQualityTarget(home.qualityTarget() + 1));
+                return;
+            }
+            if (advance(level, data, housing, id, home)) return;
         }
         if (housing.homes(id).size() >= HousingSavedData.MAX_HOMES) return;
 
@@ -79,12 +89,10 @@ public final class HousingCoordinator {
 
     private static boolean advance(ServerLevel level, SettlementSavedData data,
                                    HousingSavedData housing, String id, HousingSavedData.Home home) {
-        var steps = HousingRules.stages().get(home.stage());
-        if (home.step() >= steps.size()) {
-            housing.replace(new HousingSavedData.Home(home.bed(), home.blueprint(), home.stage() + 1, 0));
-            return true;
+        BlockPos site = nextSite(level, home);
+        if (site == null) {
+            return false;
         }
-        BlockPos site = position(level, home.bed(), home.blueprint(), steps.get(home.step()));
         // Release an unowned worker before the site check: a temporarily blocked site must never keep a
         // cancelled or dead resident bound to this home, which would deadlock the home permanently.
         if (home.workerId().isPresent()) {
@@ -107,14 +115,10 @@ public final class HousingCoordinator {
             }
             return false; // An unloaded worker retains its physical plank.
         }
-        if (site == null || !permitted(level, id, site)) return false;
-        if (level.getBlockState(site).is(Blocks.OAK_PLANKS)) {
-            housing.replace(new HousingSavedData.Home(home.bed(), home.blueprint(), home.stage(), home.step() + 1));
-            return true;
-        }
+        if (!permitted(level, id, site)) return false;
         if (!level.getBlockState(site).isAir()) return false;
         var stock = PublicWarehouseInventory.snapshot(level, data);
-        int reserve = home.stage() >= 2 ? 24 : 8;
+        int reserve = home.capacityTarget() >= 2 ? HousingRules.RESERVE_EXPANDED : HousingRules.RESERVE_BASIC;
         if (!stock.complete() || stock.oakPlanks() <= reserve) return false;
         var warehouse = PublicWarehouseInventory.firstWithOakPlank(level, data);
         if (warehouse.isPresent()) {
@@ -138,15 +142,24 @@ public final class HousingCoordinator {
         return false;
     }
 
+    /** First step whose site is not yet oak planks; null when fully built or the bed lost its facing. */
+    private static BlockPos nextSite(ServerLevel level, HousingSavedData.Home home) {
+        for (HousingRules.Step step : HousingRules.steps(home.capacityTarget(), home.qualityTarget())) {
+            BlockPos candidate = position(level, home.bed(), home.variant(), step);
+            if (candidate != null && level.getBlockState(candidate).is(Blocks.OAK_PLANKS)) {
+                continue;
+            }
+            return candidate;
+        }
+        return null;
+    }
+
     public static boolean assignedSite(ServerLevel level, BlockPos bed, String workerId, BlockPos site) {
         var settlement = SettlementSavedData.get(level).settlement();
         if (settlement.isEmpty()) return false;
         return HousingSavedData.get(level).homes(settlement.orElseThrow().id()).stream()
                 .anyMatch(home -> home.bed().equals(bed) && home.workerId().orElse("").equals(workerId)
-                        && home.stage() < HousingRules.stages().size()
-                        && home.step() < HousingRules.stages().get(home.stage()).size()
-                        && site.equals(position(level, bed, home.blueprint(),
-                                HousingRules.stages().get(home.stage()).get(home.step()))));
+                        && site.equals(nextSite(level, home)));
     }
 
     public static boolean placeByResident(ServerLevel level, GoblinCitizenEntity worker,
@@ -160,14 +173,39 @@ public final class HousingCoordinator {
                 || !permitted(level, settlement.orElseThrow().id(), worker.blockPosition())
                 || !permitted(level, settlement.orElseThrow().id(), site)
                 || !level.getBlockState(site).isAir()) return false;
-        var housing = HousingSavedData.get(level);
-        var home = housing.homes(settlement.orElseThrow().id()).stream()
-                .filter(value -> value.bed().equals(bed)).findFirst().orElseThrow();
         if (!level.setBlock(site, Blocks.OAK_PLANKS.defaultBlockState(), 3)
                 || !level.getBlockState(site).is(Blocks.OAK_PLANKS)) return false;
-        housing.replace(new HousingSavedData.Home(home.bed(), home.blueprint(),
-                home.stage(), home.step() + 1));
         return true;
+    }
+
+    static boolean stageFullyBuilt(ServerLevel level, HousingSavedData.Home home, int stageIndex) {
+        for (HousingRules.Step step : HousingRules.stages().get(stageIndex)) {
+            BlockPos site = position(level, home.bed(), home.variant(), step);
+            if (site == null || !level.getBlockState(site).is(Blocks.OAK_PLANKS)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** True while some home can still grow capacity toward hosting another bed. */
+    public static boolean hasCapacityGain(ServerLevel level, SettlementSavedData data) {
+        var settlement = data.settlement();
+        if (settlement.isEmpty()) {
+            return false;
+        }
+        var heads = new ArrayList<int[]>();
+        for (BlockPos head : BedCensus.heads(level, data)) {
+            heads.add(new int[] {head.getX(), head.getY(), head.getZ()});
+        }
+        for (var home : HousingSavedData.get(level).homes(settlement.orElseThrow().id())) {
+            int used = HousingRules.bedsNear(heads, home.bed().getX(), home.bed().getY(),
+                    home.bed().getZ(), HousingRules.BIND_RADIUS);
+            if (HousingRules.canGainCapacity(used, home.capacityTarget())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean siteSuitable(ServerLevel level, String id, BlockPos bed, int variant) {
