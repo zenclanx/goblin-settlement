@@ -755,7 +755,9 @@ public final class StraightLineProbe {
             if (state.isFaceSturdy(level, probe, Direction.UP) || state.is(Blocks.DIRT_PATH)) {
                 return probe.above().immutable();
             }
-            return column.immutable();
+            // Non-sturdy clutter (grass, leaves): keep descending instead of bailing out at
+            // anchor height, which would return an arbitrary Y. Only the post-loop fallback
+            // returns the column itself, when the whole y window held nothing solid.
         }
         return column.immutable();
     }
