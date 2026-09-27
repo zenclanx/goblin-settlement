@@ -66,7 +66,7 @@
 
 **`trafficPending` 由谁算**：由交通侧提供一个查询方法——"是否存在尚未被服务、且距离超过下限的已登记设施"。它只读存档与不动产位置，不做世界探测（直线探测发生在真正提案时）。命令显示与协调器都调它，避免两套判据。
 
-现有 4 个 `assess` 调用点（`ExpansionCoordinator`、`FoodCraftingCoordinator`、`FarmingCoordinator`、`GoblinSettlement` 的 status 行）都要补这个实参；只有交通相关的那一处传真实值，其余传 `false`。
+现有 4 个 `assess` 调用点（`ExpansionCoordinator`、`FoodCraftingCoordinator`、`FarmingCoordinator`、`GoblinSettlement` 的 status 行）都要补这个实参。**传真实值的是三处**：`ExpansionCoordinator`（这样"待修交通"会把档位顶到 `TRANSPORT`，扩地自然让位——见下方副作用）、status 行（显示能看到档位）、以及交通协调器自身。`FoodCraftingCoordinator` 与 `FarmingCoordinator` 只关心 `foodTarget`/`seedTarget`，传 `false`。
 
 副作用：`ExpansionCoordinator` 用 `priority() == READY` 当扩地闸，插入新档后"待修交通"时优先级为 `TRANSPORT` 而非 `READY`，扩地自然让位——这正是设计要的次序。
 
