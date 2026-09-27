@@ -10,9 +10,14 @@ public final class ProfessionRulesCheck {
         check(ProfessionRules.matchRank(WorkKind.FARMING, Profession.MINER)
                 > ProfessionRules.matchRank(WorkKind.FARMING, Profession.UNASSIGNED),
                 "a mismatched specialist ranks behind an unassigned generalist");
+        // Patrol gave the sentry a trade of its own, so "no work kind of its own means generalist" no
+        // longer applies to any profession: pulled onto farm work the sentry is a specialist away from
+        // its trade, and ranks behind an unassigned generalist.
         check(ProfessionRules.matchRank(WorkKind.FARMING, Profession.SENTRY)
-                == ProfessionRules.matchRank(WorkKind.FARMING, Profession.UNASSIGNED),
-                "a profession with no work of its own is a generalist, not a mismatch");
+                > ProfessionRules.matchRank(WorkKind.FARMING, Profession.UNASSIGNED),
+                "a sentry pulled onto farm work ranks behind a generalist");
+        check(ProfessionRules.matchRank(WorkKind.PATROL, Profession.SENTRY) == 0,
+                "the sentry matches patrol work");
         check(ProfessionRules.workIntervalTicks(WorkKind.FARMING, Profession.FARMER) == 10,
                 "a matching specialist works at the baseline pace");
         check(ProfessionRules.workIntervalTicks(WorkKind.FARMING, Profession.UNASSIGNED)
@@ -21,7 +26,7 @@ public final class ProfessionRulesCheck {
         check(ProfessionRules.workIntervalTicks(WorkKind.FARMING, Profession.MINER)
                 > ProfessionRules.workIntervalTicks(WorkKind.FARMING, Profession.UNASSIGNED),
                 "a mismatched specialist works slowest");
-        check(WorkKind.employs(Profession.SENTRY) == false, "sentry has no work kind yet");
+        check(WorkKind.employs(Profession.SENTRY), "the sentry now has patrol work");
         check(WorkKind.employs(Profession.FARMER), "farmer is employed by farming work");
         check(ProfessionRules.scarcest(List.of(), 8).orElseThrow() == Profession.FARMER,
                 "an empty roster starts from the first profession");

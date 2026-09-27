@@ -157,6 +157,14 @@ tasks.register('blueprintCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.housing.BlueprintCheck'
 }
 
+tasks.register('patrolRulesCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks the pure patrol route rules.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.defense.PatrolRulesCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -170,4 +178,5 @@ tasks.named('check') {
     dependsOn tasks.named('trafficDecisionCheck')
     dependsOn tasks.named('housingRulesCheck')
     dependsOn tasks.named('blueprintCheck')
+    dependsOn tasks.named('patrolRulesCheck')
 }

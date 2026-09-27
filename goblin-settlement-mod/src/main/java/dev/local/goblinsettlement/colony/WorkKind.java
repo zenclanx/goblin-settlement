@@ -14,7 +14,8 @@ public enum WorkKind {
     TRANSPORT(Profession.HAULER),
     RECOVERY(Profession.HAULER),
     TOOL_CRAFTING(Profession.ARTISAN),
-    SMELTING(Profession.ARTISAN);
+    SMELTING(Profession.ARTISAN),
+    PATROL(Profession.SENTRY);
 
     private final Profession required;
 
