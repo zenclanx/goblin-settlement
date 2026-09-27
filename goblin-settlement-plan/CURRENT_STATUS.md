@@ -1,10 +1,10 @@
 # 当前状态：哥布林模组接续入口
 
-更新日期：2026-09-27 11:40 +08:00。详细历史仅追加到 UpdateLog.md。
+更新日期：2026-09-27 13:48 +08:00。详细历史仅追加到 UpdateLog.md。
 
 ## 本轮执行约定
 
-先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。当前工作在独立分支 `claude/settlement-first-pass`，验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 完整构建收尾）与道路桥梁自主立项（交通 5 任务）均已接入候选。
+先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。当前工作在独立分支 `claude/settlement-first-pass`，验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 完整构建收尾）、道路桥梁自主立项（交通 5 任务）与住宅两轴升级链（住宅 7 任务）均已接入候选。
 
 ## 阶段定位
 
@@ -12,7 +12,7 @@
 - 阶段 3：多工地与死亡/取消/卸载恢复有较早验证；取消/死亡后计划永久占用工人的卡死修复有纯函数检查覆盖，未在游戏中复验。
 - 阶段 4：农业、食物与木工具、林业、家庭和人口约束扩地、采矿井与冶炼调度、职业系统有候选代码。职业系统已完成完整构建 + 独立检查，但未做游戏内验证。
 - 阶段 5：道路桥梁自主立项（已服务设施登记、TRANSPORT 需求档与扩地互斥、修路/架桥纯判定、有界只读直线探测、提案协调器）有候选代码，完整构建 + 10 项独立检查通过；居民实际搬运施工已接入候选（立项后由 TransportCoordinator 既有路径施工）。未做游戏内验证。
-- 阶段 6：简易床位与顶棚、六个傀儡数值等级、关系处理、原版铁傀儡接入与赠予交易命令有候选代码；完整住宅升级链与多蓝图仍缺。
+- 阶段 6：简易床位与顶棚、六个傀儡数值等级、关系处理、原版铁傀儡接入与赠予交易命令有候选代码；住宅两轴升级链（容量轴 × 品质轴）已接入候选，完整构建 + 11 项独立检查通过；更多蓝图仍缺。
 - 阶段 7：部分扫描上限、区块门控与两张原创贴图已做；成熟城镇性能和跨存储异常恢复方案未完成。七阶段不能标记为已实现。
 
 ## 本轮接入的内容（道路桥梁自主立项）
@@ -29,10 +29,20 @@
 - 派工与速度：9 个协调器的选人比较器统一按 matchRank 优先对口职业；工作推进按职业三档节流；顺带修复 `ConstructionCoordinator` 既有倒置比较器（上一工人原先反而排在后面）。全分支审查后修复一处派工/执行裂脑：`GoblinCitizenEntity.workKind` 的 `RETURNING`/`RECOVERING` 原映射到 `CONSTRUCTION`，已改映射到 `RECOVERY`（与掉落物回收路径的派工口径一致）。
 - 表现：`work`/`status` 命令显示职业；实体同步 `DATA_PROFESSION`；渲染器按职业选贴图；新增 7 张原创职业贴图（textures/entity 下 goblin*.png 共 9 张）。
 
+## 本轮接入的内容（住宅两轴升级链）
+
+- 两轴数据模型与旧档迁移：`HousingSavedData.Home` 由单轴 `stage`/`step` 改为容量轴 × 品质轴两个目标；迁移表含 stage 0–5 共六行（stage 5 是合法旧档状态：旧 `advance` 无条件 +1 且校验上限为 5），`housingRulesCheck` 用 codec 检查逐行钉死迁移表并覆盖旧档读入用例。
+- 进度由世界推导：协调器不再保存构建游标；`HousingRules.steps` 按"先容量轴、后品质轴"合成步骤列表，`firstUnbuilt` 从世界已建成的几何推导下一步，目标变化不会重复扣料。
+- 扩建/提品质规则：`HousingRules.decide` 只在床位短缺（`beds < occupiedSlots + 1`）且容量轴未满时扩建，否则优先提品质；容量按已建成的几何算（`builtCapacity`），不按目标算；住宅全建完时释放最后一名工人（修复全建完住宅永久绑走工人的泄漏）。
+- 床位普查：新增 `housing/BedCensus` 作为床位唯一计数来源，逐条件对齐 `FamilyCoordinator.validBed` 口径。
+- `HOUSING` 需求档与扩地例外：`SettlementDemand` 在 TRANSPORT 之后新增 `HOUSING` 档（缺床优先于建造/就绪）；`ExpansionCoordinator` 在"没有房子还能长容量"时放行扩地——否则初始营地（8 床登记为 1 个 home、地块 1 被 4 格互斥区饱和）会永久卡在 8 人。
+- 床位与容量绑定含逃生口：新床位绑定到 8 格 Chebyshev 半径内还有容量空位的房子（半径由设计的 4 改为 8——半径 4 与既有的 4 格床位互斥区同中心、交集为空，第二张床数学上无解）；没有任何房子有空位时保留自由放床逃生口。
+- 显示：`goblinsettlement status` 新增 `Housing: beds=…, occupied slots=…, spare=…` 行。
+
 ## 本轮验证进展
 
-- 固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`，BUILD SUCCESSFUL），10 项独立检查全部打印 `*Check passed`：PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
-- `goblin-settlement-0.1.0.jar` 重新生成（392340 字节，2026-09-27 11:36），已核对含交通新类：`planning/transport/TrafficDecision`、`planning/transport/TrafficTargetRules`、`planning/transport/StraightLineProbe`、`construction/transport/TrafficProposalCoordinator`。
+- 固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`，BUILD SUCCESSFUL，27 秒），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
+- `goblin-settlement-0.1.0.jar` 重新生成（402420 字节，2026-09-27 13:47），已核对含本批住宅新类：`housing/HousingRules`、`housing/BedCensus`、`housing/BedProvisioningCoordinator`、`housing/HousingSavedData`、`housing/HousingCoordinator`。
 - 未做游戏内验证：未启动游戏、未运行专用服务端、未触碰常用存档。构建与检查通过不代表玩法验收。
 
 ## 美术候选（2026-09-27）
@@ -48,10 +58,11 @@
 
 1. 职业系统剩余：职业熟练度、职业名额、派工服务收口、哨卫工作、儿童外观、真实手持工具。
 2. 交通剩余：通行量驱动的道路升级、成熟期多工程并行、道路连通性验收、石桥与更长跨度（设计第 7/12 节要求，本轮未覆盖）。
-3. 七阶段其他缺口：完整住宅升级链与更多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复。
-4. 交通自主立项、采矿、冶炼调度、工人释放修复与职业系统**均未在游戏中验证**，只有编译与纯函数证据。
-5. 突然断电时实体、方块、箱子与 Saved Data 的跨存储一致性尚无保证；死亡掉落实体创建被游戏规则阻止时也可能最终失物。
-6. 保守取物目击只覆盖单箱单槽场景。道路/桥梁的非活动区块恢复、分仓与复杂地形仍需统一验证。
+3. 住宅剩余：蓝图与材料清单迁到受校验的数据文件（几何仍硬编码在协调器里）、改建安全（拆前确认材料与临时住处）、公共设施、更多蓝图（`Home.variant` 仍是朝向镜像，不是可选形制）、实体公告牌方块、住户分配、历史保留。
+4. 七阶段其他缺口：阶段 7 成熟城镇性能与跨存储异常恢复。
+5. 交通自主立项、采矿、冶炼调度、工人释放修复、职业系统与住宅两轴升级链**均未在游戏中验证**，只有编译与纯函数证据。
+6. 突然断电时实体、方块、箱子与 Saved Data 的跨存储一致性尚无保证；死亡掉落实体创建被游戏规则阻止时也可能最终失物。
+7. 保守取物目击只覆盖单箱单槽场景。道路/桥梁的非活动区块恢复、分仓与复杂地形仍需统一验证。
 
 ## 外部纯函数任务
 

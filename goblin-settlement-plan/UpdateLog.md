@@ -389,3 +389,11 @@
 - [2026-09-27 11:40:00 +08:00] 更新 CURRENT_STATUS.md：把"道路桥梁的居民实际搬运施工"从缺口移出并记为已接入候选（立项只写存档不动世界，施工仍由 TransportCoordinator 既有路径完成，派工沿用 WorkKind.TRANSPORT）；记录本轮接入的自主立项五件套（已服务设施登记、TRANSPORT 需求档与扩地互斥、修路/架桥纯判定、有界只读直线探测、提案协调器）；验证进展写明"完整构建 + 10 项独立检查通过，未做游戏内验证"；尚需实现保留通行量驱动的道路升级、成熟期多工程并行、道路连通性验收、石桥与更长跨度，以及此前遗留的完整住宅升级链与多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复、职业系统剩余 6 项。
 - [2026-09-27 11:45:00 +08:00] 提交本轮文档（UpdateLog.md 与 CURRENT_STATUS.md，仅暂存实际改动文件）并推送到 origin/claude/settlement-first-pass；代码与资源无改动，不另行提交。
 - [2026-09-27 11:48:00 +08:00] 未完成：交通自主立项只有编译与纯函数证据，未启动游戏、未运行专用服务端、未触碰常用存档，不能视为玩法验收；通行量驱动的道路升级、成熟期多工程并行、道路连通性验收、石桥与更长跨度仍缺；完整住宅升级链与多蓝图、阶段 7 成熟城镇性能与跨存储异常恢复、职业系统剩余 6 项延续此前状态。
+## [2026-09-27 13:47:00 +08:00 – 2026-09-27 13:54:00 +08:00] 第四十一轮：住宅两轴升级链完整验收与文档收尾
+
+- [2026-09-27 13:47:55 +08:00] 接手"住宅两轴升级链"七任务的最终验收（前六任务的代码与逐任务审查均已提交，工作区干净；UpdateLog 第三十八、三十九轮是并行美术代理的记录）。核对提交历史确认各任务落点：两轴纯规则与几何迁移（b823724，另经 9c2bdc6 修正计划回归算式与品质阶段计数）、床位普查 BedCensus（f0cddf4，任务顺序先普查后改协调器以保证每任务独立可编译）、Home 改两轴 + 协调器进度由世界推导（f4a9859，检查用例逐行钉死含 stage 5 的六行旧档迁移表）、全建完住宅释放最后工人（3f2ef9c，修复全建完住宅永久绑走工人的泄漏，前因 4fb64b7 修订计划顺序）、HOUSING 需求档与扩地例外（9d6aeb4）、床位与容量绑定含逃生口（25cdde6）、status 显示住房空位（82dcded）。
+- [2026-09-27 13:48:23 +08:00] 完整构建 `./gradlew build --offline --no-daemon`：BUILD SUCCESSFUL（27 秒，19 tasks：14 executed、5 up-to-date），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
+- [2026-09-27 13:49:00 +08:00] 核对产物 build/libs/goblin-settlement-0.1.0.jar：402420 字节、时间戳 2026-09-27 13:47；本批新类 housing/HousingRules、housing/BedCensus 及 housing/BedProvisioningCoordinator、housing/HousingSavedData、housing/HousingCoordinator 均在 JAR 内。
+- [2026-09-27 13:52:00 +08:00] 更新 CURRENT_STATUS.md：把"完整住宅升级链"从缺口移出并记为已接入候选（更多蓝图仍缺）；记录本轮接入的两轴数据模型与旧档迁移（含 stage 5）、进度由世界推导、扩建/提品质规则、HOUSING 需求档与扩地例外、床位与容量绑定含逃生口、status 显示住房空位；验证进展写明"完整构建 + 11 项独立检查通过，未做游戏内验证"；尚需实现保留蓝图与材料清单迁到受校验数据文件、改建安全（临时住处）、公共设施、更多蓝图、实体公告牌方块、住户分配、历史保留。
+- [2026-09-27 13:54:00 +08:00] 提交本轮文档（UpdateLog.md 与 CURRENT_STATUS.md，仅暂存实际改动文件）并推送到 origin/claude/settlement-first-pass；代码与资源随前六任务提交一并推送。
+- [2026-09-27 13:54:00 +08:00] 未完成：住宅两轴升级链只有编译与纯函数证据，未启动游戏、未运行专用服务端、未触碰常用存档，不能视为玩法验收；更多蓝图、公共设施、实体公告牌方块、住户分配、历史保留仍缺；设计 §10 记录的风险（绑定残余死角、附近床数跨房子重复计数、`new Home(bed, variant, 0, 0)` 文本不变而语义改变）留待全分支审查。
