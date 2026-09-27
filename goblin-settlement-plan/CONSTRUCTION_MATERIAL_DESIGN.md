@@ -12,10 +12,10 @@
 
 ## 1. 现状（已核对）
 
-- **这条线是命令驱动的脚手架**：`ConstructionPlan` 只由 `SettlementSavedData.planTwoPlanks(start)` 创建，唯一调用点是 `ConstructionCommands` 的 `plan` 子命令；形状写死为"从 `start` 向东 `LENGTH = 2` 格"（`site() = start.east(completed)`）。
+- **这条线是命令驱动的脚手架**：`ConstructionPlan` 只由 `SettlementSavedData.planTwoPlanks(start)` 创建，调用点除 `ConstructionCommands` 的 `plan` 子命令外，还有 `SettlementSavedDataCheck` 里的 **8 处**（原稿只搜了 `src/main`，把这 8 处漏记成"唯一调用点"）；形状写死为"从 `start` 向东 `LENGTH = 2` 格"（`site() = start.east(completed)`）。
 - **计划里没有"我要建什么"**：`ConstructionPlan` 只有 `start` / `completed` / 工人与回收字段，**没有任何材质或方块声明**——这就是缺口。
 - **三处橡木写死在施工路径上**：
-  - `GoblinCitizenEntity.fetchMaterial`：`takeItems(container, Items.OAK_PLANKS, 1)`，等待理由 `"oak planks missing"`；
+  - `GoblinCitizenEntity.fetchMaterial`：**逐格扫描**容器每个槽位找 `Items.OAK_PLANKS`，命中才 `removeItem(slot, 1)`（不是 `takeItems(...)` 那种整批取法），等待理由 `"oak planks missing"`；
   - `GoblinCitizenEntity.placeMaterial`：`carried.is(Items.OAK_PLANKS)` 与 `setBlock(buildPos, Blocks.OAK_PLANKS...)`；
   - `ConstructionCoordinator.tickPlan`：进度判定 `getBlockState(site).is(Blocks.OAK_PLANKS)` 与取仓 `PublicWarehouseInventory.firstWithOakPlank`。
 - **回收匹配是写死的橡木**：`economy/DroppedMaterialLookup.find(level, itemId, lastPos)` 的两个分支都判 `Items.OAK_PLANKS`（第 20、27 行），而第二个参数其实是**掉落物的实体 id**（调用点传的是 `RecoveryDrop.itemId()`）。所以一旦能用别的材质施工，**材料丢了以后的回收会去找橡木木板**——这是本轮必须一并修的缺陷，不是可选项。
@@ -28,7 +28,7 @@
 把"一种建筑件"的枚举从交通计划里提出来，放到**两者共同的父包**：
 
 - 新 `construction/BuildMaterial`：常量与 `TransportPlan.Material` **逐个同名**（`OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH`），并带上今天散在 `TransportCoordinator` 里的两张表——`block()` 与 `item()`。
-- `TransportPlan` 的 `material` 字段改用 `BuildMaterial`；**存档里的取值是常量名**（既有 codec 就是 `Codec.STRING.xmap(Material::valueOf, Material::name)`），所以**旧档一字不改仍能读**，`TransportSavedDataCheck` 里既有的 codec 往返断言继续钉住这一点。
+- `TransportPlan` 的 `material` 字段改用 `BuildMaterial`；**存档里的取值是常量名**（既有 codec 就是 `Codec.STRING.xmap(Material::valueOf, Material::name)`）。`TransportSavedDataCheck` 里既有的 codec 往返断言钉住的是 **codec 的互逆性质与它既有的字段集合**，**不是键名本身**——把 JSON 键与对应的 Java 分量一起改名，往返照样通过；字面键名与四个常量名改由 `ConstructionMaterialCheck` 的新断言钉住。
 - `TransportCoordinator.itemFor` / `blockFor` 删除，调用点改走 `BuildMaterial.block()` / `BuildMaterial.item()`。
 
 **为什么不是给施工线自己再写一个枚举**：那会把"OAK_PLANKS 是哪个方块与哪个物品"变成第二份事实——正是第四十二（床位判据）、第四十七（挑人）、第五十五（路宽）三轮各自收敛掉的那类重复。
@@ -71,6 +71,7 @@
 - **新增第 18 项独立检查 `constructionMaterialCheck`**（`ConstructionMaterialCheck`，纯层）：
   - **每个 `BuildMaterial` 常量都有非空的方块与物品**（这条断言是"两张表不会漏一格"的守门人）；
   - `ConstructionPlan` 的 codec 往返；**缺 `material` 字段的旧档落到橡木木板**（与 `TransportPlan.Road` 的旧档兜底同一套断言）；
+  - **字面键名单独钉住**：往返发现不了键名被改（两边一起改就通过），所以用手写的本轮前 JSON 文档（`{"start":[10,64,10],"completed":1,"recovery_drop":{"item_id":"abc-123","pos":[12,64,10]}}`）解析，断言仍读出橡木木板与那条掉落记录，且再次编码仍写 `item_id` 而非改名后的 `entity_id`；
   - `BuildMaterial` 的常量名集合与 **第五十五轮以来的存档取值一致**（把四名字面钉死，防止改名悄悄毁存档）。
 - 既有的 `transportSavedDataCheck` 继续覆盖交通侧 codec 往返（枚举换包后必须仍然通过）。
 - 完整离线构建 + 全部独立检查（**18 项**）。
@@ -78,7 +79,7 @@
 
 ## 7. 风险与已知边界
 
-- **枚举换包是存档可见面的改动**：取值虽是常量名不变，但仍然要由 `transportSavedDataCheck` 的既有往返断言与新的"四名字面钉死"断言双重把关。**不要顺手给常量改名**——那会静默毁掉已建成的桥与路。
+- **枚举换包是存档可见面的改动**：取值虽是常量名不变，但要钉住的是两件不同的事——`transportSavedDataCheck` 的既有往返断言守 **codec 互逆与它的字段集合**，`ConstructionMaterialCheck` 的新断言手写本轮前的 JSON 文档守**字面键名**、并以**四名字面**守常量名。**不要顺手给常量改名**——那会静默毁掉已建成的桥与路。
 - **形状仍是 2 格直线**：本轮的"泛化"只到材料这一层。想建别的形状要先做形状数据化，那是另一轮。
 - **材料种类没有增加**：只有既有的四种（木板/原木/栅栏/火把）。要加石头类材质，等于同时要保证经济能产出它——不在本轮。
 - **等待理由变成带物品名**：既有依赖 `"oak planks missing"` 这个字面量的地方（若有测试或文档）需要同步，实现时先 grep 确认。
@@ -87,7 +88,7 @@
 
 ## 8. 落地结果（实现后补记）
 
-- **材料的唯一出处**：新增 `construction/BuildMaterial`（四个常量逐字保持 `OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH`，带 `block()` / `item()` 两张表）；`TransportPlan` 删掉自己的 `Material` 枚举改用共享的那个，`TransportCoordinator` 的私有 `itemFor` / `blockFor` 删除。**JSON 取值是常量名，因此旧档一字不改仍能读**，既有 `transportSavedDataCheck` 的往返断言继续钉住它。
+- **材料的唯一出处**：新增 `construction/BuildMaterial`（四个常量逐字保持 `OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH`，带 `block()` / `item()` 两张表）；`TransportPlan` 删掉自己的 `Material` 枚举改用共享的那个，`TransportCoordinator` 的私有 `itemFor` / `blockFor` 删除。**JSON 取值是常量名**；既有 `transportSavedDataCheck` 的往返断言只钉住 **codec 的互逆性质与它既有的字段集合**——**往返发现不了键名被改**（两边一起改名照样通过）。旧档的字面键名（`start` / `completed` / `recovery_drop` / `item_id` / `pos`）由 `ConstructionMaterialCheck.checkStoredKeysAreUnchanged` 用手写的本轮前 JSON 文档钉住，四个常量名由同检查的 `checkStoredNamesAreStable` 钉住。
 - **计划声明建筑件**：`ConstructionPlan` 增 `material` 分量（`optionalFieldOf("material", OAK_PLANKS)`）⇒ 本轮之前的计划仍铺橡木木板，行为不变；`planTwoPlanks` 改名 `planStructure(start, material)`。
 - **工人路径不新增持久字段**：新增 `SettlementSavedData.materialFor(workerId)` 作为"这个工人要铺什么"的唯一出处，`fetchMaterial` / `placeMaterial` 每次从计划重推；`carriedOakPlanks()` 改为 `carried(Item)`；等待理由改成枚举名小写（`oak_planks missing`）。
 - **协调器**：进度判定改 `plan.material().block()`，取仓改 `firstHolding(..., plan.material().item())`。

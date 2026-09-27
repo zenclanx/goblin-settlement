@@ -151,7 +151,7 @@ public enum BuildMaterial {
 
 4b. `TransportCoordinator.java`：把 **9 处** `TransportPlan.Material.X` 改成 `BuildMaterial.X`（第 78、120、132、146、152、156、160、212 行与第 697 行的 `step.material() == TransportPlan.Material.TORCH`），把 `materialItem(TransportPlan.Material)` 的形参类型改为 `BuildMaterial` 并让方法体直接返回 `material.item()`，**删掉私有的 `itemFor` 与 `blockFor`**，把它们原来的调用点（同文件内若干处）改为 `step.material().item()` / `step.material().block()`。
 
-4c. `TransportSavedDataCheck.java`：夹具里的 `TransportPlan.Material.OAK_PLANKS` 改为 `BuildMaterial.OAK_PLANKS`（两处），加 import，**并在 `main` 开头补上** `SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();`——它现在会碰到 `BuildMaterial` 的注册表字段。**既有的断言一行都不许改**：那批断言里 codec 往返的那几条，正是"换包没有改坏存档格式"的证据。
+4c. `TransportSavedDataCheck.java`：夹具里的 `TransportPlan.Material.OAK_PLANKS` 改为 `BuildMaterial.OAK_PLANKS`（两处），加 import，**并在 `main` 开头补上** `SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();`——它现在会碰到 `BuildMaterial` 的注册表字段。**既有的断言一行都不许改**：那批 codec 往返断言钉的是 **codec 的互逆性质与它既有的字段集合**，**不是"键名没变"**——把 JSON 键与对应的 Java 分量一起改名，往返照样通过。**字面键名与四个常量名由 `ConstructionMaterialCheck` 的新断言钉住**（手写本轮之前的 JSON 文档 + 四名字面），不要拿往返当键名稳定性或旧档可读性的证据。
 
 - [ ] **Step 5: 注册第 18 项检查**
 
@@ -812,7 +812,7 @@ Run: `git -C .. status --short`
 ```markdown
 ## 8. 落地结果（实现后补记）
 
-- **材料的唯一出处**：新增 `construction/BuildMaterial`（四个常量逐字保持 `OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH`，带 `block()` / `item()` 两张表）；`TransportPlan` 删掉自己的 `Material` 枚举改用共享的那个，`TransportCoordinator` 的私有 `itemFor` / `blockFor` 删除。**JSON 取值是常量名，因此旧档一字不改仍能读**，既有 `transportSavedDataCheck` 的往返断言继续钉住它。
+- **材料的唯一出处**：新增 `construction/BuildMaterial`（四个常量逐字保持 `OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH`，带 `block()` / `item()` 两张表）；`TransportPlan` 删掉自己的 `Material` 枚举改用共享的那个，`TransportCoordinator` 的私有 `itemFor` / `blockFor` 删除。**JSON 取值是常量名**；既有 `transportSavedDataCheck` 的往返断言只钉住 **codec 的互逆性质与它既有的字段集合**——**往返发现不了键名被改**（两边一起改名照样通过）。旧档的字面键名（`start` / `completed` / `recovery_drop` / `item_id` / `pos`）由 `ConstructionMaterialCheck.checkStoredKeysAreUnchanged` 用手写的本轮前 JSON 文档钉住，四个常量名由同检查的 `checkStoredNamesAreStable` 钉住。
 - **计划声明建筑件**：`ConstructionPlan` 增 `material` 分量（`optionalFieldOf("material", OAK_PLANKS)`）⇒ 本轮之前的计划仍铺橡木木板，行为不变；`planTwoPlanks` 改名 `planStructure(start, material)`。
 - **工人路径不新增持久字段**：新增 `SettlementSavedData.materialFor(workerId)` 作为"这个工人要铺什么"的唯一出处，`fetchMaterial` / `placeMaterial` 每次从计划重推；`carriedOakPlanks()` 改为 `carried(Item)`；等待理由改成枚举名小写（`oak_planks missing`）。
 - **协调器**：进度判定改 `plan.material().block()`，取仓改 `firstHolding(..., plan.material().item())`。
@@ -829,7 +829,7 @@ Run: `git -C .. status --short`
 ## [<开始> – <结束>] 第五十七轮：施工路径的材料泛化
 
 - [<时间>] 按 CONSTRUCTION_MATERIAL_DESIGN.md 与 CONSTRUCTION_MATERIAL_PLAN.md 执行：把最后一条还写死橡木木板的施工路径（命令驱动的 `ConstructionPlan` 线）改成按计划声明的建筑件施工。
-- [<时间>] **材料的唯一出处**：新增 `construction/BuildMaterial`（`OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH`，带 `block()` / `item()`）；`TransportPlan` 删掉自己的 `Material` 枚举改用共享的这个，`TransportCoordinator` 的私有 `itemFor` / `blockFor` 删除。**不是给施工线另写一个枚举**——那会让"OAK_PLANKS 是哪个方块"变成第二份事实，正是第四十二/四十七/五十五轮各自收敛掉的那类重复。**存档取值是常量名，旧档一字不改仍能读**，由既有 `transportSavedDataCheck` 的往返断言与新增的"四名字面钉死"断言双重把关。
+- [<时间>] **材料的唯一出处**：新增 `construction/BuildMaterial`（`OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH`，带 `block()` / `item()`）；`TransportPlan` 删掉自己的 `Material` 枚举改用共享的这个，`TransportCoordinator` 的私有 `itemFor` / `blockFor` 删除。**不是给施工线另写一个枚举**——那会让"OAK_PLANKS 是哪个方块"变成第二份事实，正是第四十二/四十七/五十五轮各自收敛掉的那类重复。**存档取值是常量名**；旧档可读性由两件不同的事分别守住：既有 `transportSavedDataCheck` 的往返断言守 **codec 的互逆性质与它既有的字段集合**（**往返发现不了键名被改**），`ConstructionMaterialCheck` 的新断言手写本轮前的 JSON 文档守**字面键名**、并以**四名字面**守常量名。
 - [<时间>] `ConstructionPlan` 增 `material`（`optionalFieldOf` 默认橡木木板）⇒ 本轮前排队与第一轮的旧计划行为一字不变；`planTwoPlanks` 改名 `planStructure(start, material)`。
 - [<时间>] 工人路径**不新增持久字段**：新增 `SettlementSavedData.materialFor(workerId)` 作为唯一出处，`fetchMaterial` / `placeMaterial` 每次从计划重推；`carriedOakPlanks()` → `carried(Item)`；等待理由改成枚举名小写（`oak_planks missing` / `oak_log missing` …），不再写死一种材料的说法。
 - [<时间>] 协调器进度判定改 `plan.material().block()`、取仓改 `firstHolding(..., plan.material().item())`。
@@ -884,6 +884,6 @@ Expected: 推送成功。若被拒，先 `git pull --rebase origin main` 再推�
 - `BuildMaterial` 的 `block()` / `item()` 在 Task 1 定义，在 Task 1（交通线）、Task 3（工人/协调器）、Task 4（回收）、Task 5（命令与显示）使用，返回类型一致。
 - `ConstructionPlan` 由 5 个分量变 6 个：**全部 7 个构造点**都已列出——record 自己的 `withWorker` / `finishStep` / `withDroppedItem` / `retargetDrop` / `clearRecovery`（Task 2 Step 3d），`SettlementSavedData.planStructure`（原 `planTwoPlanks`）与 `releaseWorker`（Task 2 Step 4a）。**这两个外部构造点必须跟字段一起改**，否则 Task 2 编不过。
 - `planTwoPlanks` → `planStructure(BlockPos, BuildMaterial)` 的调用点有**两类**：`ConstructionCommands`（1 处，Task 2 Step 4b 做最小改动，Task 5 再补参数解析）与 `SettlementSavedDataCheck`（**8 处**，Task 2 Step 4b 一并改）——**每个任务结束时树都必须可编译**。原稿只搜了 `src/main` 因而漏了检查里那 8 处；今后找调用点一律 `grep -rn … src/`。
-- `DroppedMaterialLookup.find` 由 3 参变 4 参（多一个 `Item`），唯一调用点在 Task 4 Step 2 同步；`RecoveryDrop` 的分量改名后，`ConstructionPlan` 内部两处 `new RecoveryDrop(...)` 与 `SettlementSavedData.recordRecoverableDrop` 的形参名同步，**JSON 键不变**。
+- `DroppedMaterialLookup.find` 由 3 参变 4 参（多一个 `Item`），**两处调用点**（协调器的回收分支与 `GoblinCitizenEntity` 的回收走）在 Task 4 Step 2 同步；`RecoveryDrop` 的分量改名后，`ConstructionPlan` 内部两处 `new RecoveryDrop(...)` 与 `SettlementSavedData.recordRecoverableDrop` 的形参名同步，**JSON 键不变**。
 - `carriedOakPlanks()` → `carried(Item)` 的调用点（`ConstructionCommands.carriedBy`）在 Task 3 Step 4 同步。
 - `materialFor(String) -> Optional<BuildMaterial>` 在 Task 3 定义，在 Task 3（entity + `carriedBy`）与 Task 5（显示分组）使用，返回类型一致。
