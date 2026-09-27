@@ -15,10 +15,6 @@ public final class PublicWarehouseInventory {
     private PublicWarehouseInventory() {
     }
 
-    public static Optional<BlockPos> firstWithOakPlank(ServerLevel level, SettlementSavedData data) {
-        return firstHolding(level, data, Items.OAK_PLANKS);
-    }
-
     /** The first accessible warehouse holding at least one of the given item. */
     public static Optional<BlockPos> firstHolding(ServerLevel level, SettlementSavedData data,
                                                   Item item) {
@@ -39,10 +35,6 @@ public final class PublicWarehouseInventory {
 
     public static Optional<BlockPos> firstAccessible(ServerLevel level, SettlementSavedData data) {
         return data.warehouses().stream().filter(pos -> isAccessible(level, data, pos)).findFirst();
-    }
-
-    public static int countOakPlanks(ServerLevel level, SettlementSavedData data) {
-        return countOf(level, data, Items.OAK_PLANKS);
     }
 
     /** Counts one item kind across accessible, permitted public warehouses. */
