@@ -89,12 +89,10 @@ public final class HousingCoordinator {
 
     private static boolean advance(ServerLevel level, SettlementSavedData data,
                                    HousingSavedData housing, String id, HousingSavedData.Home home) {
-        BlockPos site = nextSite(level, home);
-        if (site == null) {
-            return false;
-        }
         // Release an unowned worker before the site check: a temporarily blocked site must never keep a
         // cancelled or dead resident bound to this home, which would deadlock the home permanently.
+        // This must also run when the home is fully built, or the resident who placed the last plank
+        // would stay bound forever and leave the labour pool.
         if (home.workerId().isPresent()) {
             String workerId = home.workerId().orElseThrow();
             GoblinCitizenEntity goblin = null;
@@ -114,6 +112,10 @@ public final class HousingCoordinator {
                 return true;
             }
             return false; // An unloaded worker retains its physical plank.
+        }
+        BlockPos site = nextSite(level, home);
+        if (site == null) {
+            return false;
         }
         if (!permitted(level, id, site)) return false;
         if (!level.getBlockState(site).isAir()) return false;
