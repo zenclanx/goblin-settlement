@@ -1996,7 +1996,14 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             getNavigation().stop();
             return;
         }
-        var found = DroppedMaterialLookup.find(level, pickupItemId, buildPos);
+        var planned = SettlementSavedData.get(level).materialFor(getUUID().toString());
+        if (planned.isEmpty()) {
+            workStage = WorkStage.ABORTED;
+            waitReason = "no project for this worker";
+            return;
+        }
+        BuildMaterial building = planned.orElseThrow();
+        var found = DroppedMaterialLookup.find(level, pickupItemId, building.item(), buildPos);
         if (found.isEmpty()) {
             workStage = WorkStage.ABORTED;
             waitReason = "dropped item missing";
@@ -2013,7 +2020,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         SettlementSavedData.get(level).retargetRecoveryDrop(pickupItemId, item.getUUID().toString(), itemPos);
         pickupItemId = item.getUUID().toString();
         buildPos = itemPos.immutable();
-        if (!item.getItem().is(Items.OAK_PLANKS)) {
+        if (!item.getItem().is(building.item())) {
             workStage = WorkStage.ABORTED;
             waitReason = "dropped item changed";
             return;

@@ -68,7 +68,7 @@ public final class SettlementSavedDataCheck {
                 "dropped item identity survives reload");
         require(data.retargetRecoveryDrop("dropped-plank", "merged-stack", dropPos.east()),
                 "merged item receives a new tracked identity");
-        require(data.plan().orElseThrow().recoveryDrop().orElseThrow().itemId().equals("merged-stack"),
+        require(data.plan().orElseThrow().recoveryDrop().orElseThrow().entityId().equals("merged-stack"),
                 "recovery follows merged stack");
         require(!data.retargetRecoveryDrop("dropped-plank", "other-stack", dropPos),
                 "stale identity cannot overwrite recovery target");

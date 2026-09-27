@@ -644,24 +644,24 @@ public final class SettlementSavedData extends SavedData {
                 .findFirst();
     }
 
-    public boolean recordRecoverableDrop(String workerId, String itemId, BlockPos pos) {
+    public boolean recordRecoverableDrop(String workerId, String entityId, BlockPos pos) {
         var target = plans.stream().filter(candidate -> candidate.workerId()
                 .equals(Optional.of(workerId))).findFirst();
         if (target.isEmpty()) {
             return false;
         }
-        return replacePlan(target.get(), target.get().withDroppedItem(itemId, pos));
+        return replacePlan(target.get(), target.get().withDroppedItem(entityId, pos));
     }
 
-    public boolean retargetRecoveryDrop(String oldItemId, String newItemId, BlockPos pos) {
+    public boolean retargetRecoveryDrop(String oldEntityId, String newEntityId, BlockPos pos) {
         var target = plans.stream().filter(candidate -> candidate.recoveryDrop()
-                .map(drop -> drop.itemId().equals(oldItemId)).orElse(false)).findFirst();
+                .map(drop -> drop.entityId().equals(oldEntityId)).orElse(false)).findFirst();
         if (target.isEmpty()) {
             return false;
         }
         var current = target.get().recoveryDrop().orElseThrow();
-        if (!current.itemId().equals(newItemId) || !current.pos().equals(pos)) {
-            replacePlan(target.get(), target.get().retargetDrop(newItemId, pos));
+        if (!current.entityId().equals(newEntityId) || !current.pos().equals(pos)) {
+            replacePlan(target.get(), target.get().retargetDrop(newEntityId, pos));
         }
         return true;
     }

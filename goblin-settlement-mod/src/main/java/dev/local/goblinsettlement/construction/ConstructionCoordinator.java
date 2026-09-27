@@ -69,7 +69,7 @@ public final class ConstructionCoordinator {
             if (!level.shouldTickBlocksAt(drop.pos())) {
                 return;
             }
-            var found = DroppedMaterialLookup.find(level, drop.itemId(), drop.pos());
+            var found = DroppedMaterialLookup.find(level, drop.entityId(), plan.material().item(), drop.pos());
             if (found.isEmpty()) {
                 data.clearMissingRecoveryDrop(plan.start());
                 return;
@@ -79,7 +79,7 @@ public final class ConstructionCoordinator {
                     != WorldModificationPermission.Decision.ALLOWED) {
                 return;
             }
-            data.retargetRecoveryDrop(drop.itemId(), item.getUUID().toString(), item.blockPosition());
+            data.retargetRecoveryDrop(drop.entityId(), item.getUUID().toString(), item.blockPosition());
             var warehouse = PublicWarehouseInventory.firstAccessible(level, data);
             if (warehouse.isEmpty()) {
                 return;
@@ -99,7 +99,7 @@ public final class ConstructionCoordinator {
                 String workerId = goblin.getUUID().toString();
                 if (data.assignWorker(plan.start(), workerId)
                         && !goblin.assignRecovery(settlementId, warehouse.get(),
-                        drop.itemId(), item.blockPosition())) {
+                        drop.entityId(), item.blockPosition())) {
                     data.releaseWorker(workerId);
                 }
             }

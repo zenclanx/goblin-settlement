@@ -11,9 +11,9 @@ public record ConstructionPlan(BlockPos start, int completed, Optional<String> w
                                Optional<RecoveryDrop> recoveryDrop, Optional<String> lastWorkerId,
                                BuildMaterial material) {
     public static final int LENGTH = 2;
-    public record RecoveryDrop(String itemId, BlockPos pos) {
+    public record RecoveryDrop(String entityId, BlockPos pos) {
         public static final Codec<RecoveryDrop> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-                Codec.STRING.fieldOf("item_id").forGetter(RecoveryDrop::itemId),
+                Codec.STRING.fieldOf("item_id").forGetter(RecoveryDrop::entityId),
                 BlockPos.CODEC.fieldOf("pos").forGetter(RecoveryDrop::pos)
         ).apply(instance, RecoveryDrop::new));
     }
@@ -66,20 +66,20 @@ public record ConstructionPlan(BlockPos start, int completed, Optional<String> w
         return new ConstructionPlan(start, completed + 1, Optional.empty(), Optional.empty(), Optional.of(worker), material);
     }
 
-    public ConstructionPlan withDroppedItem(String itemId, BlockPos pos) {
+    public ConstructionPlan withDroppedItem(String entityId, BlockPos pos) {
         if (workerId.isEmpty()) {
             throw new IllegalStateException("No worker owns this material");
         }
         return new ConstructionPlan(start, completed, Optional.empty(),
-                Optional.of(new RecoveryDrop(itemId, pos.immutable())), lastWorkerId, material);
+                Optional.of(new RecoveryDrop(entityId, pos.immutable())), lastWorkerId, material);
     }
 
-    public ConstructionPlan retargetDrop(String itemId, BlockPos pos) {
+    public ConstructionPlan retargetDrop(String entityId, BlockPos pos) {
         if (recoveryDrop.isEmpty()) {
             throw new IllegalStateException("No dropped material to retarget");
         }
         return new ConstructionPlan(start, completed, workerId,
-                Optional.of(new RecoveryDrop(itemId, pos.immutable())), lastWorkerId, material);
+                Optional.of(new RecoveryDrop(entityId, pos.immutable())), lastWorkerId, material);
     }
 
     public ConstructionPlan clearRecovery() {
