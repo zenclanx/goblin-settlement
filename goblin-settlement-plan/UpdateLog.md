@@ -505,3 +505,15 @@
 - [2026-09-27 16:53:00 +08:00] 顺带更正设计文档里一条过时的风险描述：PROFESSION_DESIGN §13 写「`WorkStage -> WorkKind` 映射易漏，新增工作阶段时忘了登记会静默按对口处理」——实际 `workKind` 是**穷尽 switch 表达式、无 default**，新增阶段漏登记会**编译报错**。本轮实测确认：漏加 `PATROL_WALKING` 的 case 无法通过编译。已在该文档划改更正。
 - [2026-09-27 16:54:00 +08:00] 验证：完整构建 ./gradlew build --offline --no-daemon BUILD SUCCESSFUL（33 秒，无编译警告），**13 项**独立检查全部 *Check passed：Blueprint、HousingRules、PatrolRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。产物 build/libs/goblin-settlement-0.1.0.jar：421893 字节、时间戳 2026-09-27 16:54。已核对实体与注册处的接线齐备。
 - [2026-09-27 16:56:00 +08:00] 未完成：不构成玩法验收；**实体巡逻行为不可纯测**（真的走过去、到了换点），只有编译与代码审查；导航到不了时本轮的处理是"每 tick 重新下发目标、一直重试"——航点在仓库/农田中心，落脚点可能被占，**可能表现为哨卫在某个设施旁反复晃动**，统一测试时要注意；报警、引导避难、有限自卫未做；巡逻永不结束、不轮换；聚落再大也只有一条巡逻线；其余职业的名额上限仍未定。
+
+## [2026-09-27 16:58:00 +08:00 – 2026-09-27 17:07:00 +08:00] 第五十轮：哨卫报警
+
+- [2026-09-27 16:59:00 +08:00] 按 SENTRY_ALERT_DESIGN.md 与 SENTRY_ALERT_PLAN.md 执行，落实 PROFESSION_DESIGN §12 的「哨卫的报警工作」。这是 GAME_DESIGN 第 30 行四项职责里的第二项（巡逻已在第四十九轮完成）。
+- [2026-09-27 17:00:00 +08:00] 增量在哪：既有链路只在**居民已经挨打**时才惊动傀儡（`RelationshipCoordinator` → `DefenseCoordinator.onResidentAttack`，其注释写着"Call only from an event confirming this attacker actually attacked this resident"）。哨卫的报警是**看见就报**——威胁还在村外时防卫就开始。这是巡逻这项工作的价值兑现。
+- [2026-09-27 17:02:00 +08:00] 新增 `GoblinGolemEntity.alertToSighting(LivingEntity)`：与既有 `alertToResidentAttack` **同一组守卫**，只去掉需要受害者的三条（受害者存活、受害者是本聚落居民、受害者与傀儡的距离）；`isPermittedAttacker` 由 private 改包内可见以便同包复用，不复制第二份"谁算威胁"。新增 `DefenseCoordinator.reportSighting(level, sentry)`：找**最近的**可见 `Monster`（取最近是为了让"报谁"有唯一确定答案，`getEntitiesOfClass` 的顺序不作保证），对哨卫周围 DEFENSE_RADIUS 内的傀儡逐个上报，返回"是否惊动了至少一只"。实体在 `tickPatrolWork` **最前**调用——放在最前是因为到达航点会提前 return，而站在路口守望恰恰是它最该看四周的时刻——并把结果写进 `waitReason`，让 `/goblinsettlement work` 看得见（复用既有显示路径，不加新命令、不加新同步字段）。提交 4a320f0。
+- [2026-09-27 17:03:00 +08:00] **边界一：只有 Monster 算威胁，玩家不算。** GAME_DESIGN 第 132 行点名「玩家携带武器、路过仓库或住在旁边不会自动成为敌人」；玩家只在确实攻击时经既有事件路径进入防线，那条路径本轮**一行未改**（已用 git diff 核对 `alertToResidentAttack` 方法体未动、`RelationshipCoordinator` 不在改动之列）。
+- [2026-09-27 17:03:30 +08:00] **边界二：目击半径 12，刻意是傀儡防卫半径 24 的一半。** 哨卫只报看得见的，**是否出动仍由傀儡自己按 24 格、归属与存活规则决定**。这压低（不消除）"路过一只僵尸就全村出动"的概率；两者的警戒都只维持 ALERT_TICKS（15 秒）后自动解除。
+- [2026-09-27 17:04:00 +08:00] **边界三：不惊动原版铁傀儡。** `VanillaIronGolemBridge.alert` 的签名需要一个受害者，目击场景没有。原版铁傀儡被攻击时本来就会自己还手。这是已知边界，不是遗漏。
+- [2026-09-27 17:05:00 +08:00] 验证：完整构建 ./gradlew build --offline --no-daemon BUILD SUCCESSFUL（32 秒，无编译警告），**13 项**独立检查全部 *Check passed（既有检查覆盖不到本次改动）。产物 build/libs/goblin-settlement-0.1.0.jar：422878 字节、时间戳 2026-09-27 17:05。
+- [2026-09-27 17:06:00 +08:00] **本轮没有新增独立检查**：涉及的全是 ServerLevel、实体查询与 `instanceof Monster`，纯函数层无从下手（与第四十七轮同类）。所以"哨卫真的会报警、且不会因玩家路过而报警"**只有代码审查与游戏内观察**，不得记成已验证。
+- [2026-09-27 17:07:00 +08:00] 未完成：不构成玩法验收；引导避难与有限自卫未做（四项职责完成两项）；误报未消除；报警覆盖面随"一次一名巡逻"只有一条线，聚落变大也不会增长；`alertToSighting` 与 `alertToResidentAttack` 是成对的守卫副本，改一处要看另一处（已在源码注释里写明，本轮未抽取共用守卫——抽出来会把受害者相关的三条也参数化，反而更难读）。

@@ -243,7 +243,8 @@ workIntervalTicks(WorkKind kind, Profession resident) -> int
 - 儿童体型与动作差异。
 - 真实手持工具与盾牌。
 - 哨卫的**巡逻**工作。**已完成**（第四十九轮）：`WorkKind.PATROL` + 一次一名的巡逻线，走的是存档里已有的设施点。设计见 [SENTRY_PATROL_DESIGN.md](SENTRY_PATROL_DESIGN.md)。
-- 哨卫的**报警**工作。**仍未做**，与引导避难、有限自卫一并留下一轮。
+- 哨卫的**报警**工作。**已完成**（第五十轮）：巡逻中目击 `Monster` 即经既有傀儡警戒链路报警。设计见 [SENTRY_ALERT_DESIGN.md](SENTRY_ALERT_DESIGN.md)。
+  **进度说明**：GAME_DESIGN 第 30 行给哨卫四项职责（巡逻、报警、引导避难、有限自卫），**至此完成两项**——引导避难与有限自卫仍未做。不要把"报警已完成"读成"哨卫已全部到位"。
 - 已定职居民的强制转岗。
 
 ## 13. 风险
