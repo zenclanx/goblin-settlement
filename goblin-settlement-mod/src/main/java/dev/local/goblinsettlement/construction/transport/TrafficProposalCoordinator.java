@@ -86,6 +86,12 @@ public final class TrafficProposalCoordinator {
                 supply, false, hasPendingTarget(settlement, traffic, level.getGameTime()),
                 BedCensus.shortage(level, settlement));
         if (demand.priority() != SettlementDemand.Priority.TRANSPORT) {
+            // Nothing left to connect and nothing more urgent to do: widen what carries the traffic.
+            // READY is the only tier that can be reached here -- this call passes activeConstruction
+            // false, so a busy building site never reaches this point either.
+            if (demand.priority() == SettlementDemand.Priority.READY) {
+                proposeWidening(level, settlement, traffic, settlementId);
+            }
             return;                                        // gate 3: demand tier
         }
         var target = nearestUnservedFacility(settlement, traffic, level.getGameTime());
@@ -140,6 +146,23 @@ public final class TrafficProposalCoordinator {
                 // Neither corridor works; park the target so the demand tier falls back
                 // to READY and expansion can claim land toward it.
                 traffic.defer(target, level.getGameTime() + DEFERRAL_TICKS);
+            }
+        }
+    }
+
+    /**
+     * Widen the heaviest finished road that qualifies and whose added cells are all safe. A rejection
+     * is not a failure: the next cycle tries the next candidate, and nothing is parked because a
+     * widening touches no facility. Material shortage is not a failure either -- supplies catch up.
+     */
+    private static void proposeWidening(ServerLevel level, SettlementSavedData settlement,
+                                        TransportSavedData traffic, String settlementId) {
+        if (PublicWarehouseInventory.countOf(level, settlement, Items.OAK_PLANKS) < ROAD_MIN_PLANKS) {
+            return;
+        }
+        for (TransportPlan road : traffic.wideningCandidates()) {
+            if (TransportCoordinator.startWidening(level, settlementId, road).accepted()) {
+                return;
             }
         }
     }

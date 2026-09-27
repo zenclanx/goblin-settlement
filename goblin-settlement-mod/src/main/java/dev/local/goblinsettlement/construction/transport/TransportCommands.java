@@ -119,48 +119,45 @@ public final class TransportCommands {
 
     /**
      * Every finished road's measured traffic, busiest first, with a star on the ones that have earned a
-     * widening. This is the round's deliverable: the thresholds cannot be chosen until these numbers
-     * exist, so they are read off the status command.
+     * widening and the road's current width after its samples. A widened road is one entry, not one per
+     * plan: the chain's samples belong to the road, not to the plan that laid a lane.
      */
     public static String trafficLine(TransportSavedData traffic) {
-        var roads = new java.util.ArrayList<TransportPlan>();
-        for (TransportPlan plan : traffic.plans()) {
-            if (plan.kind() == TransportPlan.Kind.ROAD && plan.isComplete()) {
-                roads.add(plan);
-            }
-        }
+        var roads = traffic.roads();
         if (roads.isEmpty()) {
             return "Road traffic: no completed roads";
         }
-        roads.sort((left, right) -> {
-            int byCount = Integer.compare(traffic.traffic().getOrDefault(right.id(), 0),
-                    traffic.traffic().getOrDefault(left.id(), 0));
+        var sorted = new java.util.ArrayList<>(roads);
+        sorted.sort((left, right) -> {
+            int byCount = Integer.compare(traffic.roadTraffic(right.id()),
+                    traffic.roadTraffic(left.id()));
             return byCount != 0 ? byCount : left.id().compareTo(right.id());
         });
-        long ready = roads.stream().filter(plan -> qualifies(traffic, plan)).count();
-        var builder = new StringBuilder("Road traffic: ").append(roads.size())
+        long ready = sorted.stream().filter(road -> qualifies(traffic, road)).count();
+        var builder = new StringBuilder("Road traffic: ").append(sorted.size())
                 .append(" road(s), ").append(ready).append(" ready to widen (*); ");
-        int shown = Math.min(STATUS_ROAD_LIMIT, roads.size());
+        int shown = Math.min(STATUS_ROAD_LIMIT, sorted.size());
         for (int index = 0; index < shown; index++) {
-            TransportPlan plan = roads.get(index);
-            int count = traffic.traffic().getOrDefault(plan.id(), 0);
+            TransportPlan road = sorted.get(index);
             if (index > 0) {
                 builder.append(", ");
             }
-            builder.append(shortId(plan.id())).append('=').append(count);
-            if (qualifies(traffic, plan)) {
+            builder.append(shortId(road.id()))
+                    .append('=').append(traffic.roadTraffic(road.id()))
+                    .append(" L").append(traffic.roadWidth(road.id()));
+            if (qualifies(traffic, road)) {
                 builder.append('*');
             }
         }
-        if (roads.size() > shown) {
-            builder.append(", +").append(roads.size() - shown).append(" more");
+        if (sorted.size() > shown) {
+            builder.append(", +").append(sorted.size() - shown).append(" more");
         }
         return builder.toString();
     }
 
-    private static boolean qualifies(TransportSavedData traffic, TransportPlan plan) {
-        return RoadUpgradeRules.shouldUpgrade(RoadUpgradeRules.baseLanes(),
-                traffic.traffic().getOrDefault(plan.id(), 0));
+    private static boolean qualifies(TransportSavedData traffic, TransportPlan road) {
+        return RoadUpgradeRules.shouldUpgrade(traffic.roadWidth(road.id()),
+                traffic.roadTraffic(road.id()));
     }
 
     private static String shortId(String id) {
