@@ -124,4 +124,6 @@ public static List<BlockPos> newLaneFeet(List<BlockPos> route, int fromLanes, in
 - **加宽计划**：只含新增车道格（`SURFACE / OAK_PLANKS / ROAD_GROUND`），`target_facility` 留空，`route` 复制父计划的中线，施工走既有工人路径与两道门禁。
 - **显示**：`Road traffic:` 行改成按链显示 `id8=链计数和 L<宽度>[ *]`，一条加宽过的路只出现一次。
 - **检查**：新增第 16 项 `roadLayoutCheck`（`RoadLayoutCheck`）。
+- **宽度只算已完工的成员**（终审后修复）：`roadWidth` 与"代表整条路的那个成员"都跳过 `isComplete()` 为假的成员，所以加宽在途（或卡住永不完工）时 `status` 报的仍是**已建成的**宽度，而不是尚未铺出的目标宽度。`startWidening` 的起始宽度不受影响——它的单在途门禁先跑，链上不会有未完成成员。
+- **淘汰只在 `replace` 发生**（终审后修复）：`add()` 里那次"为夹具而加"的淘汰已删除。生产路径上计划一律以**未完成态**加入（三个立项入口都从 `completedSteps = 0` 开始），在 `replace` 完工时才触发淘汰；两处淘汰夹具因此改为走真实路径，断言未削弱（去掉链豁免会让它们失败）。
 - **阈值仍未定**：`TRAFFIC_PER_LANE = 200` 与 `SAMPLE_INTERVAL_TICKS = 100` 原样沿用，注释与本文档继续写明"没有依据、待按真实计数一起重定"。
