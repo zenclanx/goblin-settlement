@@ -41,16 +41,20 @@
 
 - [ ] **Step 1: 先写检查（RED）**
 
-创建 `src/test/java/dev/local/goblinsettlement/construction/ConstructionMaterialCheck.java`：
+创建 `src/test/java/dev/local/goblinsettlement/construction/ConstructionMaterialCheck.java`（**开头必须引导一次 Minecraft**：`BuildMaterial` 的静态字段持有 `Blocks.*` / `Items.*`，那些是注册表对象，不引导会直接抛 `Not bootstrapped`。这与 `BlueprintCheck` 那类只碰数据模型的检查不同，是本轮新增的代价——**凡是要碰 `BuildMaterial` 的独立检查都要引这两行**）：
 
 ```java
 package dev.local.goblinsettlement.construction;
 
 import java.util.Arrays;
 import java.util.List;
+import net.minecraft.SharedConstants;
+import net.minecraft.server.Bootstrap;
 
 public final class ConstructionMaterialCheck {
     public static void main(String[] args) {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
         checkEveryMaterialIsBuildable();
         checkStoredNamesAreStable();
         System.out.println("ConstructionMaterialCheck passed");
@@ -147,7 +151,7 @@ public enum BuildMaterial {
 
 4b. `TransportCoordinator.java`：把 **9 处** `TransportPlan.Material.X` 改成 `BuildMaterial.X`（第 78、120、132、146、152、156、160、212 行与第 697 行的 `step.material() == TransportPlan.Material.TORCH`），把 `materialItem(TransportPlan.Material)` 的形参类型改为 `BuildMaterial` 并让方法体直接返回 `material.item()`，**删掉私有的 `itemFor` 与 `blockFor`**，把它们原来的调用点（同文件内若干处）改为 `step.material().item()` / `step.material().block()`。
 
-4c. `TransportSavedDataCheck.java`：夹具里的 `TransportPlan.Material.OAK_PLANKS` 改为 `BuildMaterial.OAK_PLANKS`（两处），并加 import。
+4c. `TransportSavedDataCheck.java`：夹具里的 `TransportPlan.Material.OAK_PLANKS` 改为 `BuildMaterial.OAK_PLANKS`（两处），加 import，**并在 `main` 开头补上** `SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();`——它现在会碰到 `BuildMaterial` 的注册表字段。**既有的断言一行都不许改**：那批断言里 codec 往返的那几条，正是"换包没有改坏存档格式"的证据。
 
 - [ ] **Step 5: 注册第 18 项检查**
 
@@ -177,9 +181,13 @@ Expected: `BUILD SUCCESSFUL`，**18 项**检查全部 `*Check passed`（含 `Con
 
 - [ ] **Step 7: 核对没有第二份事实**
 
-Run: `grep -rn "TransportPlan.Material\|Blocks.OAK_PLANKS\|Items.OAK_PLANKS" src/main/java/dev/local/goblinsettlement/construction/transport/`
+Run: `grep -rn "TransportPlan.Material\|private static Item itemFor\|private static Block blockFor" src/main/java/dev/local/goblinsettlement/construction/transport/`
 
-Expected: **一条都没有**——交通线不再自己判"哪个方块/哪个物品"。
+Expected: **一条都没有**——交通线不再自己**把材料映射到方块与物品**，也没了那个内部枚举。
+
+再 Run: `grep -rn "Items.OAK_PLANKS\|Blocks.OAK_PLANKS" src/main/java/dev/local/goblinsettlement/construction/transport/`
+
+Expected: **还有几处是允许的、不要动**——`TrafficProposalCoordinator` 的立项门禁（它说的是"修路/架桥这条线规定用木板/原木/栅栏/火把"，属该线自己的用料规则）与 `TransportCoordinator.buildableGround` 的"可铺地面"判定（说的是"什么样的地面能铺路"）。**本条判据是"不该有映射"，不是"不该提材料名"**。
 
 - [ ] **Step 8: 提交**
 
