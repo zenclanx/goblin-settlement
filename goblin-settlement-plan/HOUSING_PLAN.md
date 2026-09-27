@@ -428,104 +428,17 @@ git commit -m "Store housing as two axes and migrate the legacy stage"
 
 ---
 
-### Task 3: `HousingCoordinator` 改造（进度推导 + 决策接入）
-
-**Files:**
-- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/HousingCoordinator.java`
-
-**Interfaces:**
-- Consumes: Task 1 的 `HousingRules`；Task 2 的 `Home` 两轴
-- Produces: `HousingCoordinator.stageFullyBuilt(ServerLevel, HousingSavedData.Home, int) -> boolean`（包内可见，Task 6 用）
-
-- [ ] **Step 1: `tick` 接入决策**
-
-把 `tick` 里"`home.stage() < STAGES.size()` 才 advance"的写法改为：对每栋 home 先问 `HousingRules.decide(beds, occupied, home.capacityTarget(), home.qualityTarget())`；返回 `EXPAND_CAPACITY` 或 `IMPROVE_QUALITY` 就**把对应目标 +1 并 `housing.replace` 后 return**（每 tick 只提一格）；返回 `NONE` 才调 `advance`。`beds` 来自 Task 4 的 `BedCensus.count(level, data)`，`occupied` 来自 `data.occupiedPopulationSlots()`。
-
-`tick` 开头新增的两行：
-
-```java
-        int occupied = data.occupiedPopulationSlots();
-        int beds = BedCensus.count(level, data);
-```
-
-（`BedCensus` 在 Task 4 建立；本任务先写调用，Task 4 完成后同批编译。）
-
-- [ ] **Step 2: `advance` 改为进度推导**
-
-把 `advance` 里"取 `steps.get(home.step())`"与"该格已是木板就 `step+1`"整段，换成：
-
-```java
-        BlockPos site = nextSite(level, home);
-        if (site == null) {
-            return false;
-        }
-```
-
-新增：
-
-```java
-    /** First step whose site is not yet oak planks; null when fully built or the bed lost its facing. */
-    private static BlockPos nextSite(ServerLevel level, HousingSavedData.Home home) {
-        for (HousingRules.Step step : HousingRules.steps(home.capacityTarget(), home.qualityTarget())) {
-            BlockPos candidate = position(level, home.bed(), home.variant(), step);
-            if (candidate != null && level.getBlockState(candidate).is(Blocks.OAK_PLANKS)) {
-                continue;
-            }
-            return candidate;
-        }
-        return null;
-    }
-```
-
-工人回收（`WorkerAssignmentRules.decide` 那一段）、`permitted` 检查、`!isAir` 检查、仓库快照与 `reserve`、按 `WorkKind.HOUSING` 挑人、`assignHousing` 与 `replace(withWorker)`——**全部保留原样**。`reserve` 的判据由旧的 `stage >= 2` 改为 `home.capacityTarget() >= 2 ? HousingRules.RESERVE_EXPANDED : HousingRules.RESERVE_BASIC`（迁移映射下语义精确等价）。
-
-- [ ] **Step 3: `assignedSite` 与 `placeByResident`**
-
-`assignedSite` 的判据由"该格等于按 `home.step()` 算出的位置"改为"该格等于 `nextSite(level, home)`"。
-
-`placeByResident` 里 `setBlock` 成功后**删除**"找到 home 并 `replace(new Home(..., step + 1))`"那几行，只保留 `return true`——进度由下一次审查从世界重新推导。
-
-新增供 Task 6 使用的 helper：
-
-```java
-    static boolean stageFullyBuilt(ServerLevel level, HousingSavedData.Home home, int stageIndex) {
-        for (HousingRules.Step step : HousingRules.stages().get(stageIndex)) {
-            BlockPos site = position(level, home.bed(), home.variant(), step);
-            if (site == null || !level.getBlockState(site).is(Blocks.OAK_PLANKS)) {
-                return false;
-            }
-        }
-        return true;
-    }
-```
-
-- [ ] **Step 4: 编译**
-
-Run: `cd goblin-settlement-mod && ./gradlew compileJava --offline --no-daemon`
-Expected: 在 Task 4 落地前会因 `BedCensus` 缺失而失败；**本步若单独跑，允许失败**，Task 4 完成后一并通过。报告中说明这一点。
-
-- [ ] **Step 5: 提交**
-
-```bash
-git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/HousingCoordinator.java
-git commit -m "Derive housing progress from the world and raise targets by need"
-```
-
----
-
-### Task 4: `BedCensus` 床位普查
+### Task 3: `BedCensus` 床位普查
 
 **Files:**
 - Create: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/BedCensus.java`
-- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/HousingCoordinator.java`（新增 `hasCapacityGain`）
 
 **Interfaces:**
-- Consumes: Task 1 的 `HousingRules`；Task 3 的 `stageFullyBuilt`
+- Consumes: Task 1 的 `HousingRules`
 - Produces:
   - `BedCensus.heads(ServerLevel, SettlementSavedData) -> List<BlockPos>`
   - `BedCensus.count(ServerLevel, SettlementSavedData) -> int`
   - `BedCensus.shortage(ServerLevel, SettlementSavedData) -> boolean`
-  - `HousingCoordinator.hasCapacityGain(ServerLevel, SettlementSavedData) -> boolean`
 
 - [ ] **Step 1: 实现 `BedCensus`**
 
@@ -577,7 +490,92 @@ public final class BedCensus {
 
 `scan` 的实现请**逐条对齐 `FamilyCoordinator.validBed` 的判据**（读该方法的源码照做），不要另立一套。
 
-- [ ] **Step 2: 加 `hasCapacityGain`**
+- [ ] **Step 2: 编译**
+
+Run: `cd goblin-settlement-mod && ./gradlew compileJava --offline --no-daemon`
+Expected: `BUILD SUCCESSFUL`（Task 3 的编译失败应在本步解除）。
+
+- [ ] **Step 3: 提交**
+
+```bash
+git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/BedCensus.java \
+        goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/HousingCoordinator.java
+git commit -m "Add the bed census and the capacity-growth check"
+```
+
+---
+
+### Task 4: `HousingCoordinator` 改造（进度推导 + 决策接入）
+
+**Files:**
+- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/HousingCoordinator.java`
+
+**Interfaces:**
+- Consumes: Task 1 的 `HousingRules`；Task 2 的 `Home` 两轴
+- Produces: `HousingCoordinator.stageFullyBuilt(ServerLevel, HousingSavedData.Home, int) -> boolean`（包内可见，Task 6 用）
+
+- [ ] **Step 1: `tick` 接入决策**
+
+把 `tick` 里"`home.stage() < STAGES.size()` 才 advance"的写法改为：对每栋 home 先问 `HousingRules.decide(beds, occupied, home.capacityTarget(), home.qualityTarget())`；返回 `EXPAND_CAPACITY` 或 `IMPROVE_QUALITY` 就**把对应目标 +1 并 `housing.replace` 后 return**（每 tick 只提一格）；返回 `NONE` 才调 `advance`。`beds` 来自 Task 3 的 `BedCensus.count(level, data)`，`occupied` 来自 `data.occupiedPopulationSlots()`。
+
+`tick` 开头新增的两行：
+
+```java
+        int occupied = data.occupiedPopulationSlots();
+        int beds = BedCensus.count(level, data);
+```
+
+
+- [ ] **Step 2: `advance` 改为进度推导**
+
+把 `advance` 里"取 `steps.get(home.step())`"与"该格已是木板就 `step+1`"整段，换成：
+
+```java
+        BlockPos site = nextSite(level, home);
+        if (site == null) {
+            return false;
+        }
+```
+
+新增：
+
+```java
+    /** First step whose site is not yet oak planks; null when fully built or the bed lost its facing. */
+    private static BlockPos nextSite(ServerLevel level, HousingSavedData.Home home) {
+        for (HousingRules.Step step : HousingRules.steps(home.capacityTarget(), home.qualityTarget())) {
+            BlockPos candidate = position(level, home.bed(), home.variant(), step);
+            if (candidate != null && level.getBlockState(candidate).is(Blocks.OAK_PLANKS)) {
+                continue;
+            }
+            return candidate;
+        }
+        return null;
+    }
+```
+
+工人回收（`WorkerAssignmentRules.decide` 那一段）、`permitted` 检查、`!isAir` 检查、仓库快照与 `reserve`、按 `WorkKind.HOUSING` 挑人、`assignHousing` 与 `replace(withWorker)`——**全部保留原样**。`reserve` 的判据由旧的 `stage >= 2` 改为 `home.capacityTarget() >= 2 ? HousingRules.RESERVE_EXPANDED : HousingRules.RESERVE_BASIC`（迁移映射下语义精确等价）。
+
+- [ ] **Step 3: `assignedSite` 与 `placeByResident`**
+
+`assignedSite` 的判据由"该格等于按 `home.step()` 算出的位置"改为"该格等于 `nextSite(level, home)`"。
+
+`placeByResident` 里 `setBlock` 成功后**删除**"找到 home 并 `replace(new Home(..., step + 1))`"那几行，只保留 `return true`——进度由下一次审查从世界重新推导。
+
+新增供 Task 6 使用的 helper：
+
+```java
+    static boolean stageFullyBuilt(ServerLevel level, HousingSavedData.Home home, int stageIndex) {
+        for (HousingRules.Step step : HousingRules.stages().get(stageIndex)) {
+            BlockPos site = position(level, home.bed(), home.variant(), step);
+            if (site == null || !level.getBlockState(site).is(Blocks.OAK_PLANKS)) {
+                return false;
+            }
+        }
+        return true;
+    }
+```
+
+- [ ] **Step 4: 加 `hasCapacityGain`**
 
 ```java
     /** True while some home can still grow capacity toward hosting another bed. */
@@ -597,17 +595,16 @@ public final class BedCensus {
     }
 ```
 
-- [ ] **Step 3: 编译**
+- [ ] **Step 5: 编译**
 
 Run: `cd goblin-settlement-mod && ./gradlew compileJava --offline --no-daemon`
-Expected: `BUILD SUCCESSFUL`（Task 3 的编译失败应在本步解除）。
+Expected: `BUILD SUCCESSFUL`。
 
-- [ ] **Step 4: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
-git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/BedCensus.java \
-        goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/HousingCoordinator.java
-git commit -m "Add the bed census and the capacity-growth check"
+git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/HousingCoordinator.java
+git commit -m "Derive housing progress from the world and raise targets by need"
 ```
 
 ---
@@ -625,7 +622,7 @@ git commit -m "Add the bed census and the capacity-growth check"
 - Modify: `goblin-settlement-mod/src/test/java/dev/local/goblinsettlement/colony/SettlementDemandCheck.java`
 
 **Interfaces:**
-- Consumes: Task 4 的 `BedCensus.shortage`；Task 4 的 `HousingCoordinator.hasCapacityGain`
+- Consumes: Task 3 的 `BedCensus.shortage`；Task 4 的 `HousingCoordinator.hasCapacityGain`
 - Produces: `SettlementDemand.assess(int, int, WarehouseSupply, boolean, boolean, boolean)`（末参 `housingShortage`）；`Priority.HOUSING`
 
 - [ ] **Step 1: 写失败的检查**
@@ -662,7 +659,7 @@ Expected: 编译失败（`assess` / `priority` 还没有第 6 参、`Priority.HO
 
 | 文件 | 改动 |
 | --- | --- |
-| `GoblinSettlement.java` status 行 | 末参传 `BedCensus.shortage(level, data)` |
+| `GoblinSettlement.java` status 行 | 末参传 `BedCensus.shortage(level, data)`（`BedCensus` 在 Task 3）|
 | `ExpansionCoordinator.java` | 末参传 `BedCensus.shortage(level, data)`；**并把闸门改为**（见下） |
 | `TrafficProposalCoordinator.java` | 末参传 `BedCensus.shortage(level, settlement)`（它原有的 `!= TRANSPORT` 门禁不动，`HOUSING` 档会自然压住交通立项） |
 | `FarmingCoordinator.java` | 末参传 `BedCensus.shortage(level, data)` |
@@ -700,7 +697,7 @@ git commit -m "Add the housing demand tier and let expansion resume when capacit
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/housing/BedProvisioningCoordinator.java`
 
 **Interfaces:**
-- Consumes: Task 1 的 `HousingRules.bedsNear` / `builtCapacity` / `BIND_RADIUS`；Task 3 的 `HousingCoordinator.stageFullyBuilt`
+- Consumes: Task 1 的 `HousingRules.bedsNear` / `builtCapacity` / `BIND_RADIUS`；Task 4 的 `HousingCoordinator.stageFullyBuilt`
 - Produces: 无新公开接口
 
 - [ ] **Step 1: 实现绑定**
@@ -755,7 +752,7 @@ git commit -m "Bind new beds to homes that still have capacity"
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/GoblinSettlement.java`
 
 **Interfaces:**
-- Consumes: Task 4 的 `BedCensus.count`
+- Consumes: Task 3 的 `BedCensus.count`
 - Produces: 无
 
 - [ ] **Step 1: 加一行输出**
