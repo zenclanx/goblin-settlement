@@ -6,6 +6,7 @@ import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
 import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.colony.WorkerDispatch;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.construction.BuildMaterial;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
 import dev.local.goblinsettlement.planning.road.RoadPlanner;
@@ -31,7 +32,6 @@ import net.minecraft.world.Container;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -75,7 +75,7 @@ public final class TransportCoordinator {
             BlockPos ground = foot.below().immutable();
             sites.putIfAbsent(ground, new TransportPlan.Step(
                     TransportPlan.Phase.SURFACE, ground,
-                    TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND));
+                    BuildMaterial.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND));
         }
         if (sites.isEmpty() || conflictsWithExistingWork(
                 SettlementSavedData.get(level), sites.keySet())) {
@@ -117,7 +117,7 @@ public final class TransportCoordinator {
         List<TransportPlan.Step> steps = new ArrayList<>();
         for (BlockPos foot : barriers) {
             steps.add(new TransportPlan.Step(TransportPlan.Phase.BARRIERS, foot,
-                    TransportPlan.Material.OAK_FENCE, TransportPlan.Rule.AIR));
+                    BuildMaterial.OAK_FENCE, TransportPlan.Rule.AIR));
         }
         Set<BlockPos> approachGround = new LinkedHashSet<>();
         for (BlockPos foot : candidate.nearApproachFeet()) approachGround.add(foot.below());
@@ -129,7 +129,7 @@ public final class TransportCoordinator {
                 return rejected("UNSAFE_BRIDGE_APPROACH");
             }
             steps.add(new TransportPlan.Step(TransportPlan.Phase.APPROACHES, site,
-                    TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.APPROACH_GROUND));
+                    BuildMaterial.OAK_PLANKS, TransportPlan.Rule.APPROACH_GROUND));
         }
 
         for (int frame = 0; frame < candidate.span(); frame++) {
@@ -143,21 +143,21 @@ public final class TransportCoordinator {
                 for (int y = base.getY() + 1; y < deck.getY(); y++) {
                     BlockPos post = new BlockPos(deck.getX(), y, deck.getZ());
                     steps.add(new TransportPlan.Step(TransportPlan.Phase.SUPPORTS, post,
-                            TransportPlan.Material.OAK_LOG, TransportPlan.Rule.SUPPORT));
+                            BuildMaterial.OAK_LOG, TransportPlan.Rule.SUPPORT));
                 }
             }
         }
         for (BlockPos deck : candidate.deckSites()) {
             steps.add(new TransportPlan.Step(TransportPlan.Phase.SURFACE, deck,
-                    TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.AIR_OR_WATER));
+                    BuildMaterial.OAK_PLANKS, TransportPlan.Rule.AIR_OR_WATER));
         }
         for (BlockPos rail : candidate.railSites()) {
             steps.add(new TransportPlan.Step(TransportPlan.Phase.RAILINGS, rail,
-                    TransportPlan.Material.OAK_FENCE, TransportPlan.Rule.AIR));
+                    BuildMaterial.OAK_FENCE, TransportPlan.Rule.AIR));
         }
         for (BlockPos light : candidate.lightSites()) {
             steps.add(new TransportPlan.Step(TransportPlan.Phase.LIGHTING, light,
-                    TransportPlan.Material.TORCH, TransportPlan.Rule.AIR));
+                    BuildMaterial.TORCH, TransportPlan.Rule.AIR));
         }
 
         Set<BlockPos> closure = new LinkedHashSet<>();
@@ -209,7 +209,7 @@ public final class TransportCoordinator {
             BlockPos ground = foot.below().immutable();
             sites.putIfAbsent(ground, new TransportPlan.Step(
                     TransportPlan.Phase.SURFACE, ground,
-                    TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND));
+                    BuildMaterial.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND));
         }
         if (sites.isEmpty() || conflictsWithExistingWork(
                 SettlementSavedData.get(level), sites.keySet())) {
@@ -301,7 +301,7 @@ public final class TransportCoordinator {
             return;
         }
         TransportPlan.Step step = plan.steps().get(plan.completedSteps());
-        Block desired = blockFor(step.material());
+        Block desired = step.material().block();
         if (plan.workerId().isPresent()) {
             String workerId = plan.workerId().orElseThrow();
             GoblinCitizenEntity goblin = null;
@@ -336,7 +336,7 @@ public final class TransportCoordinator {
                     || !(level.getBlockEntity(warehouse) instanceof Container container)) {
                 continue;
             }
-            int slot = firstItemSlot(container, itemFor(step.material()));
+            int slot = firstItemSlot(container, step.material().item());
             if (slot < 0) {
                 continue;
             }
@@ -369,14 +369,14 @@ public final class TransportCoordinator {
             return false;
         }
         TransportPlan.Step step = plan.steps().get(stepIndex);
-        if (!carried.is(itemFor(step.material())) || carried.getCount() != 1
+        if (!carried.is(step.material().item()) || carried.getCount() != 1
                 || worker.distanceToSqr(step.site().getCenter()) > 8.0
                 || WorldModificationPermission.check(level, plan.settlementId(), worker.blockPosition())
                         != WorldModificationPermission.Decision.ALLOWED
                 || !siteReady(level, plan.settlementId(), step)) {
             return false;
         }
-        Block desired = blockFor(step.material());
+        Block desired = step.material().block();
         if (!level.setBlock(step.site(), desired.defaultBlockState(), 3)
                 || !level.getBlockState(step.site()).is(desired)) {
             return false;
@@ -394,8 +394,8 @@ public final class TransportCoordinator {
                 .map(plan -> plan.steps().get(stepIndex));
     }
 
-    public static Item materialItem(TransportPlan.Material material) {
-        return itemFor(material);
+    public static Item materialItem(BuildMaterial material) {
+        return material.item();
     }
 
     public static boolean assignmentReady(ServerLevel level, String planId) {
@@ -517,7 +517,7 @@ public final class TransportCoordinator {
         for (int index = 0; index < plan.steps().size(); index++) {
             TransportPlan.Step step = plan.steps().get(index);
             if (step.phase() != TransportPlan.Phase.BARRIERS
-                    && !level.getBlockState(step.site()).is(blockFor(step.material()))) {
+                    && !level.getBlockState(step.site()).is(step.material().block())) {
                 return index;
             }
         }
@@ -676,7 +676,7 @@ public final class TransportCoordinator {
         }
         BlockState current = level.getBlockState(site);
         BlockState belowState = level.getBlockState(below);
-        BlockState desired = blockFor(step.material()).defaultBlockState();
+        BlockState desired = step.material().block().defaultBlockState();
         if (!desired.canSurvive(level, site)) {
             return false;
         }
@@ -694,7 +694,7 @@ public final class TransportCoordinator {
                     || current.getFluidState().is(FluidTags.WATER))
                     && belowState.isFaceSturdy(level, below, Direction.UP);
             case AIR -> current.isAir()
-                    && (step.material() == TransportPlan.Material.TORCH
+                    && (step.material() == BuildMaterial.TORCH
                         || belowState.isFaceSturdy(level, below, Direction.UP));
         };
     }
@@ -706,23 +706,5 @@ public final class TransportCoordinator {
             }
         }
         return -1;
-    }
-
-    private static Item itemFor(TransportPlan.Material material) {
-        return switch (material) {
-            case OAK_PLANKS -> Items.OAK_PLANKS;
-            case OAK_LOG -> Items.OAK_LOG;
-            case OAK_FENCE -> Items.OAK_FENCE;
-            case TORCH -> Items.TORCH;
-        };
-    }
-
-    private static Block blockFor(TransportPlan.Material material) {
-        return switch (material) {
-            case OAK_PLANKS -> Blocks.OAK_PLANKS;
-            case OAK_LOG -> Blocks.OAK_LOG;
-            case OAK_FENCE -> Blocks.OAK_FENCE;
-            case TORCH -> Blocks.TORCH;
-        };
     }
 }

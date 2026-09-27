@@ -3,13 +3,18 @@ package dev.local.goblinsettlement.construction.transport;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.construction.BuildMaterial;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.Bootstrap;
 
 public final class TransportSavedDataCheck {
     public static void main(String[] args) {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
         BlockPos facility = new BlockPos(30, 64, 10);
         TransportPlan road = roadPlan("road-1", facility, 0, false);
         var data = new TransportSavedData();
@@ -282,7 +287,7 @@ public final class TransportSavedDataCheck {
 
     private static TransportPlan.Step step() {
         return new TransportPlan.Step(TransportPlan.Phase.SURFACE,
-                new BlockPos(10, 64, 10), TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND);
+                new BlockPos(10, 64, 10), BuildMaterial.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND);
     }
 
     private static TransportPlan bridgePlan(String id, boolean open) {
@@ -291,7 +296,7 @@ public final class TransportSavedDataCheck {
 
     private static TransportPlan bridgePlan(String id, int completedSteps, boolean open) {
         var step = new TransportPlan.Step(TransportPlan.Phase.SURFACE,
-                new BlockPos(10, 64, 10), TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.AIR_OR_WATER);
+                new BlockPos(10, 64, 10), BuildMaterial.OAK_PLANKS, TransportPlan.Rule.AIR_OR_WATER);
         return new TransportPlan(id, "settlement-1", TransportPlan.Kind.WOOD_BRIDGE, List.of(step),
                 completedSteps, open,
                 List.of(new BlockPos(1, 64, 1), new BlockPos(2, 64, 1),

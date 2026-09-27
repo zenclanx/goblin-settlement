@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.construction.transport;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.local.goblinsettlement.construction.BuildMaterial;
 import dev.local.goblinsettlement.planning.transport.RoadUpgradeRules;
 import java.util.List;
 import java.util.Objects;
@@ -44,25 +45,20 @@ public record TransportPlan(
         BARRIERS, APPROACHES, SUPPORTS, SURFACE, RAILINGS, LIGHTING
     }
 
-    public enum Material {
-        OAK_PLANKS, OAK_LOG, OAK_FENCE, TORCH
-    }
-
     public enum Rule {
         ROAD_GROUND, APPROACH_GROUND, AIR_OR_WATER, SUPPORT, AIR
     }
 
-    public record Step(Phase phase, BlockPos site, Material material, Rule rule) {
+    public record Step(Phase phase, BlockPos site, BuildMaterial material, Rule rule) {
         private static final Codec<Phase> PHASE_CODEC =
                 Codec.STRING.xmap(Phase::valueOf, Phase::name);
-        private static final Codec<Material> MATERIAL_CODEC =
-                Codec.STRING.xmap(Material::valueOf, Material::name);
         private static final Codec<Rule> RULE_CODEC =
                 Codec.STRING.xmap(Rule::valueOf, Rule::name);
         public static final Codec<Step> CODEC = RecordCodecBuilder.create(instance -> instance.group(
                 PHASE_CODEC.fieldOf("phase").forGetter(Step::phase),
                 BlockPos.CODEC.fieldOf("site").forGetter(Step::site),
-                MATERIAL_CODEC.fieldOf("material").forGetter(Step::material),
+                Codec.STRING.xmap(BuildMaterial::valueOf, BuildMaterial::name).fieldOf("material")
+                        .forGetter(Step::material),
                 RULE_CODEC.fieldOf("rule").forGetter(Step::rule)
         ).apply(instance, Step::new));
 

@@ -197,6 +197,14 @@ tasks.register('transportConnectivityCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.planning.transport.TransportConnectivityCheck'
 }
 
+tasks.register('constructionMaterialCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks the shared building materials and the names saves already hold.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.construction.ConstructionMaterialCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -215,4 +223,5 @@ tasks.named('check') {
     dependsOn tasks.named('roadUpgradeRulesCheck')
     dependsOn tasks.named('roadLayoutCheck')
     dependsOn tasks.named('transportConnectivityCheck')
+    dependsOn tasks.named('constructionMaterialCheck')
 }
