@@ -135,7 +135,8 @@ public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
 
 ## 8. 下一轮（明确不在本轮）
 
-1. **材料泛化**：`GoblinCitizenEntity` 约 10 处硬编码橡木木板（458/723/796/798/808/1874/1899/1914/1933）改为按步骤声明的物品取料、携带、交付、放置；`assignHousing` 签名带上目标物品；`HousingCoordinator` 的仓库选取与材料闸改用已有的 `PublicWarehouseInventory.countOf(level, data, Item)` 与对应的通用仓库选取；删除 §4.5 过渡约束。
+1. **材料泛化**：**已开工，设计与切分见 [HOUSING_MATERIAL_DESIGN.md](HOUSING_MATERIAL_DESIGN.md)。**
+   **更正**（细查后）：本节原先写"`GoblinCitizenEntity` 约 10 处硬编码橡木木板"，那是把住宅路径与**通用施工路径**混在了一起。真正的住宅路径只有 3 处（`HOUSING_FETCHING`/`HOUSING_DELIVERING`，约第 796/798/808 行）；第 723 行属道路交付、第 1874/1899/1914/1933 行属 `ConstructionCoordinator` 那条线，本轮都不动。另外原写"`assignHousing` 签名带上目标物品"也不再需要——物品改为每次从世界重推（`HousingCoordinator.assignedStep`），不新增持久字段。
 2. 其余内容数据化（傀儡参数、职业倾向、名字、对话）。
 3. 若确有必要，再考虑数据包重载。
 
