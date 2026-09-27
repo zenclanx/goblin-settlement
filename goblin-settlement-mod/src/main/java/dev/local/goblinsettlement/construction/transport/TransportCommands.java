@@ -200,6 +200,9 @@ public final class TransportCommands {
             }
         }
         String unloaded = skipped == 0 ? "" : ", " + skipped + " not loaded";
+        if (loaded == 0 && skipped == 0) {
+            return "Links: no finished links yet";
+        }
         if (broken.isEmpty()) {
             return "Links: all " + loaded + " loaded verified" + unloaded;
         }
