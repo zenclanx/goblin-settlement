@@ -11,6 +11,7 @@ import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
 import dev.local.goblinsettlement.construction.transport.TransportPlan;
 import dev.local.goblinsettlement.defense.DefenseCoordinator;
 import dev.local.goblinsettlement.defense.PatrolCoordinator;
+import dev.local.goblinsettlement.defense.ShelterCoordinator;
 import dev.local.goblinsettlement.economy.DroppedMaterialLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.food.FoodCraftingCoordinator;
@@ -117,6 +118,9 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     /** Index into the patrol route. Deliberately not persisted: the route is re-derived from the world. */
     private int patrolIndex;
     private int retaliationTicks;
+    private boolean sheltering;
+    private boolean shelterReached;
+    private BlockPos shelterTarget = BlockPos.ZERO;
 
     public GoblinCitizenEntity(EntityType<? extends GoblinCitizenEntity> type, Level level) {
         super(type, level);
@@ -256,6 +260,48 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
         setTarget(attacker);
         retaliationTicks = RETALIATION_TICKS;
+        return true;
+    }
+
+    /**
+     * Sends a non-combatant indoors while the settlement is alerted, and hands the navigation back when
+     * it lifts. workStage is deliberately untouched, so the interrupted job simply resumes. Returns
+     * true when this method owns the navigation for this tick.
+     */
+    private boolean maintainSheltering(ServerLevel level) {
+        if (!DefenseCoordinator.isAlerted(level)) {
+            if (sheltering) {
+                sheltering = false;
+                shelterReached = false;
+                getNavigation().stop();
+            }
+            return false;
+        }
+        // Sentries keep watch; GAME_DESIGN's four duties for them never include hiding.
+        if (profession() == Profession.SENTRY) {
+            return false;
+        }
+        if (!sheltering) {
+            var shelter = ShelterCoordinator.nearestShelter(level, settlementId, blockPosition());
+            // Nowhere to go: keep working rather than milling about in the open.
+            if (shelter.isEmpty()) {
+                return false;
+            }
+            shelterTarget = shelter.get();
+            sheltering = true;
+            shelterReached = false;
+        }
+        waitReason = "sheltering";
+        if (shelterReached) {
+            return true;
+        }
+        if (distanceToSqr(shelterTarget.getCenter()) <= SHELTER_ARRIVE_DISTANCE_SQ) {
+            shelterReached = true;
+            getNavigation().stop();
+            return true;
+        }
+        getNavigation().moveTo(shelterTarget.getX() + 0.5, shelterTarget.getY(),
+                shelterTarget.getZ() + 0.5, 1.0);
         return true;
     }
 
@@ -618,6 +664,11 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             // The melee goal owns the navigation while a fight lasts; work must not wrestle it for the
             // wheel. Registration and cancellation above still run.
             waitReason = "fighting back";
+            return;
+        }
+        // The two navigation guards never overlap in practice: a sentry fights but never hides, and
+        // everyone else hides but never fights. Keep the order if you ever change that.
+        if (maintainSheltering(level)) {
             return;
         }
         if (workStage == WorkStage.IDLE || workStage == WorkStage.COMPLETE
@@ -1054,11 +1105,30 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private static final int RETALIATION_TICKS = 20 * 15;
     /** This design's own number -- half the weakest golem's attack damage, with nothing behind it. */
     private static final double RETALIATION_ATTACK_DAMAGE = 2.0;
+    /** Four blocks is close enough to call the refuge reached. */
+    private static final double SHELTER_ARRIVE_DISTANCE_SQ = 4.0;
 
     private void tickPatrolWork(ServerLevel level) {
         // Reported before the movement branches: arriving at a waypoint returns early, and standing at a
         // crossroads watching is exactly when a sentry should be looking around.
         boolean alerting = DefenseCoordinator.reportSighting(level, this);
+        // While the settlement is alerted, the patrolling sentry stands between the threat and the
+        // village instead of walking its route. It guards the last reported position; it never searches
+        // for a target of its own.
+        if (DefenseCoordinator.isAlerted(level)) {
+            var threat = DefenseCoordinator.lastThreat(level);
+            if (threat.isPresent()) {
+                BlockPos destination = threat.get();
+                waitReason = "guarding";
+                if (distanceToSqr(destination.getCenter()) <= PATROL_ARRIVE_DISTANCE_SQ) {
+                    getNavigation().stop();
+                } else {
+                    getNavigation().moveTo(destination.getX() + 0.5, destination.getY(),
+                            destination.getZ() + 0.5, 1.0);
+                }
+                return;
+            }
+        }
         var target = PatrolCoordinator.waypointFor(level, settlementId, patrolIndex);
         if (target.isEmpty()) {
             waitReason = "no patrol route";
