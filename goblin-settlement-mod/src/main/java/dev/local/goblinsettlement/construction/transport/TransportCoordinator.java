@@ -175,6 +175,54 @@ public final class TransportCoordinator {
         return new StartResult(true, "PLANNED", Optional.of(plan));
     }
 
+    /**
+     * Widen a finished road by one rung of the ladder: a new plan holding only the cells the wider
+     * shape adds, so the road that is already built is never touched or reopened. Refuses when the
+     * road has no recorded centerline, is already the widest, or has any added cell that is not safe
+     * to pave -- a widening is all or nothing, because the road's width is judged as a whole.
+     */
+    public static StartResult startWidening(ServerLevel level, String settlementId, TransportPlan road) {
+        Objects.requireNonNull(level, "level");
+        Objects.requireNonNull(settlementId, "settlementId");
+        Objects.requireNonNull(road, "road");
+        TransportSavedData traffic = TransportSavedData.get(level);
+        if (hasActivePlan(traffic)) {
+            return rejected("TRAFFIC_WORK_ACTIVE");
+        }
+        List<BlockPos> route = road.route();
+        if (road.kind() != TransportPlan.Kind.ROAD || !road.isComplete() || route.isEmpty()) {
+            return rejected("NO_ROAD_SHAPE");
+        }
+        int fromLanes = traffic.roadWidth(road.id());
+        int targetLanes = RoadUpgradeRules.nextLanes(fromLanes);
+        if (targetLanes == fromLanes) {
+            return rejected("ALREADY_WIDEST");
+        }
+        Map<BlockPos, TransportPlan.Step> sites = new LinkedHashMap<>();
+        for (BlockPos foot : RoadLayout.newLaneFeet(route, fromLanes, targetLanes)) {
+            if (!safeRoadFoot(level, settlementId, foot)) {
+                return rejected("UNSAFE_WIDENING_FOOTPRINT");
+            }
+            BlockPos ground = foot.below().immutable();
+            sites.putIfAbsent(ground, new TransportPlan.Step(
+                    TransportPlan.Phase.SURFACE, ground,
+                    TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.ROAD_GROUND));
+        }
+        if (sites.isEmpty() || conflictsWithExistingWork(
+                SettlementSavedData.get(level), sites.keySet())) {
+            return rejected("NO_SITES_OR_WORK_CONFLICT");
+        }
+        TransportPlan plan = new TransportPlan(
+                UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.ROAD,
+                List.copyOf(sites.values()), 0, false, List.of(), List.of(), List.of(),
+                Optional.empty(), Optional.empty(),
+                Optional.of(new TransportPlan.Road(Optional.of(road.id()), targetLanes, route)));
+        if (!traffic.add(plan)) {
+            return rejected("TRAFFIC_WORK_ACTIVE_OR_LIMIT");
+        }
+        return new StartResult(true, "PLANNED", Optional.of(plan));
+    }
+
     /** Register on END_WORLD_TICK. Never loads a chunk or advances inactive work. */
     public static void tick(ServerLevel level) {
         if (level.getGameTime() % 20 != 0) {
