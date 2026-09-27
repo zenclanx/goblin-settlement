@@ -398,3 +398,15 @@
 - [2026-09-27 13:54:00 +08:00] 提交本轮文档（UpdateLog.md 与 CURRENT_STATUS.md，仅暂存实际改动文件）并推送到 origin/claude/settlement-first-pass；代码与资源随前六任务提交一并推送。
 - [2026-09-27 13:54:00 +08:00] 未完成：住宅两轴升级链只有编译与纯函数证据，未启动游戏、未运行专用服务端、未触碰常用存档，不能视为玩法验收；更多蓝图、公共设施、实体公告牌方块、住户分配、历史保留仍缺；设计 §10 记录的风险（绑定残余死角、附近床数跨房子重复计数、`new Home(bed, variant, 0, 0)` 文本不变而语义改变）留待全分支审查。
 - [2026-09-27 14:10:00 +08:00] 补记：第四十一轮之后的全分支审查（972fbd0..49353b4）未发现 Critical，代码层无需修改，但记录两件事。一是设计文档 HOUSING 的营地死锁机制写错了：它写"营地 8 张床只注册成 1 个 home"，实际注册还会跑一道 7×7 同层床位互斥，那 8 张床彼此只隔 2 格，所以**一栋都不会注册**，逃生口走的是"没有房子"分支；结论与实现不变，机制已更正（59aa31b）。二是审查者指出我之前在本轮 ledger 里写的"目标上升不会插到在途工单之前"是错的——抬高容量目标会把扩建步插到已列出的品质步之前，在途工人确实可能白跑一趟（木板会正常归还，无损坏）。两项跟进已写入 CURRENT_STATUS.md 第 3 条，下轮优先处理床位判据三份共存的问题。
+## [2026-09-27 14:20:00 +08:00 – 2026-09-27 14:31:00 +08:00] 第四十二轮：床位判据收敛为单一权威
+
+- [2026-09-27 14:20:00 +08:00] 按 CURRENT_STATUS.md 第 3 条"下轮第一优先"开工：床位判据此前存在三份——housing/BedCensus 的私有 validBed、colony/family/FamilyCoordinator 的私有 validBed、以及 housing/BedProvisioningCoordinator.countBeds 里的内联版本。逐条比对确认三者今日语义一致（WorldModificationPermission.check 已把 CHUNK_INACTIVE 并入返回决策，故权限三连等于覆盖区块门控），风险只在日后各改一处会分叉。
+- [2026-09-27 14:22:00 +08:00] 先跑绿色基线：`./gradlew build --offline --no-daemon` BUILD SUCCESSFUL，11 项独立检查全部通过。
+- [2026-09-27 14:24:00 +08:00] 先写失败检查：HousingRulesCheck 新增 checkUsableBedHead()，断言判据每一条腿各自独立决定结果（翻转任一事实即判否）。运行后 `:compileTestJava FAILED`，报错为"符号: 方法 usableBedHead(boolean,boolean,boolean)"，失败原因正确——判据尚未存在。
+- [2026-09-27 14:26:00 +08:00] 最小实现：HousingRules 新增纯判据 `usableBedHead(boolean headHalf, boolean headroomClear, boolean columnPermitted)`。housingRulesCheck 转绿。
+- [2026-09-27 14:28:00 +08:00] 收敛三处调用点：BedCensus 私有 validBed 改为公共唯一权威 `BedCensus.usableBedHead(ServerLevel, String, BlockPos)`，由它采集"床头那一半 / 头顶两格净空 / 三格均 ALLOWED"三项事实并委托纯判据；FamilyCoordinator 删除本地副本并移除已无用的 WorldModificationPermission 导入，两处调用改走 BedCensus；BedProvisioningCoordinator.countBeds 的内联条件改调同一方法，保留其 `scan.beds` 收集全 BEDS 方块（供 nearBed 邻避用）的行为。
+- [2026-09-27 14:29:00 +08:00] 行为保持性核对：三处扫描策略差异原样保留——BedCensus 遇不可 tick 位置 `continue` 跳过，BedProvisioningCoordinator 遇之 `return false` 中止整轮复查。此差异属扫描策略而非床位判据，未纳入本次统一，避免静默改行为。
+- [2026-09-27 14:29:30 +08:00] 排除近似副本：HousingCoordinator.isBedHead 同样读 BedPart.HEAD，但问题是"这是不是我登记的那张锚点床"而非"这张床能不能睡"，故意不含净空要求（被砌死的床仍是同一栋家，仍须被跟踪/移除）。未合并，并加两行注释写明理由，防止后人误并改变行为。camp/CampGenerationCoordinator.bedPartMatches 是校验刚放置的白床部件与朝向，同属不同问题。
+- [2026-09-27 14:30:00 +08:00] 完整构建 `./gradlew build --offline --no-daemon`：BUILD SUCCESSFUL（22 秒），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。无编译警告。
+- [2026-09-27 14:30:30 +08:00] 核对产物 build/libs/goblin-settlement-0.1.0.jar：402322 字节、时间戳 2026-09-27 14:30。
+- [2026-09-27 14:31:00 +08:00] 未完成：本轮为无行为变更的去重重构，仍只有编译与纯函数证据，未启动游戏、未运行专用服务端、未触碰常用存档，不构成玩法验收。CURRENT_STATUS.md 第 3 条剩余的"decide 在已无扩容空间的房子上仍抬高容量目标"未处理。

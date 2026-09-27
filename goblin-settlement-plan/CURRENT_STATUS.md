@@ -1,10 +1,10 @@
 # 当前状态：哥布林模组接续入口
 
-更新日期：2026-09-27 14:20 +08:00。详细历史仅追加到 UpdateLog.md。
+更新日期：2026-09-27 14:31 +08:00。详细历史仅追加到 UpdateLog.md。
 
 ## 接续须知（先读这段）
 
-- **分支**：`claude/settlement-first-pass`，已推送且与远端同步。分叉自 `main`（`e38f029`），领先 **59 个提交**。`main` 全程未被改动。
+- **分支**：`main` 与 `claude/settlement-first-pass` 现指向同一提交 `a20e217`，三批工作与文档均已在其中。自第四十二轮起按用户要求直接在 `main` 上开发，不再另开分支。另存在并行分支 `codex/settlement-v1`（领先 2 个提交），与本轮无关。
 - **该分支上叠了三批工作**，各自都经过了逐任务审查 + 全范围审查 + 修复：职业系统（12 任务）、道路桥梁自主立项（5 任务）、住宅两轴升级链（7 任务）。
 - **全部三批都没有做过游戏内验证**——只有编译通过（`./gradlew build --offline --no-daemon`）与 **11 项独立检查**的证据。三轮的全范围审查各自抓到过静态可见的真缺陷（派工/执行裂脑、河岸长草导致架不成桥、无法服务的目标冻结扩地、建成房屋永久绑定工人），都已修复；但**运行时行为从未被观察过**。
 - **下一步的两条路**：①按原约定继续补七阶段剩余缺口（见下"尚需实现"）；②先把手上的东西拿去专用测试世界跑一遍统一验证。**在验证之前不要把这一分支当作可用版本**。
@@ -12,7 +12,7 @@
 
 ## 本轮执行约定
 
-先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。当前工作在独立分支 `claude/settlement-first-pass`，验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 完整构建收尾）、道路桥梁自主立项（交通 5 任务）与住宅两轴升级链（住宅 7 任务）均已接入候选。
+先完成七阶段计划的测试前初版，全部计划内容的代码完成后再统一测试；后续提交到 main。第四十二轮起因用户指定直接在 `main` 上开发。验证深度为编译 + 项目自带独立检查，不启动游戏、不跑专用服务端、不动常用存档。职业系统（任务 1–11 的代码 + 完整构建收尾）、道路桥梁自主立项（交通 5 任务）与住宅两轴升级链（住宅 7 任务）均已接入候选；第四十二轮收敛了床位判据的重复实现。
 
 ## 阶段定位
 
@@ -47,10 +47,18 @@
 - 床位与容量绑定含逃生口：新床位绑定到 8 格 Chebyshev 半径内还有容量空位的房子（半径由设计的 4 改为 8——半径 4 与既有的 4 格床位互斥区同中心、交集为空，第二张床数学上无解）；没有任何房子有空位时保留自由放床逃生口。
 - 显示：`goblinsettlement status` 新增 `Housing: beds=…, occupied slots=…, spare=…` 行。
 
+## 本轮接入的内容（第四十二轮：床位判据收敛）
+
+- 无行为变更的去重重构，落实全分支审查指定的下轮第一优先：床位判据原先散在三处（`BedCensus` 私有 `validBed`、`FamilyCoordinator` 私有 `validBed`、`BedProvisioningCoordinator.countBeds` 内联条件），今日语义一致但任改一处即分叉。
+- 现在唯一权威是 `BedCensus.usableBedHead(ServerLevel, String, BlockPos)`：它采集"床头那一半 / 头顶两格净空 / 三格均 ALLOWED"三项事实，委托纯判据 `HousingRules.usableBedHead(headHalf, headroomClear, columnPermitted)`；`FamilyCoordinator` 两处调用与 `BedProvisioningCoordinator.countBeds` 均已改走它。
+- 各自的扫描策略原样保留，未混入判据：`BedCensus` 遇不可 tick 位置 `continue` 跳过，`BedProvisioningCoordinator` 遇之 `return false` 中止整轮复查；`countBeds` 仍收集全部 BEDS 方块（含床脚）供 `nearBed` 邻避。
+- 新增独立检查 `HousingRulesCheck.checkUsableBedHead`，逐条断言判据的三条腿各自独立决定结果。
+- 明确不合并的近似副本：`HousingCoordinator.isBedHead`（识别锚点床，故意不含净空）、`camp/CampGenerationCoordinator.bedPartMatches`（校验刚放置白床的部件与朝向）——已在源码加注说明。
+
 ## 本轮验证进展
 
-- 固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`，BUILD SUCCESSFUL，27 秒），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
-- `goblin-settlement-0.1.0.jar` 重新生成（402420 字节，2026-09-27 13:47），已核对含本批住宅新类：`housing/HousingRules`、`housing/BedCensus`、`housing/BedProvisioningCoordinator`、`housing/HousingSavedData`、`housing/HousingCoordinator`。
+- 第四十二轮：先跑绿色基线，再按 TDD 先写失败检查（`:compileTestJava FAILED`，报错为方法不存在，失败原因正确），实现后转绿。固定 Gradle 9.2.1 / Java 21 离线完整构建成功（`./gradlew build --offline --no-daemon`，BUILD SUCCESSFUL，22 秒，无编译警告），11 项独立检查全部打印 `*Check passed`：HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。
+- `goblin-settlement-0.1.0.jar` 重新生成（402322 字节，2026-09-27 14:30）。
 - 未做游戏内验证：未启动游戏、未运行专用服务端、未触碰常用存档。构建与检查通过不代表玩法验收。
 
 ## 美术候选（2026-09-27）
@@ -66,7 +74,7 @@
 
 1. 职业系统剩余：职业熟练度、职业名额、派工服务收口、哨卫工作、儿童外观、真实手持工具。
 2. 交通剩余：通行量驱动的道路升级、成熟期多工程并行、道路连通性验收、石桥与更长跨度（设计第 7/12 节要求，本轮未覆盖）。
-3. 住宅剩余。**下轮第一优先（全分支审查指定）**：床位判据目前存在三份——`BedCensus`、`FamilyCoordinator.validBed`、以及 `BedProvisioningCoordinator.countBeds` 里的内联版本；今天三者逐条一致，但改动任何一处都会让"床够不够"的判定分叉，应抽成一个共用方法并让另两处改走它。其次：`HousingRules.decide` 在一栋房子已无扩容空间时仍会抬高它的容量目标，白花约 81 块木板（有界、会自解，但设计规则可细化）。其余：蓝图与材料清单迁到受校验的数据文件（几何仍硬编码在协调器里）、改建安全（拆前确认材料与临时住处）、公共设施、更多蓝图（`Home.variant` 仍是朝向镜像，不是可选形制）、实体公告牌方块、住户分配、历史保留。
+3. 住宅剩余。**床位判据已于第四十二轮收敛为单一权威**（`BedCensus.usableBedHead` 采集三项事实、`HousingRules.usableBedHead` 做纯判定，`FamilyCoordinator` 与 `BedProvisioningCoordinator` 已改走它，新增独立检查用例逐条钉死判据的三条腿；未合并 `HousingCoordinator.isBedHead`——它问的是"是不是我登记的锚点床"，故意不含净空要求）。**下轮第一优先**：`HousingRules.decide` 在一栋房子已无扩容空间时仍会抬高它的容量目标，白花约 81 块木板（有界、会自解，但设计规则可细化）。其余：蓝图与材料清单迁到受校验的数据文件（几何仍硬编码在协调器里）、改建安全（拆前确认材料与临时住处）、公共设施、更多蓝图（`Home.variant` 仍是朝向镜像，不是可选形制）、实体公告牌方块、住户分配、历史保留。
 4. 七阶段其他缺口：阶段 7 成熟城镇性能与跨存储异常恢复。
 5. 交通自主立项、采矿、冶炼调度、工人释放修复、职业系统与住宅两轴升级链**均未在游戏中验证**，只有编译与纯函数证据。
 6. 突然断电时实体、方块、箱子与 Saved Data 的跨存储一致性尚无保证；死亡掉落实体创建被游戏规则阻止时也可能最终失物。
