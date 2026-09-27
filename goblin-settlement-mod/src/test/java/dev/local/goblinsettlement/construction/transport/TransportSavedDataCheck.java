@@ -201,21 +201,39 @@ public final class TransportSavedDataCheck {
         require(earlier.roadWidth("chain-base") == 2, "a save without the road field falls back to two lanes");
         require(earlier.roadTraffic("chain-base") == 500, "and without a chain it keeps its own samples");
 
+        var wideningInProgress = new TransportSavedData();
+        require(wideningInProgress.add(roadPlan("width-base", facility, 1, false, 2, "width-base")),
+                "the finished base road is accepted");
+        require(wideningInProgress.add(roadPlan("width-widened", facility, 0, false, 3, "width-base")),
+                "the widening under construction is accepted");
+        require(wideningInProgress.roadWidth("width-base") == 2,
+                "an unfinished widening does not widen the road yet");
+        require(wideningInProgress.roads().size() == 1,
+                "the chain is still one road");
+        require(wideningInProgress.roads().get(0).id().equals("width-base"),
+                "and the finished base represents it");
+
         var retirable = new TransportSavedData();
         for (int index = 0; index < 40; index++) {
             String id = "plain-" + index;
-            require(retirable.add(roadPlan(id, facility, 1, false)), "plain road " + index + " accepted");
+            require(retirable.add(roadPlan(id, facility, 0, false)), "plain road " + index + " accepted");
+            require(retirable.replace(roadPlan(id, facility, 1, false)), "plain road " + index + " completed");
         }
         require(retirable.plan("plain-0").isEmpty(),
                 "plain roads are still retired once there are too many");
         var protectedChain = new TransportSavedData();
-        require(protectedChain.add(roadPlan("keep-base", facility, 1, false, 2, "keep-base")),
+        require(protectedChain.add(roadPlan("keep-base", facility, 0, false, 2, "keep-base")),
                 "chain base accepted");
-        require(protectedChain.add(roadPlan("keep-child", facility, 1, false, 3, "keep-base")),
+        require(protectedChain.replace(roadPlan("keep-base", facility, 1, false, 2, "keep-base")),
+                "chain base completed");
+        require(protectedChain.add(roadPlan("keep-child", facility, 0, false, 3, "keep-base")),
                 "chain child accepted");
+        require(protectedChain.replace(roadPlan("keep-child", facility, 1, false, 3, "keep-base")),
+                "chain child completed");
         for (int index = 0; index < 40; index++) {
             String id = "filler-" + index;
-            require(protectedChain.add(roadPlan(id, facility, 1, false)), "filler " + index + " accepted");
+            require(protectedChain.add(roadPlan(id, facility, 0, false)), "filler " + index + " accepted");
+            require(protectedChain.replace(roadPlan(id, facility, 1, false)), "filler " + index + " completed");
         }
         require(protectedChain.plan("keep-base").isPresent(), "a widened road is never retired");
         require(protectedChain.plan("keep-child").isPresent(), "nor is the widening that widened it");

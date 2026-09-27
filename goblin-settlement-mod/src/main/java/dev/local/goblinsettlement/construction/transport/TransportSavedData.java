@@ -112,10 +112,13 @@ public final class TransportSavedData extends SavedData {
         }
     }
 
-    /** The finished road's width: the widest member of the widening chain it belongs to. */
+    /** The finished road's width: the widest completed member of the widening chain it belongs to. */
     public int roadWidth(String planId) {
         int widest = RoadUpgradeRules.baseLanes();
         for (TransportPlan plan : chain(planId)) {
+            if (!plan.isComplete()) {
+                continue;
+            }
             widest = Math.max(widest, plan.lanes());
         }
         return widest;
@@ -197,6 +200,9 @@ public final class TransportSavedData extends SavedData {
     private static TransportPlan widestOf(List<TransportPlan> chain, TransportPlan fallback) {
         TransportPlan widest = fallback;
         for (TransportPlan plan : chain) {
+            if (!plan.isComplete()) {
+                continue;
+            }
             if (plan.lanes() > widest.lanes()
                     || (plan.lanes() == widest.lanes() && plan.id().compareTo(widest.id()) < 0)) {
                 widest = plan;
@@ -325,7 +331,6 @@ public final class TransportSavedData extends SavedData {
         }
         var updated = new ArrayList<>(plans);
         updated.add(plan);
-        trimCompletedRoads(updated);
         plans = List.copyOf(updated);
         revision++;
         index(plan);
