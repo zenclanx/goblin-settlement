@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.colony;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.local.goblinsettlement.construction.BuildMaterial;
 import dev.local.goblinsettlement.construction.ConstructionPlan;
 import dev.local.goblinsettlement.colony.family.FamilyConditions;
 import dev.local.goblinsettlement.colony.family.KinshipRules;
@@ -584,7 +585,7 @@ public final class SettlementSavedData extends SavedData {
         setDirty();
         return true;
     }
-    public boolean planTwoPlanks(BlockPos start) {
+    public boolean planStructure(BlockPos start, BuildMaterial material) {
         var active = plans.stream().filter(candidate -> !candidate.isComplete()).toList();
         if (settlement.isEmpty() || active.size() >= MAX_ACTIVE_PLANS
                 || active.stream().anyMatch(candidate -> overlaps(candidate.start(), start))
@@ -592,7 +593,7 @@ public final class SettlementSavedData extends SavedData {
             return false;
         }
         var updated = new ArrayList<>(active);
-        updated.add(new ConstructionPlan(start, 0, Optional.empty(), Optional.empty(), Optional.empty()));
+        updated.add(new ConstructionPlan(start, 0, Optional.empty(), Optional.empty(), Optional.empty(), material));
         plans = List.copyOf(updated);
         setDirty();
         return true;
@@ -632,7 +633,7 @@ public final class SettlementSavedData extends SavedData {
         }
         var current = target.get();
         return replacePlan(current, new ConstructionPlan(current.start(), current.completed(),
-                Optional.empty(), current.recoveryDrop(), current.lastWorkerId()));
+                Optional.empty(), current.recoveryDrop(), current.lastWorkerId(), current.material()));
     }
 
     public boolean recordRecoverableDrop(String workerId, String itemId, BlockPos pos) {

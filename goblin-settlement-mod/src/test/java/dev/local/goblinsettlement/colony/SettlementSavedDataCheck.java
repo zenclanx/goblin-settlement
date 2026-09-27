@@ -2,11 +2,16 @@ package dev.local.goblinsettlement.colony;
 
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
+import dev.local.goblinsettlement.construction.BuildMaterial;
 import dev.local.goblinsettlement.interaction.ProtectedRectangle;
+import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.Bootstrap;
 
 public final class SettlementSavedDataCheck {
     public static void main(String[] args) {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
         var data = new SettlementSavedData();
         var home = ProtectedRectangle.fromCorners(-16, -16, -9, -9);
         require(data.protect("player-1", home), "first protection registered");
@@ -34,8 +39,8 @@ public final class SettlementSavedDataCheck {
         BlockPos site = new BlockPos(11, 71, 11);
         require(data.registerWarehouse(chest), "public chest registered");
         require(!data.registerWarehouse(chest), "duplicate public chest rejected");
-        require(data.planTwoPlanks(site), "two-block project accepted");
-        require(!data.planTwoPlanks(site), "active project not replaced");
+        require(data.planStructure(site, BuildMaterial.OAK_PLANKS), "two-block project accepted");
+        require(!data.planStructure(site, BuildMaterial.OAK_PLANKS), "active project not replaced");
         require(data.plan().orElseThrow().site().equals(site), "first project site");
         require(data.assignWorker("resident-1"), "worker reserved for first site");
         require(!data.assignWorker("resident-2"), "one worker owns active site");
@@ -105,7 +110,7 @@ public final class SettlementSavedDataCheck {
         var cancellation = new SettlementSavedData();
         require(cancellation.found(new BlockPos(0, 70, 0)) == SettlementSavedData.FoundResult.FOUNDED,
                 "cancellation fixture founded");
-        require(cancellation.planTwoPlanks(new BlockPos(1, 71, 1)), "cancellable project recorded");
+        require(cancellation.planStructure(new BlockPos(1, 71, 1), BuildMaterial.OAK_PLANKS), "cancellable project recorded");
         require(cancellation.assignWorker("missing-resident"), "missing resident reserved");
         require(cancellation.cancelPlan(), "active project can be cancelled");
         require(cancellation.plan().isEmpty(), "cancelled project no longer blocks new plans");
@@ -116,16 +121,16 @@ public final class SettlementSavedDataCheck {
         require(cancelledReloaded.acknowledgeCancelledWorker("missing-resident"),
                 "worker can acknowledge cancellation after loading");
         require(!cancelledReloaded.isCancelledWorker("missing-resident"), "acknowledged worker is no longer blocked");
-        require(cancelledReloaded.planTwoPlanks(new BlockPos(2, 71, 1)), "new project can follow cancellation");
+        require(cancelledReloaded.planStructure(new BlockPos(2, 71, 1), BuildMaterial.OAK_PLANKS), "new project can follow cancellation");
 
         var parallel = new SettlementSavedData();
         require(parallel.found(new BlockPos(0, 70, 0)) == SettlementSavedData.FoundResult.FOUNDED,
                 "parallel fixture founded");
         BlockPos firstStart = new BlockPos(1, 71, 1);
         BlockPos secondStart = new BlockPos(1, 71, 4);
-        require(parallel.planTwoPlanks(firstStart), "first parallel project recorded");
-        require(parallel.planTwoPlanks(secondStart), "second parallel project recorded");
-        require(!parallel.planTwoPlanks(firstStart.east()), "overlapping project rejected");
+        require(parallel.planStructure(firstStart, BuildMaterial.OAK_PLANKS), "first parallel project recorded");
+        require(parallel.planStructure(secondStart, BuildMaterial.OAK_PLANKS), "second parallel project recorded");
+        require(!parallel.planStructure(firstStart.east(), BuildMaterial.OAK_PLANKS), "overlapping project rejected");
         require(parallel.plans().size() == 2, "both parallel projects retained");
         require(parallel.assignWorker(firstStart, "builder-a"), "first project reserves first worker");
         require(!parallel.assignWorker(secondStart, "builder-a"), "worker cannot own two projects");
@@ -147,7 +152,7 @@ public final class SettlementSavedDataCheck {
         BlockPos crop = new BlockPos(1, 71, 1);
         require(farm.registerFarmSite(crop), "wheat cell registered");
         require(!farm.registerFarmSite(crop), "duplicate wheat cell rejected");
-        require(!farm.planTwoPlanks(crop), "construction cannot overlap a farm cell");
+        require(!farm.planStructure(crop, BuildMaterial.OAK_PLANKS), "construction cannot overlap a farm cell");
         require(farm.assignFarmWorker(crop, "farmer"), "farm worker reserved");
         require(!farm.assignFarmWorker(crop, "other"), "farm cell cannot have two workers");
         require(farm.isFarmWorker("farmer"), "farm reservation visible to other work");

@@ -73,7 +73,7 @@ public final class ConstructionCommands {
                                             return 0;
                                         }
                                     }
-                                    if (!data.planTwoPlanks(start)) {
+                                    if (!data.planStructure(start, BuildMaterial.OAK_PLANKS)) {
                                         source.sendFailure(Component.literal(
                                                 "Project overlaps active work or the eight-project limit is reached"));
                                         return 0;

@@ -2,12 +2,14 @@ package dev.local.goblinsettlement.construction;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import java.util.Objects;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 
 /** A small persisted blueprint. Inventory stays in physical containers and residents. */
 public record ConstructionPlan(BlockPos start, int completed, Optional<String> workerId,
-                               Optional<RecoveryDrop> recoveryDrop, Optional<String> lastWorkerId) {
+                               Optional<RecoveryDrop> recoveryDrop, Optional<String> lastWorkerId,
+                               BuildMaterial material) {
     public static final int LENGTH = 2;
     public record RecoveryDrop(String itemId, BlockPos pos) {
         public static final Codec<RecoveryDrop> CODEC = RecordCodecBuilder.create(instance -> instance.group(
@@ -21,10 +23,14 @@ public record ConstructionPlan(BlockPos start, int completed, Optional<String> w
             Codec.INT.fieldOf("completed").forGetter(ConstructionPlan::completed),
             Codec.STRING.optionalFieldOf("worker_id").forGetter(ConstructionPlan::workerId),
             RecoveryDrop.CODEC.optionalFieldOf("recovery_drop").forGetter(ConstructionPlan::recoveryDrop),
-            Codec.STRING.optionalFieldOf("last_worker_id").forGetter(ConstructionPlan::lastWorkerId)
+            Codec.STRING.optionalFieldOf("last_worker_id").forGetter(ConstructionPlan::lastWorkerId),
+            Codec.STRING.xmap(BuildMaterial::valueOf, BuildMaterial::name)
+                    .optionalFieldOf("material", BuildMaterial.OAK_PLANKS)
+                    .forGetter(ConstructionPlan::material)
     ).apply(instance, ConstructionPlan::new));
 
     public ConstructionPlan {
+        Objects.requireNonNull(material, "material");
         if (completed < 0 || completed > LENGTH
                 || (completed == LENGTH && (workerId.isPresent() || recoveryDrop.isPresent()))) {
             throw new IllegalArgumentException("Invalid construction plan progress");
@@ -47,7 +53,7 @@ public record ConstructionPlan(BlockPos start, int completed, Optional<String> w
         if (isComplete() || workerId.isPresent()) {
             throw new IllegalStateException("Construction step already assigned or complete");
         }
-        return new ConstructionPlan(start, completed, Optional.of(worker), recoveryDrop, lastWorkerId);
+        return new ConstructionPlan(start, completed, Optional.of(worker), recoveryDrop, lastWorkerId, material);
     }
 
     public ConstructionPlan finishStep(String worker) {
@@ -57,7 +63,7 @@ public record ConstructionPlan(BlockPos start, int completed, Optional<String> w
         if (recoveryDrop.isPresent()) {
             throw new IllegalStateException("Recover material before construction advances");
         }
-        return new ConstructionPlan(start, completed + 1, Optional.empty(), Optional.empty(), Optional.of(worker));
+        return new ConstructionPlan(start, completed + 1, Optional.empty(), Optional.empty(), Optional.of(worker), material);
     }
 
     public ConstructionPlan withDroppedItem(String itemId, BlockPos pos) {
@@ -65,7 +71,7 @@ public record ConstructionPlan(BlockPos start, int completed, Optional<String> w
             throw new IllegalStateException("No worker owns this material");
         }
         return new ConstructionPlan(start, completed, Optional.empty(),
-                Optional.of(new RecoveryDrop(itemId, pos.immutable())), lastWorkerId);
+                Optional.of(new RecoveryDrop(itemId, pos.immutable())), lastWorkerId, material);
     }
 
     public ConstructionPlan retargetDrop(String itemId, BlockPos pos) {
@@ -73,10 +79,10 @@ public record ConstructionPlan(BlockPos start, int completed, Optional<String> w
             throw new IllegalStateException("No dropped material to retarget");
         }
         return new ConstructionPlan(start, completed, workerId,
-                Optional.of(new RecoveryDrop(itemId, pos.immutable())), lastWorkerId);
+                Optional.of(new RecoveryDrop(itemId, pos.immutable())), lastWorkerId, material);
     }
 
     public ConstructionPlan clearRecovery() {
-        return new ConstructionPlan(start, completed, Optional.empty(), Optional.empty(), lastWorkerId);
+        return new ConstructionPlan(start, completed, Optional.empty(), Optional.empty(), lastWorkerId, material);
     }
 }
