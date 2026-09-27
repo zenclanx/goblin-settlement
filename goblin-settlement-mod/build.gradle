@@ -133,6 +133,14 @@ tasks.register('transportSavedDataCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.construction.transport.TransportSavedDataCheck'
 }
 
+tasks.register('trafficDecisionCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks the pure bridge-or-road decision rule.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.planning.transport.TrafficDecisionCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -143,4 +151,5 @@ tasks.named('check') {
     dependsOn tasks.named('professionRulesCheck')
     dependsOn tasks.named('trafficTargetRulesCheck')
     dependsOn tasks.named('transportSavedDataCheck')
+    dependsOn tasks.named('trafficDecisionCheck')
 }
