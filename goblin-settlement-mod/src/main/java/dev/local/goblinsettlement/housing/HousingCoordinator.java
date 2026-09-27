@@ -18,9 +18,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.BedBlock;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.item.ItemStack;
@@ -123,11 +121,16 @@ public final class HousingCoordinator {
         }
         if (!permitted(level, id, site)) return false;
         if (!level.getBlockState(site).isAir()) return false;
+        var step = stepAt(level, home, site);
+        if (step.isEmpty()) return false;
         var stock = PublicWarehouseInventory.snapshot(level, data);
         int reserve = home.capacityTarget() >= 2
                 ? HousingBlueprints.reserveExpanded() : HousingBlueprints.reserveBasic();
-        if (!stock.complete() || stock.oakPlanks() <= reserve) return false;
-        var warehouse = PublicWarehouseInventory.firstWithOakPlank(level, data);
+        if (!stock.complete()
+                || PublicWarehouseInventory.countOf(level, data, step.get().item()) <= reserve) {
+            return false;
+        }
+        var warehouse = PublicWarehouseInventory.firstHolding(level, data, step.get().item());
         if (warehouse.isPresent()) {
             var worker = level.getEntitiesOfClass(GoblinCitizenEntity.class,
                             new AABB(warehouse.orElseThrow()).inflate(16.0),
@@ -162,6 +165,39 @@ public final class HousingCoordinator {
         return null;
     }
 
+    /**
+     * The step this home expects at this site, matched by position. Matching the worker's own
+     * coordinates rather than reusing nextSite is deliberate: if the target moved, this site is no
+     * longer the next one to build, and the caller must return the material instead of fetching
+     * something for a step that is no longer theirs.
+     */
+    static Optional<HousingBlueprints.ResolvedStep> stepAt(ServerLevel level,
+                                                           HousingSavedData.Home home,
+                                                           BlockPos site) {
+        for (HousingBlueprints.ResolvedStep step
+                : HousingBlueprints.steps(home.capacityTarget(), home.qualityTarget())) {
+            if (site.equals(position(level, home.bed(), home.variant(), step))) {
+                return Optional.of(step);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** The step a worker holding this bed and site was sent to build; empty when the assignment is stale. */
+    public static Optional<HousingBlueprints.ResolvedStep> assignedStep(ServerLevel level, BlockPos bed,
+                                                                       BlockPos site) {
+        var settlement = SettlementSavedData.get(level).settlement();
+        if (settlement.isEmpty()) {
+            return Optional.empty();
+        }
+        for (var home : HousingSavedData.get(level).homes(settlement.orElseThrow().id())) {
+            if (home.bed().equals(bed)) {
+                return stepAt(level, home, site);
+            }
+        }
+        return Optional.empty();
+    }
+
     public static boolean assignedSite(ServerLevel level, BlockPos bed, String workerId, BlockPos site) {
         var settlement = SettlementSavedData.get(level).settlement();
         if (settlement.isEmpty()) return false;
@@ -175,15 +211,17 @@ public final class HousingCoordinator {
         var data = SettlementSavedData.get(level);
         var settlement = data.settlement();
         if (settlement.isEmpty() || !assignedSite(level, bed, worker.getUUID().toString(), site)
-                || !carried.is(Items.OAK_PLANKS) || carried.getCount() != 1
+                || carried.getCount() != 1
                 || worker.distanceToSqr(site.getCenter()) > 16.0
                 || !level.getGameRules().get(GameRules.MOB_GRIEFING)
                 || !permitted(level, settlement.orElseThrow().id(), worker.blockPosition())
                 || !permitted(level, settlement.orElseThrow().id(), site)
                 || !level.getBlockState(site).isAir()) return false;
-        if (!level.setBlock(site, Blocks.OAK_PLANKS.defaultBlockState(), 3)
-                || !level.getBlockState(site).is(Blocks.OAK_PLANKS)) return false;
-        return true;
+        var step = assignedStep(level, bed, site);
+        if (step.isEmpty() || !carried.is(step.get().item())) return false;
+        var placed = step.get().block().defaultBlockState();
+        if (!level.setBlock(site, placed, 3)) return false;
+        return level.getBlockState(site).is(step.get().block());
     }
 
     static boolean stageFullyBuilt(ServerLevel level, HousingSavedData.Home home, int stageIndex) {

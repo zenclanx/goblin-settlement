@@ -16,7 +16,14 @@ public final class PublicWarehouseInventory {
     }
 
     public static Optional<BlockPos> firstWithOakPlank(ServerLevel level, SettlementSavedData data) {
-        return data.warehouses().stream().filter(pos -> countAt(level, data, pos) > 0).findFirst();
+        return firstHolding(level, data, Items.OAK_PLANKS);
+    }
+
+    /** The first accessible warehouse holding at least one of the given item. */
+    public static Optional<BlockPos> firstHolding(ServerLevel level, SettlementSavedData data,
+                                                  Item item) {
+        return data.warehouses().stream()
+                .filter(pos -> countAt(level, data, pos, item) > 0).findFirst();
     }
 
     public static Optional<BlockPos> firstWithWheatSeeds(ServerLevel level, SettlementSavedData data) {
@@ -95,10 +102,6 @@ public final class PublicWarehouseInventory {
             }
         }
         return new WarehouseSupply(food, seeds, hoes, axes, pickaxes, planks, containers, complete);
-    }
-
-    private static int countAt(ServerLevel level, SettlementSavedData data, BlockPos pos) {
-        return countAt(level, data, pos, Items.OAK_PLANKS);
     }
 
     private static int countAt(ServerLevel level, SettlementSavedData data, BlockPos pos, Item item) {
