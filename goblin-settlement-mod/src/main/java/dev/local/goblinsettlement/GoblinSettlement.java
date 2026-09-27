@@ -107,6 +107,10 @@ public final class GoblinSettlement implements ModInitializer {
                                         + ", containers=" + supply.accessibleContainers()
                                         + ", stock " + (supply.complete() ? "complete" : "incomplete")
                                         + ", next priority=" + demand.priority()), false);
+                                int beds = BedCensus.count(level, data);
+                                int occupied = data.occupiedPopulationSlots();
+                                context.getSource().sendSuccess(() -> Component.literal("Housing: beds=" + beds
+                                        + ", occupied slots=" + occupied + ", spare=" + (beds - occupied)), false);
                                 context.getSource().sendSuccess(() -> Component.literal(
                                         TrafficProposalCoordinator.nearestUnservedFacility(
                                                 data, TransportSavedData.get(level), level.getGameTime())
