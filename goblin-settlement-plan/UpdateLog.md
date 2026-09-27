@@ -581,3 +581,17 @@
 - [2026-09-27 18:46:00 +08:00] 验证：完整构建 ./gradlew build --offline --no-daemon BUILD SUCCESSFUL，**15 项**独立检查全部 *Check passed（新增第 15 项 `RoadUpgradeRulesCheck`）。产物 build/libs/goblin-settlement-0.1.0.jar：436602 字节，耗时 20 秒。
 - [2026-09-27 18:47:00 +08:00] 未完成：不做玩法验收；**采样、计数持久化、显示三样都不可纯测**（只有编译与代码审查）；阈值与节拍都是发明值；加宽本身留下一轮，本轮结束后路会被判为"够格"但宽度不变。
 - [2026-09-27 18:56:05 +08:00] 补记：终审指出 `TRAFFIC_UPGRADE_PLAN.md` Task 2 Step 5 的采样器代码块仍是旧形（`WeakHashMap<ServerLevel, Snapshot>` + `Snapshot(TransportSavedData owner, …)`，与紧邻"注意"说明相反）。已把该代码块改为与实装 `TrafficSampler.java` 逐字一致（`owner` 字段与 `ServerLevel` 键由审查修复提交 `6b743f7` 移除），并提交 commit "Correct the plan's sampler snippet to what shipped"。
+
+## [2026-09-27 21:08:00 +08:00 – 2026-09-27 21:13:00 +08:00] 第五十五轮：道路加宽
+
+- [2026-09-27 21:08:00 +08:00] 按 TRAFFIC_WIDEN_DESIGN.md 与 TRAFFIC_WIDEN_PLAN.md 执行"先量再决定"的第二轮：把够格的路真的加宽（2 → 3 → 5）。用户 2026-09-27 决定**沿用两个发明值**先把机制做完，因此阈值与采样节拍本轮不改。
+- [2026-09-27 21:08:30 +08:00] 新增纯层 `planning/transport/RoadLayout`：`laneOffsets`（2 = {0,1}、3 = {0,1,2}、5 = {-1,0,1,2,3}）、`direction`、`clockwise`（`(dx,dz) -> (-dz,dx)`，与 `Direction.getClockWise()` 一致）、`laneFeet`、`newLaneFeet`（= 宽形状的车道减去窄形状的车道）。**"一条路的车道落在哪"至此只有这一处**。
+- [2026-09-27 21:09:00 +08:00] `startRoad` 改走 `RoadLayout.laneFeet(route, baseLanes())`：输出顺序与旧的车道循环逐格相同（每格先偏移 0 后 1），`sites` 的 `putIfAbsent` 去重与拒绝理由 `UNSAFE_TWO_LANE_FOOTPRINT` 均未变。**第一轮遗留的两处同源事实合并**：`BUILT_ROAD_LANES` 常量与 `startRoad` 里字面写的两条车道，改为 `RoadUpgradeRules.baseLanes()` + 每条计划的 `lanes` 字段；`RoadUpgradeRules.ladder()` 供几何层对齐档位。`TransportCoordinator.roadDirection` 删除。
+- [2026-09-27 21:09:30 +08:00] `TransportPlan` 新增 `road` 字段（嵌套 `Road(widens_from, lanes, route)`，`optionalFieldOf`、**不升 schema**）。**中线进存档**是必需的：A* 的路线 4 连通、转弯极多，而 `startRoad` 的 `putIfAbsent` 去重正好发生在弯角，所以从步列表重推方向是残缺的（第一轮设计 §5 硬点二）。旧档无中线 → 该路不加宽。
+- [2026-09-27 21:10:00 +08:00] 加宽 = **链式新计划**，只含新增车道格，原计划一字不动（已完成即终态不回退，这是不选"尾部追加步"的原因）。链口径集中在 `TransportSavedData`：`roadWidth`（最大宽度）、`roadTraffic`（计数之和）、`roads`（每链一个代表）、`wideningCandidates`（够格的按重量降序）。**跨级加宽因此不会把路的通行量归零**，也不会因为旧车道仍在被采样而反复触发。
+- [2026-09-27 21:10:30 +08:00] 淘汰豁免：`trimCompletedRoads` 只退不在链上的已完道路。不加这条的话，最繁忙的路恰恰建得最早、最先被 32 条上限淘汰、计数也被 `pruneTraffic` 清掉——加宽会在最需要它的成熟聚落里彻底不发生。上界由 32 变成 `32 + 3×加宽过的路数`。
+- [2026-09-27 21:11:00 +08:00] 提案落在 `TrafficProposalCoordinator`，且**只在需求档为 `READY`** 时动手（没有待办新路，且食物/种子/工具/住房都不缺）。按 `wideningCandidates()` 逐个尝试，第一个"新增格全部通过 `safeRoadFoot` 且不与未完成工程/农田同列"的立项。**加宽不进需求档**：一条被永久挡住的加宽不会像第一轮"无法服务的目标"那样冻结扩地，因此本轮**不需要延期名单**。材料沿用橡木木板与既有的 `ROAD_MIN_PLANKS` 门禁。
+- [2026-09-27 21:11:30 +08:00] 显示：`Road traffic:` 行按链显示 `id8=链计数和 L<宽度>[ *]`，一条加宽过的路只出现一次（原来会按计划出现两次）。
+- [2026-09-27 21:12:00 +08:00] 新增第 16 项独立检查 `RoadLayoutCheck`：方向与顺时针四向、末格复读、三档偏移表与 `RoadUpgradeRules.ladder()` 互相钉死、直路 2→3 恰好一侧一条、3→5 两侧各一条、**弯角处宽形状是窄形状的超集且新增格只补缺**、中线自交不重复出格、单格路线的退化行为。`TransportSavedDataCheck` 补链语义（求和、取最大、代表选取、淘汰豁免、旧档无 `road` 字段的兜底）与 codec 往返。
+- [2026-09-27 21:12:30 +08:00] 验证：完整构建 ./gradlew build --offline --no-daemon BUILD SUCCESSFUL，**16 项**独立检查全部 *Check passed（新增第 16 项 `roadLayoutCheck`）。产物 build/libs/goblin-settlement-0.1.0.jar：443441 字节，耗时 19 秒。提交 1ebfe22 / 0dd8c4b / 9c15e41 / c9a6a1b / e9614fa。
+- [2026-09-27 21:13:00 +08:00] 未完成：不做玩法验收；**加宽立项、安全判定、工人施工、加宽后采样是否真的记在新车道上、以及 3 格/5 格的观感全部不可纯测**（只有编译与代码审查）。2 → 3 只补一侧是宽度取整的必然；计数仍是累计量、不按经过采样数归一，加宽判据因此偏向先建的路（第一轮 §9 的同一局限，本轮未处理）。**另有一处审查发现的边界**：`status` 行的宽度取的是加宽链上的最大宽度，所以加宽在途时（或加宽卡住、永不完工时）该行会报已加宽的宽度，而路实际仍只有旧宽度；提案路径不受影响——协调器的单在途门禁先于它跑。

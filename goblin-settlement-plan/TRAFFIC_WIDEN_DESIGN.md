@@ -113,3 +113,15 @@ public static List<BlockPos> newLaneFeet(List<BlockPos> route, int fromLanes, in
 - **链的父被退掉**：豁免规则保证链成员不被 `trimCompletedRoads` 淘汰；但玩家用命令删计划（若有）或存档被手工编辑仍可能造成 `widens_from` 悬空。悬空时链退化为该成员自己，**不崩，不报错**。
 - **两条路并排/交叉**：新增格若落在另一条路的已铺格上，`ROAD_GROUND` 的 `buildableGround` 包含 `OAK_PLANKS`，`tickPlan` 见到目标方块已在也会直接 `advance`——所以并入相邻路是幂等无害的，不是冲突。
 - **未做游戏内验证**：与本分支既有全部工作一样，本轮只有编译与独立检查证据。**不要在统一验证之前把它当作可用版本。**
+
+## 8. 落地结果（实现后补记）
+
+- **数据**：`TransportPlan` 新增一个 `road` 字段（嵌套 `Road(widens_from, lanes, route)`，全部 `optionalFieldOf`，未升 schema）。旧档读入后：`lanes() == 2`、`route()` 空、`widensFrom()` 空，**因此旧路不加宽**（设计 §7 已预先声明）。
+- **链口径的唯一出处**：`TransportSavedData.roadWidth`（链上最大宽度）、`roadTraffic`（链上计数之和）、`roads()`（每条路取最宽成员当代表）、`wideningCandidates()`（够格的、最重的在前）。显示与提案都只调这四个，没有第二份判定。链的父缺失（`widens_from` 悬空：玩家删计划或手工编辑存档）时链退化为该成员自己，**不崩、不报错**。
+- **淘汰豁免**：`trimCompletedRoads` 只退"不在链上的"已完道路，`isRetirable` 是唯一判据。上界 `32 + 3×加宽过的路数`。
+- **几何唯一出处**：`planning/transport/RoadLayout`（`laneOffsets` / `direction` / `clockwise` / `laneFeet` / `newLaneFeet`），`startRoad` 与本轮新增的加宽共用它；第一轮的 `BUILT_ROAD_LANES` 常量与 `startRoad` 里字面写的两条车道**已合并**为 `RoadUpgradeRules.baseLanes()` + 每条计划的 `lanes`。`TransportCoordinator.roadDirection` 已删除。
+- **提案落点**：`TrafficProposalCoordinator` 只在需求档为 `READY`（即没有待办新路、且食物/种子/工具/住房都不缺）时提案加宽；按 `wideningCandidates()` 的顺序逐个尝试，第一个通过安全判定与冲突判定的立项。**加宽不进需求档**——所以一条被建筑永久挡住的加宽不会像第一轮的"无法服务的目标"那样冻结扩地。
+- **加宽计划**：只含新增车道格（`SURFACE / OAK_PLANKS / ROAD_GROUND`），`target_facility` 留空，`route` 复制父计划的中线，施工走既有工人路径与两道门禁。
+- **显示**：`Road traffic:` 行改成按链显示 `id8=链计数和 L<宽度>[ *]`，一条加宽过的路只出现一次。
+- **检查**：新增第 16 项 `roadLayoutCheck`（`RoadLayoutCheck`）。
+- **阈值仍未定**：`TRAFFIC_PER_LANE = 200` 与 `SAMPLE_INTERVAL_TICKS = 100` 原样沿用，注释与本文档继续写明"没有依据、待按真实计数一起重定"。
