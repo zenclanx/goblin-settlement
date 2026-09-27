@@ -516,9 +516,14 @@ Expected: 编译失败（`Home` 还没有两轴分量、`CODEC` 还不是包可�
 ```java
         BlockPos site = nextSite(level, home);
         if (site == null) {
+            releaseWorker(level, housing, home);   // 必须先释放，见下
             return false;
         }
 ```
+
+**⚠️ 顺序有讲究，不要写反**：如果像早先那样把 `return false` 直接放在最前面，**一栋房子全部建成后它的最后一名工人会永久保留绑定**，而 `GoblinCitizenEntity.isAvailableForConstruction` 会拒绝任何 UUID 匹配某栋房子 `workerId` 的居民——于是每建成一栋房子就有一个居民永久退出全部建设工作（房屋上限 48，最多泄漏 48 人）。这是审查确认过的真实回归（旧代码的终态房屋携带空 `workerId`，并不会这样），不要在实现时退化回去。
+
+把工人回收那段**提出来**成为独立方法（或直接在 `site == null` 分支里做等价的完整释放），确保释放同时覆盖 SavedData 的 `workerId` 与实体侧的工作状态。**验收标准**：房子建成后，最后一名工人必须重新可被 `isAvailableForConstruction` 挑中。
 
 新增：
 
