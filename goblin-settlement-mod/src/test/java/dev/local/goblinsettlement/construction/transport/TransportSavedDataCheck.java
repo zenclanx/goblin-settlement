@@ -26,6 +26,12 @@ public final class TransportSavedDataCheck {
         require(bridge.replace(completedBridge), "replacing a complete plan is idempotent");
         require(bridge.servedFacilities().isEmpty(), "a targetless bridge registers nothing");
 
+        var closing = new TransportSavedData();
+        TransportPlan readyBridge = bridgePlan("bridge-2", 1, false);
+        require(closing.add(readyBridge), "a fully built but unopened bridge loads");
+        require(closing.replace(readyBridge.withOpen(true)), "opening completes the bridge");
+        require(closing.servedFacilities().isEmpty(), "a targetless bridge completion registers nothing");
+
         var json = TransportSavedData.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow();
         var reloaded = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
         require(reloaded.servedFacilities().equals(data.servedFacilities()), "served facilities survive reload");
@@ -47,9 +53,13 @@ public final class TransportSavedDataCheck {
 
         var repeat = new TransportSavedData();
         require(repeat.add(roadPlan("sel-1", facility, 0, false)), "repeat fixture accepted");
-        require(repeat.replace(roadPlan("sel-1", facility, 1, false)), "repeat fixture completes");
-        require(repeat.replace(roadPlan("sel-1", facility, 1, false)), "repeat completion accepted");
+        TransportPlan repeatComplete = roadPlan("sel-1", facility, 1, false);
+        require(repeat.replace(repeatComplete), "repeat fixture completes");
+        require(repeat.replace(repeatComplete), "repeat completion accepted");
         require(repeat.servedFacilities().size() == 1, "repeat completion does not duplicate the entry");
+        require(repeat.replace(repeatComplete.rewind(0)), "a rewind reopens the completed road");
+        require(repeat.replace(repeatComplete), "re-completing registers the same target again");
+        require(repeat.servedFacilities().size() == 1, "re-completion deduplicates the served entry");
 
         var settlement = new SettlementSavedData();
         require(settlement.found(new BlockPos(0, 70, 0)) == SettlementSavedData.FoundResult.FOUNDED,
@@ -77,10 +87,14 @@ public final class TransportSavedDataCheck {
     }
 
     private static TransportPlan bridgePlan(String id, boolean open) {
+        return bridgePlan(id, open ? 1 : 0, open);
+    }
+
+    private static TransportPlan bridgePlan(String id, int completedSteps, boolean open) {
         var step = new TransportPlan.Step(TransportPlan.Phase.SURFACE,
                 new BlockPos(10, 64, 10), TransportPlan.Material.OAK_PLANKS, TransportPlan.Rule.AIR_OR_WATER);
         return new TransportPlan(id, "settlement-1", TransportPlan.Kind.WOOD_BRIDGE, List.of(step),
-                open ? 1 : 0, open,
+                completedSteps, open,
                 List.of(new BlockPos(1, 64, 1), new BlockPos(2, 64, 1),
                         new BlockPos(3, 64, 1), new BlockPos(4, 64, 1)),
                 List.of(new BlockPos(5, 65, 1)), List.of(), Optional.empty(), Optional.empty());
