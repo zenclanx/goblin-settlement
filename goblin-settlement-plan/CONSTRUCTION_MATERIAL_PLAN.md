@@ -486,9 +486,13 @@ Expected: `BUILD SUCCESSFUL`，18 项全部 `*Check passed`，无编译警告。
 
 - [ ] **Step 6: 核对无残留**
 
-Run: `grep -rn "OakPlanks\|OAK_PLANKS\|carriedOakPlanks" src/main/java/dev/local/goblinsettlement/citizen/ src/main/java/dev/local/goblinsettlement/construction/ConstructionCoordinator.java`
+Run: `grep -rn "carriedOakPlanks\|firstWithOakPlank" src/`
 
-Expected: **一条都没有**（`economy`、`forestry`、`defense`、`social`、`camp` 等语义确实是橡木的地方不在本任务范围）。
+Expected: **一条都没有**——施工路径的橡木专用入口已全部消失。
+
+再 Run: `grep -rn "OAK_PLANKS" src/main/java/dev/local/goblinsettlement/citizen/GoblinCitizenEntity.java src/main/java/dev/local/goblinsettlement/construction/ConstructionCoordinator.java`
+
+Expected: `ConstructionCoordinator` **清空**；`GoblinCitizenEntity` 里**还会剩下几处，都是允许的**——运输路径"这格是不是已经铺好了"的四材料并列判定（`:855-858` 一列 `OAK_PLANKS/OAK_LOG/OAK_FENCE/TORCH`，属该线自己的用料枚举）、林业与工具配方的木料资源、以及回收路径（Task 4 的领地）。**判据是"施工路径的写死没了"，不是"整个实体里不许出现橡木"**。
 
 - [ ] **Step 7: 提交**
 
