@@ -614,6 +614,7 @@ git commit -m "Recover the material the project actually declares"
 
 **Files:**
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionCommands.java`
+- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/economy/PublicWarehouseInventory.java`（删掉两个已经没人用的橡木包装，见 Step 3）
 
 **Interfaces:**
 - Consumes: `BuildMaterial`（Task 1）、`SettlementSavedData.materialFor` / `planStructure`（Tasks 2–3）
@@ -723,22 +724,33 @@ git commit -m "Recover the material the project actually declares"
                     + ", last worker=" + plan.lastWorkerId().orElse("none")), false);
 ```
 
-- [ ] **Step 3: 跑完整构建**
+- [ ] **Step 3: 两个已经没人用的橡木包装要删掉**
+
+Step 2 之后，`PublicWarehouseInventory` 的两个橡木专用包装就没有调用者了（`firstWithOakPlank` 在 Task 3 就空了，`countOakPlanks` 的最后一个调用点正是刚被你改掉的显示行）。项目不要向后兼容的壳子：
+
+Run: `grep -rn "firstWithOakPlank\|countOakPlanks" src/`
+
+Expected: **除两者的定义之外没有别的行**（若还有调用者，**不要删**，回报而不是就地改）。
+
+确认没有调用者后，把 `PublicWarehouseInventory` 里 `firstWithOakPlank` 与 `countOakPlanks` 两个方法整个删掉（它们各自的通用版本 `firstHolding` 与 `countOf` 保留，且仍是唯一出处）。
+
+- [ ] **Step 4: 跑完整构建**
 
 Run: `./gradlew build --offline --no-daemon`
 
 Expected: `BUILD SUCCESSFUL`，18 项全部 `*Check passed`，无编译警告。
 
-- [ ] **Step 4: 核对显示层只调共用方法**
+- [ ] **Step 5: 核对显示层只调共用方法**
 
 Run: `grep -rn "OakPlanks\|countOakPlanks\|firstWithOakPlank" src/main/java/dev/local/goblinsettlement/construction/`
 
 Expected: **一条都没有**。
 
-- [ ] **Step 5: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
-git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionCommands.java
+git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/construction/ConstructionCommands.java \
+        goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/economy/PublicWarehouseInventory.java
 git commit -m "Let the player pick what a project is built from, and report per material"
 ```
 
