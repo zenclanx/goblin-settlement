@@ -79,9 +79,10 @@ public final class ConstructionCommands {
                                             }
                                             var material = materialNamed(StringArgumentType.getString(context, "material"));
                                             if (material.isEmpty()) {
+                                                String accepted = String.join(", ", Arrays.stream(BuildMaterial.values())
+                                                        .map(entry -> entry.name().toLowerCase(Locale.ROOT)).toList());
                                                 source.sendFailure(Component.literal(
-                                                        "Unknown material; try one of "
-                                                                + Arrays.toString(BuildMaterial.values())));
+                                                        "Unknown material; try one of " + accepted));
                                                 return 0;
                                             }
                                             if (!data.planStructure(start, material.orElseThrow())) {
@@ -155,6 +156,8 @@ public final class ConstructionCommands {
         var data = SettlementSavedData.get(level);
         var active = plans.stream().filter(plan -> !plan.isComplete()).toList();
         boolean stockIncomplete = !PublicWarehouseInventory.snapshot(level, data).complete();
+        source.sendSuccess(() -> Component.literal("Projects=" + plans.size()
+                + ", unfinished=" + active.size()), false);
         for (BuildMaterial material : BuildMaterial.values()) {
             int remaining = active.stream().filter(plan -> plan.material() == material)
                     .mapToInt(plan -> ConstructionPlan.LENGTH - plan.completed()).sum();

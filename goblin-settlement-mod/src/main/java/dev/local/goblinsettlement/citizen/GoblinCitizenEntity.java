@@ -350,14 +350,14 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                     || workStage == WorkStage.SMELT_COLLECTING);
     }
 
-    public boolean assignRecovery(String id, BlockPos warehouse, String itemId, BlockPos itemPos) {
+    public boolean assignRecovery(String id, BlockPos warehouse, String entityId, BlockPos itemPos) {
         if (!isAvailableForConstruction()) {
             return false;
         }
         settlementId = id;
         supplyPos = warehouse.immutable();
         buildPos = itemPos.immutable();
-        pickupItemId = itemId;
+        pickupItemId = entityId;
         workStage = WorkStage.RECOVERING;
         waitReason = "";
         return true;
@@ -454,15 +454,15 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     }
 
     public boolean assignSaplingRecovery(String id, BlockPos warehouse, BlockPos root,
-                                         String itemId, BlockPos itemPos) {
-        if (!isAvailableForConstruction() || itemId == null || itemId.isBlank()) {
+                                         String entityId, BlockPos itemPos) {
+        if (!isAvailableForConstruction() || entityId == null || entityId.isBlank()) {
             return false;
         }
         settlementId = id;
         supplyPos = warehouse.immutable();
         forestryRoot = root.immutable();
         buildPos = itemPos.immutable();
-        pickupItemId = itemId;
+        pickupItemId = entityId;
         forestryGoods.clear();
         workStage = WorkStage.FORESTRY_SAPLING_RECOVERING;
         waitReason = "";
@@ -834,11 +834,9 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 return;
             }
             for (int slot = 0; slot < container.getContainerSize(); slot++) {
-                if (!container.getItem(slot).is(TransportCoordinator.materialItem(
-                        assignedStep.orElseThrow().material()))) continue;
+                if (!container.getItem(slot).is(assignedStep.orElseThrow().material().item())) continue;
                 ItemStack withdrawn = container.removeItem(slot, 1);
-                if (withdrawn.is(TransportCoordinator.materialItem(
-                        assignedStep.orElseThrow().material())) && withdrawn.getCount() == 1) {
+                if (withdrawn.is(assignedStep.orElseThrow().material().item()) && withdrawn.getCount() == 1) {
                     carried = withdrawn;
                     container.setChanged();
                     workStage = WorkStage.TRANSPORT_DELIVERING;

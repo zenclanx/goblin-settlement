@@ -1,6 +1,7 @@
 package dev.local.goblinsettlement.construction;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import java.util.Arrays;
 import java.util.List;
@@ -20,6 +21,7 @@ public final class ConstructionMaterialCheck {
         checkPlanRoundTrip();
         checkOldPlanDefaultsToOak();
         checkEachMaterialMapsToItsOwnBlockAndItem();
+        checkStoredKeysAreUnchanged();
         System.out.println("ConstructionMaterialCheck passed");
     }
 
@@ -71,6 +73,29 @@ public final class ConstructionMaterialCheck {
         require(BuildMaterial.OAK_LOG.item() == Items.OAK_LOG, "oak logs are fetched as oak logs");
         require(BuildMaterial.OAK_FENCE.item() == Items.OAK_FENCE, "oak fences are fetched as oak fences");
         require(BuildMaterial.TORCH.item() == Items.TORCH, "torches are fetched as torches");
+    }
+
+    /**
+     * Old saves are literal JSON. A round trip cannot catch a renamed key -- renaming both sides keeps it
+     * green -- so the names that already exist in saves are pinned against hand-written JSON instead.
+     */
+    private static void checkStoredKeysAreUnchanged() {
+        JsonObject writtenBeforeThisRound = JsonParser.parseString(
+                "{\"start\":[10,64,10],\"completed\":1,"
+                        + "\"recovery_drop\":{\"item_id\":\"abc-123\",\"pos\":[12,64,10]}}")
+                .getAsJsonObject();
+        var decoded = ConstructionPlan.CODEC.parse(JsonOps.INSTANCE, writtenBeforeThisRound).getOrThrow();
+        require(decoded.material() == BuildMaterial.OAK_PLANKS,
+                "a project saved without a material still builds oak planks");
+        require(decoded.recoveryDrop().orElseThrow().entityId().equals("abc-123"),
+                "and its tracked drop still reads from the key saves use");
+
+        var encoded = ConstructionPlan.CODEC.encodeStart(JsonOps.INSTANCE, decoded).getOrThrow()
+                .getAsJsonObject();
+        require(encoded.getAsJsonObject("recovery_drop").has("item_id"),
+                "the drop is still written under item_id");
+        require(!encoded.getAsJsonObject("recovery_drop").has("entity_id"),
+                "and the renamed Java component did not leak into the format");
     }
 
     private static void require(boolean condition, String message) {

@@ -394,10 +394,6 @@ public final class TransportCoordinator {
                 .map(plan -> plan.steps().get(stepIndex));
     }
 
-    public static Item materialItem(BuildMaterial material) {
-        return material.item();
-    }
-
     public static boolean assignmentReady(ServerLevel level, String planId) {
         return TransportSavedData.get(level).plan(planId)
                 .filter(plan -> footprintAccess(level, plan) == FootprintAccess.ALLOWED
