@@ -18,6 +18,7 @@ import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseRecoveryCommands;
 import dev.local.goblinsettlement.defense.DefenseCoordinator;
 import dev.local.goblinsettlement.defense.GolemEntities;
+import dev.local.goblinsettlement.defense.PatrolCoordinator;
 import dev.local.goblinsettlement.construction.ConstructionCommands;
 import dev.local.goblinsettlement.construction.ConstructionCoordinator;
 import dev.local.goblinsettlement.construction.transport.TrafficProposalCoordinator;
@@ -274,6 +275,7 @@ public final class GoblinSettlement implements ModInitializer {
         SmeltingCoordinator.tick(level);
         HousingCoordinator.tick(level);
         BedProvisioningCoordinator.tick(level);
+        PatrolCoordinator.tick(level);
         DefenseCoordinator.tick(level);
         FamilyCoordinator.tick(level);
         ExpansionCoordinator.tick(level);

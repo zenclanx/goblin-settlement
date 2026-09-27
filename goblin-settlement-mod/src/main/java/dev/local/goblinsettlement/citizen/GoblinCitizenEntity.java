@@ -9,6 +9,7 @@ import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
 import dev.local.goblinsettlement.construction.transport.TransportPlan;
+import dev.local.goblinsettlement.defense.PatrolCoordinator;
 import dev.local.goblinsettlement.economy.DroppedMaterialLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.food.FoodCraftingCoordinator;
@@ -68,7 +69,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         FORESTRY_PROCESS_FETCHING, FORESTRY_PROCESSING, FORESTRY_PLANK_RETURNING, FORESTRY_COMPLETE,
         TRANSPORT_FETCHING, TRANSPORT_DELIVERING, TRANSPORT_RETURNING, TRANSPORT_COMPLETE,
         HOUSING_FETCHING, HOUSING_DELIVERING, HOUSING_RETURNING, HOUSING_COMPLETE,
-        MINING_DIGGING, SMELT_FEEDING, SMELT_WAITING, SMELT_COLLECTING }
+        MINING_DIGGING, SMELT_FEEDING, SMELT_WAITING, SMELT_COLLECTING, PATROL_WALKING }
 
     /** The kind of work a stage performs, or null for stages that are not a job. */
     private static WorkKind workKind(WorkStage stage) {
@@ -89,6 +90,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                     WorkKind.HOUSING;
             case MINING_DIGGING -> WorkKind.MINING;
             case SMELT_FEEDING, SMELT_WAITING, SMELT_COLLECTING -> WorkKind.SMELTING;
+            case PATROL_WALKING -> WorkKind.PATROL;
         };
     }
 
@@ -109,6 +111,8 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private BlockPos housingBed = BlockPos.ZERO;
     private FurnaceWorksite.Ore smeltOre;
     private String waitReason = "";
+    /** Index into the patrol route. Deliberately not persisted: the route is re-derived from the world. */
+    private int patrolIndex;
 
     public GoblinCitizenEntity(EntityType<? extends GoblinCitizenEntity> type, Level level) {
         super(type, level);
@@ -213,6 +217,21 @@ public final class GoblinCitizenEntity extends PathfinderMob {
 
     public boolean hasMiningWork(String id) {
         return settlementId.equals(id) && workStage == WorkStage.MINING_DIGGING;
+    }
+
+    public boolean assignPatrol(String id) {
+        if (!isAvailableForConstruction()) {
+            return false;
+        }
+        settlementId = id;
+        patrolIndex = 0;
+        workStage = WorkStage.PATROL_WALKING;
+        waitReason = "";
+        return true;
+    }
+
+    public boolean hasPatrolWork(String id) {
+        return settlementId.equals(id) && workStage == WorkStage.PATROL_WALKING;
     }
 
     /** Smelting books a global one-batch reservation, so this work ends itself once the batch is collected. */
@@ -580,6 +599,10 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         if (workStage == WorkStage.SMELT_FEEDING || workStage == WorkStage.SMELT_WAITING
                 || workStage == WorkStage.SMELT_COLLECTING) {
             tickSmeltingWork(level);
+            return;
+        }
+        if (workStage == WorkStage.PATROL_WALKING) {
+            tickPatrolWork(level);
             return;
         }
         if (hasForestryWork(settlementId)) {
@@ -970,6 +993,27 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 waitReason = "output not ready";
             }
         }
+    }
+
+    /** Two blocks is close enough to call a waypoint reached; the route only needs the sentry to pass by. */
+    private static final double PATROL_ARRIVE_DISTANCE_SQ = 4.0;
+
+    private void tickPatrolWork(ServerLevel level) {
+        var target = PatrolCoordinator.waypointFor(level, settlementId, patrolIndex);
+        if (target.isEmpty()) {
+            waitReason = "no patrol route";
+            getNavigation().stop();
+            return;
+        }
+        BlockPos destination = target.get();
+        if (distanceToSqr(destination.getCenter()) <= PATROL_ARRIVE_DISTANCE_SQ) {
+            patrolIndex++;
+            waitReason = "";
+            return;
+        }
+        waitReason = "patrolling";
+        getNavigation().moveTo(destination.getX() + 0.5, destination.getY(),
+                destination.getZ() + 0.5, 1.0);
     }
 
     private void tickMiningWork(ServerLevel level) {
