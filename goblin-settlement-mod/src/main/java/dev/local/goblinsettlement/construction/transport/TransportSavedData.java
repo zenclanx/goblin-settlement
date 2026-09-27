@@ -16,24 +16,29 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 /** Per-dimension traffic plans, with transient indexes rebuilt after loading. */
 public final class TransportSavedData extends SavedData {
     private static final int MAX_COMPLETED_ROADS = 32;
-    private static final Codec<TransportSavedData> CODEC = RecordCodecBuilder.create(instance ->
+    static final Codec<TransportSavedData> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(TransportPlan.CODEC.listOf().optionalFieldOf("plans", List.of())
-                    .forGetter(data -> data.plans)).apply(instance, TransportSavedData::new));
+                            .forGetter(data -> data.plans),
+                    BlockPos.CODEC.listOf().optionalFieldOf("served_facilities", List.of())
+                            .forGetter(data -> data.servedFacilities))
+                    .apply(instance, TransportSavedData::new));
     private static final SavedDataType<TransportSavedData> TYPE =
             new SavedDataType<>("goblin_transport", TransportSavedData::new, CODEC, null);
 
     private List<TransportPlan> plans;
+    private List<BlockPos> servedFacilities;
     private final List<TransportPlan> openBridges = new ArrayList<>();
     private final Map<BlockPos, Integer> closedFeet = new HashMap<>();
     private final Map<String, TransportPlan> incompletePlans = new LinkedHashMap<>();
     private int inspectionCursor;
 
     public TransportSavedData() {
-        this(List.of());
+        this(List.of(), List.of());
     }
 
-    private TransportSavedData(List<TransportPlan> plans) {
+    private TransportSavedData(List<TransportPlan> plans, List<BlockPos> servedFacilities) {
         this.plans = List.copyOf(plans);
+        this.servedFacilities = List.copyOf(servedFacilities);
         for (TransportPlan plan : this.plans) {
             index(plan);
         }
@@ -49,6 +54,25 @@ public final class TransportSavedData extends SavedData {
 
     public Optional<TransportPlan> plan(String id) {
         return plans.stream().filter(plan -> plan.id().equals(id)).findFirst();
+    }
+
+    public List<BlockPos> servedFacilities() {
+        return servedFacilities;
+    }
+
+    /** True while any plan is unfinished; the proposal and expansion gates share this. */
+    public boolean hasIncomplete() {
+        return !incompletePlans.isEmpty();
+    }
+
+    private void registerServed(BlockPos facility) {
+        BlockPos immutable = facility.immutable();
+        if (servedFacilities.contains(immutable)) {
+            return;
+        }
+        var updated = new ArrayList<>(servedFacilities);
+        updated.add(immutable);
+        servedFacilities = List.copyOf(updated);
     }
 
     /** Rotate repair and new-work candidates so a blocked bridge cannot starve other work. */
@@ -107,6 +131,10 @@ public final class TransportSavedData extends SavedData {
                     trimCompletedRoads(updated);
                 }
                 plans = List.copyOf(updated);
+                if (!old.isComplete() && replacement.isComplete()
+                        && replacement.targetFacility().isPresent()) {
+                    registerServed(replacement.targetFacility().orElseThrow());
+                }
                 setDirty();
                 return true;
             }

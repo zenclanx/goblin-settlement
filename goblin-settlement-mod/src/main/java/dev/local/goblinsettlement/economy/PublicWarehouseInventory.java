@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
 /** Reads live containers; registered positions never cache item counts. */
@@ -34,7 +35,16 @@ public final class PublicWarehouseInventory {
     }
 
     public static int countOakPlanks(ServerLevel level, SettlementSavedData data) {
-        return data.warehouses().stream().mapToInt(pos -> countAt(level, data, pos)).sum();
+        return countOf(level, data, Items.OAK_PLANKS);
+    }
+
+    /** Counts one item kind across accessible, permitted public warehouses. */
+    public static int countOf(ServerLevel level, SettlementSavedData data, Item item) {
+        int total = 0;
+        for (BlockPos pos : data.warehouses()) {
+            total = Math.addExact(total, countAt(level, data, pos, item));
+        }
+        return total;
     }
 
     /** Reads only active, permitted containers and marks missing chunks as incomplete. */
@@ -88,13 +98,17 @@ public final class PublicWarehouseInventory {
     }
 
     private static int countAt(ServerLevel level, SettlementSavedData data, BlockPos pos) {
+        return countAt(level, data, pos, Items.OAK_PLANKS);
+    }
+
+    private static int countAt(ServerLevel level, SettlementSavedData data, BlockPos pos, Item item) {
         if (!isAccessible(level, data, pos)) {
             return 0;
         }
         Container container = (Container) level.getBlockEntity(pos);
         int count = 0;
         for (int slot = 0; slot < container.getContainerSize(); slot++) {
-            if (container.getItem(slot).is(Items.OAK_PLANKS)) {
+            if (container.getItem(slot).is(item)) {
                 count += container.getItem(slot).getCount();
             }
         }

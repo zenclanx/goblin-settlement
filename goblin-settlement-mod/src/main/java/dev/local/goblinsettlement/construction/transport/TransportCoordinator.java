@@ -85,7 +85,8 @@ public final class TransportCoordinator {
         }
         TransportPlan plan = new TransportPlan(
                 UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.ROAD,
-                List.copyOf(sites.values()), 0, false, List.of(), List.of(), List.of(), Optional.empty());
+                List.copyOf(sites.values()), 0, false, List.of(), List.of(), List.of(),
+                Optional.empty(), Optional.of(targetFacility));
         if (!traffic.add(plan)) {
             return rejected("TRAFFIC_WORK_ACTIVE_OR_LIMIT");
         }
@@ -170,7 +171,8 @@ public final class TransportCoordinator {
         }
         TransportPlan plan = new TransportPlan(
                 UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.WOOD_BRIDGE,
-                steps, 0, false, barriers, List.copyOf(closure), candidate.surveyedBases(), Optional.empty());
+                steps, 0, false, barriers, List.copyOf(closure), candidate.surveyedBases(),
+                Optional.empty(), Optional.empty());
         if (!traffic.add(plan)) {
             return rejected("TRAFFIC_WORK_ACTIVE_OR_LIMIT");
         }
