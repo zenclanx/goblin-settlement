@@ -74,7 +74,7 @@ public final class TransportConnectivityCheck {
     private static void checkOneBlockRiseAndDrop() {
         var rise = set(point(0, 64, 0), point(1, 64, 1), point(2, 64, 2));
         require(TransportConnectivity.connects(rise, point(0, 64, 0), set(point(2, 64, 2))),
-                "a walker climbs one block per step, as a bridge deck above its bank needs");
+                "a walker climbs one block per step");
         var drop = set(point(0, 64, 2), point(1, 64, 1), point(2, 64, 0));
         require(TransportConnectivity.connects(drop, point(0, 64, 2), set(point(2, 64, 0))),
                 "and drops one block per step");
@@ -189,8 +189,9 @@ public final class TransportConnectivity {
 
     /**
      * Walks from from to any of goals, stepping only between cells of walkable. Steps are four-way --
-     * never diagonal -- and may rise or drop one block, which is what a walker does over a step, a
-     * slope or a deck sitting above its bank. The visited set bounds the work to one visit per cell.
+     * never diagonal -- and may rise or drop one block, which is what a walker does over a step or a
+     * slope, and keeps the rule robust to terrain. The visited set bounds the work to one visit per
+     * cell.
      */
     public static boolean connects(Set<BlockPos> walkable, BlockPos from, Set<BlockPos> goals) {
         if (walkable.isEmpty() || goals.isEmpty() || !walkable.contains(from)) {
@@ -754,7 +755,7 @@ Run: `git -C .. status --short`
 ```markdown
 ## 8. 落地结果（实现后补记）
 
-- **设计期的一处事实修正（写进 §2/§3/§5/§7）**：原先只允许"同一层"的四邻步，那会把**每一座桥**都判成不通（桥面高于两岸）——改为**允许上下差 1 格**（等同台阶/坡），差 2 格仍不算。同时"目标格"改为**取自计划自己的声明走格**（`RoadPlanner` 的路线终点本来就是设施的相邻格），不再引入计划之外的格子。
+- **设计期的一处事实修正（写进 §2/§3/§5/§7）**：原先只允许"同一层"的四邻步，对**路**来说那会把有坡度的路判成不通——改为**允许上下差 1 格**（等同台阶/坡），差 2 格仍不算。**桥的跨越本身是平的**：`BridgePlanner` 把桥面方块记在缺口行走格的正下方（`width[offset].below()`），桥面的行走面 `site().above()` 与两岸落地齐平，所以同一层规则并不会判桥不通；±1 是给路的坡度，也顺带让判据对地形更稳健。同时"目标格"改为**取自计划自己的声明走格**（`RoadPlanner` 的路线终点本来就是设施的相邻格），不再引入计划之外的格子。
 - **纯判据**：`planning/transport/TransportConnectivity.connects(walkable, from, goals)`——水平四邻、允许上下差 1、访问集把代价限在集合大小。第 17 项独立检查 `transportConnectivityCheck` 覆盖直通/绕行/上下台阶/两格高差不算/对角不算/被墙隔断/起点不可站/空集合/目标不可达/两百格规模。
 - **存档层**：`TransportSavedData.chain` 公开为 `chainOf`（链的规则仍只在这一个类里），新增 `roadTarget(planId)`——沿链找第一个带 `targetFacility` 的成员，因此加宽计划（自身不带目标）也能答出它服务的是哪个设施。
 - **装配（`TransportCoordinator`）**：`bridgeConnects`（走格 = 自己的 `SURFACE`/`APPROACHES` 走格；近岸 = 四个 `barrierFeet` 中离锚点最近者；对岸 = 离它最远的两个）与 `roadConnects`（走格 = **整条链**的 `ROAD_GROUND` 走格；目标 = 与链上根计划的 `targetFacility` 四邻含 y±1 的走格）。**可行走 = 该处是空气，或该格是 `barrierFeet` 之一且那里是我们自己的 `OAK_FENCE`**——自己的施工栅栏不算地形，所以判定是只读的、能排在清栅栏之前。
@@ -771,8 +772,8 @@ Run: `git -C .. status --short`
 ## [<开始> – <结束>] 第五十六轮：道路与桥梁的连通验收
 
 - [<时间>] 按 TRAFFIC_CONNECTIVITY_DESIGN.md 与 TRAFFIC_CONNECTIVITY_PLAN.md 执行，补 GAME_DESIGN 第 7 节桥梁施工顺序的末项「连通验收」，也补上第五十四/五十五两轮留下的"建好了不等于能过"。
-- [<时间>] 新增纯层 `planning/transport/TransportConnectivity`：水平四邻（**对角不算**）+ **允许上下差 1 格**（台阶、坡、桥面高于两岸都算一步），访问集把代价限在集合大小。第 17 项独立检查 `transportConnectivityCheck`。
-- [<时间>] **设计期修正了一条会毁掉整个功能的事实**：最初写成"只走同一层"，而桥面本来就高于两岸——那样每一座桥都会被判成不通。改为允许上下差 1 格后写进设计 §2/§7。同理，"目标格"改为取自计划自己的声明走格（`RoadPlanner` 的路线终点本就是设施的相邻格），不再引入计划之外的格子。
+- [<时间>] 新增纯层 `planning/transport/TransportConnectivity`：水平四邻（**对角不算**）+ **允许上下差 1 格**（台阶、坡都算一步，也让判据对地形更稳健），访问集把代价限在集合大小。第 17 项独立检查 `transportConnectivityCheck`。
+- [<时间>] **设计期修正了一条会毁掉整个功能的事实**：最初写成"只走同一层"，对**路**来说那会把有坡度的路判成不通；桥的跨越本身是平的（`BridgePlanner` 把桥面方块记在缺口行走格的正下方，桥面的行走面与两岸落地齐平），±1 的宽松是给路的坡度、也顺带让判据对地形更稳健。改为允许上下差 1 格后写进设计 §2/§7。同理，"目标格"改为取自计划自己的声明走格（`RoadPlanner` 的路线终点本就是设施的相邻格），不再引入计划之外的格子。
 - [<时间>] `TransportSavedData.chain` 公开为 `chainOf`（链规则仍只在这个类里），新增 `roadTarget(planId)`：沿链找第一个带 `targetFacility` 的成员——加宽计划自身刻意不带目标，所以必须按链回答。
 - [<时间>] `TransportCoordinator` 加装配与两个判定：`bridgeConnects`（近岸 = 四个落地格中离锚点最近者，对岸 = 离它最远的两个，不依赖 `barrierFeet` 的存储顺序）、`roadConnects`（走格取**整条链**，目标 = 与链根设施四邻含 y±1 的走格）、`structurallyComplete`（就是既有 `firstMissingStructuralStep` 的取反，不重写判据）。
 - [<时间>] **自己的施工栅栏不算地形**：`passable` 把"声明走格上的本方 `OAK_FENCE`"当作可行走。于是桥的判定可以**只读地**排在清栅栏之前——不连通时栅栏留在桥上，桥看上去仍在施工，而不是"建好了却被隐形墙挡着"；`status` 作为只读命令也因此能判定未开通的桥。

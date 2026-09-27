@@ -175,7 +175,7 @@
 
 ## 本轮接入的内容（第五十六轮：连通验收）
 
-- 纯判据 `planning/transport/TransportConnectivity.connects(walkable, from, goals)`：水平四邻（**对角不算**）+ **允许上下差 1 格**（台阶、坡、桥面高于两岸都算一步），访问集把代价限在集合大小；`from` 不在集合、空集合、空目标均为假。第 17 项独立检查 `transportConnectivityCheck`。
+- 纯判据 `planning/transport/TransportConnectivity.connects(walkable, from, goals)`：水平四邻（**对角不算**）+ **允许上下差 1 格**（台阶、坡都算一步，也让判据对地形更稳健），访问集把代价限在集合大小；`from` 不在集合、空集合、空目标均为假。第 17 项独立检查 `transportConnectivityCheck`。
 - 存档层：`TransportSavedData.chain` 公开为 `chainOf`（链规则仍只在这一个类里），新增 `roadTarget(planId)`——沿链找第一个带 `targetFacility` 的成员，加宽计划自身不带目标、须按链回答。
 - 装配（`TransportCoordinator`）：`bridgeConnects`（走格 = 桥的 `SURFACE`/`APPROACHES` 走格；近岸 = 四个 `barrierFeet` 中离锚点最近者、对岸 = 离它最远的两个）、`roadConnects`（走格 = **整条链**的 `ROAD_GROUND` 走格；目标 = 与链根 `targetFacility` 四邻含 y±1 的走格）、`structurallyComplete`（既有 `firstMissingStructuralStep` 的取反，不重写判据）。可行走 = 该处是空气，或该格是 `barrierFeet` 之一且那里是本方 `OAK_FENCE`——施工栅栏不算地形，判定因此只读、能排在清栅栏之前。
 - 桥的开通闸：`tickPlan` 完成分支里 `firstMissingStructuralStep` 之后、`clearFinishedBarriers` 之前判连通，不连通就返回（不置 `open=true`、不清栅栏，`closedFeet` 继续挡人）。
