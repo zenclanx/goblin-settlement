@@ -54,7 +54,7 @@ public final class BedCensus {
                     for (int y = anchorY - 2; y <= anchorY + 5; y++) {
                         BlockPos pos = new BlockPos(x, y, z);
                         if (!level.shouldTickBlocksAt(pos)) continue;
-                        if (validBed(level, id, pos)) {
+                        if (usableBedHead(level, id, pos)) {
                             heads.add(pos);
                         }
                     }
@@ -64,19 +64,24 @@ public final class BedCensus {
         return List.copyOf(heads);
     }
 
-    private static boolean validBed(ServerLevel level, String settlementId, BlockPos bed) {
-        if (WorldModificationPermission.check(level, settlementId, bed)
-                    != WorldModificationPermission.Decision.ALLOWED
-                || WorldModificationPermission.check(level, settlementId, bed.above())
-                    != WorldModificationPermission.Decision.ALLOWED
-                || WorldModificationPermission.check(level, settlementId, bed.above(2))
-                    != WorldModificationPermission.Decision.ALLOWED) {
-            return false;
-        }
+    /**
+     * The single authority on what counts as a usable bed. Callers must never restate the rule --
+     * the census, the family check and provisioning all ask here, so their counts cannot drift apart.
+     */
+    public static boolean usableBedHead(ServerLevel level, String settlementId, BlockPos bed) {
         var state = level.getBlockState(bed);
-        return state.is(BlockTags.BEDS) && state.hasProperty(BedBlock.PART)
-                && state.getValue(BedBlock.PART) == BedPart.HEAD
-                && level.getBlockState(bed.above()).isAir()
+        boolean headHalf = state.is(BlockTags.BEDS) && state.hasProperty(BedBlock.PART)
+                && state.getValue(BedBlock.PART) == BedPart.HEAD;
+        boolean headroomClear = level.getBlockState(bed.above()).isAir()
                 && level.getBlockState(bed.above(2)).isAir();
+        boolean columnPermitted = allowed(level, settlementId, bed)
+                && allowed(level, settlementId, bed.above())
+                && allowed(level, settlementId, bed.above(2));
+        return HousingRules.usableBedHead(headHalf, headroomClear, columnPermitted);
+    }
+
+    private static boolean allowed(ServerLevel level, String settlementId, BlockPos pos) {
+        return WorldModificationPermission.check(level, settlementId, pos)
+                == WorldModificationPermission.Decision.ALLOWED;
     }
 }

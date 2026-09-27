@@ -245,6 +245,8 @@ public final class HousingCoordinator {
         return bed.relative(east, x).relative(south, z).above(step.y());
     }
 
+    // Identifies a home's anchor bed, so it deliberately omits the headroom rule: a walled-in bed
+    // is still the same home and must be tracked. Usability is BedCensus.usableBedHead's question.
     private static boolean isBedHead(ServerLevel level, String id, BlockPos bed) {
         if (!permitted(level, id, bed)) return false;
         var state = level.getBlockState(bed);

@@ -44,6 +44,15 @@ public final class HousingRules {
         return beds < occupiedSlots + 1;
     }
 
+    /**
+     * The one definition of a usable bed: the head half, two air blocks of headroom above it, and
+     * all three cells within reach of the settlement. Whoever counts beds gathers these three facts
+     * and asks here, so the housing census, the family check and provisioning can never disagree.
+     */
+    public static boolean usableBedHead(boolean headHalf, boolean headroomClear, boolean columnPermitted) {
+        return headHalf && headroomClear && columnPermitted;
+    }
+
     /** Raising capacityTarget once would let this home host at least one more bed. */
     public static boolean canGainCapacity(int usedBeds, int capacityTarget) {
         return capacityTarget < MAX_CAPACITY_TARGET && usedBeds < capacityTarget + 2;

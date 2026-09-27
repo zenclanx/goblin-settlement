@@ -10,6 +10,7 @@ public final class HousingRulesCheck {
         checkSteps();
         checkFirstUnbuilt();
         checkCounts();
+        checkUsableBedHead();
         checkBedsNear();
         checkHomeCodec();
         System.out.println("HousingRulesCheck passed");
@@ -80,6 +81,19 @@ public final class HousingRulesCheck {
         require(HousingRules.builtCapacity(0, false, false) == 1, "a shelter hosts one bed");
         require(HousingRules.builtCapacity(1, true, false) == 2, "a finished cabin hosts two");
         require(HousingRules.builtCapacity(2, true, true) == 3, "a finished extension hosts three");
+    }
+
+    private static void checkUsableBedHead() {
+        // Every leg must be decisive on its own: dropping any one of them is exactly how the three
+        // former copies of this rule would have drifted apart.
+        require(HousingRules.usableBedHead(true, true, true),
+                "a permitted bed head with two blocks of headroom is usable");
+        require(!HousingRules.usableBedHead(false, true, true),
+                "a bed half that is not the head is not usable");
+        require(!HousingRules.usableBedHead(true, false, true),
+                "a head without two air blocks above it is not usable");
+        require(!HousingRules.usableBedHead(true, true, false),
+                "a head the settlement may not modify is not usable");
     }
 
     private static void checkBedsNear() {

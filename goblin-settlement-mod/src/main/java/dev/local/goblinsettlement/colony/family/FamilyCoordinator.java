@@ -5,7 +5,7 @@ import dev.local.goblinsettlement.citizen.ModEntities;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
-import dev.local.goblinsettlement.interaction.WorldModificationPermission;
+import dev.local.goblinsettlement.housing.BedCensus;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -181,28 +181,12 @@ public final class FamilyCoordinator {
         }
         var usable = new ArrayList<BlockPos>();
         for (BlockPos bed : scan.beds) {
-            if (validBed(level, settlementId, bed)) {
+            if (BedCensus.usableBedHead(level, settlementId, bed)) {
                 usable.add(bed);
                 if (usable.size() >= enough) break;
             }
         }
         return new Housing(usable.size(), List.copyOf(usable));
-    }
-
-    private static boolean validBed(ServerLevel level, String settlementId, BlockPos bed) {
-        if (WorldModificationPermission.check(level, settlementId, bed)
-                    != WorldModificationPermission.Decision.ALLOWED
-                || WorldModificationPermission.check(level, settlementId, bed.above())
-                    != WorldModificationPermission.Decision.ALLOWED
-                || WorldModificationPermission.check(level, settlementId, bed.above(2))
-                    != WorldModificationPermission.Decision.ALLOWED) {
-            return false;
-        }
-        var state = level.getBlockState(bed);
-        return state.is(BlockTags.BEDS) && state.hasProperty(BedBlock.PART)
-                && state.getValue(BedBlock.PART) == BedPart.HEAD
-                && level.getBlockState(bed.above()).isAir()
-                && level.getBlockState(bed.above(2)).isAir();
     }
 
     private static void placePendingNewborns(ServerLevel level, SettlementSavedData data,
@@ -225,7 +209,7 @@ public final class FamilyCoordinator {
             if (child == null) continue;
             child.setUUID(uuid);
             for (BlockPos bed : housing.beds()) {
-                if (!validBed(level, settlementId, bed)) continue;
+                if (!BedCensus.usableBedHead(level, settlementId, bed)) continue;
                 BlockPos spawn = bed.above();
                 child.snapTo(spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5);
                 if (!level.noCollision(child) || !level.getEntitiesOfClass(LivingEntity.class,

@@ -101,16 +101,9 @@ public final class BedProvisioningCoordinator {
                 for (int y = scan.y - 2; y <= scan.y + 5; y++) {
                     BlockPos pos = new BlockPos(x, y, z);
                     if (!level.shouldTickBlocksAt(pos)) return false;
-                    BlockState state = level.getBlockState(pos);
-                    if (!state.is(BlockTags.BEDS)) continue;
+                    if (!level.getBlockState(pos).is(BlockTags.BEDS)) continue;
                     scan.beds.add(pos);
-                    if (state.hasProperty(BedBlock.PART)
-                            && state.getValue(BedBlock.PART) == BedPart.HEAD
-                            && permitted(level, scan.id, pos)
-                            && permitted(level, scan.id, pos.above())
-                            && permitted(level, scan.id, pos.above(2))
-                            && level.getBlockState(pos.above()).isAir()
-                            && level.getBlockState(pos.above(2)).isAir()) {
+                    if (BedCensus.usableBedHead(level, scan.id, pos)) {
                         scan.count++;
                         scan.heads.add(pos);
                     }
