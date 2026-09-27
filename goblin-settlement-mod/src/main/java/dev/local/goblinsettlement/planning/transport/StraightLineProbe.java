@@ -63,7 +63,7 @@ public final class StraightLineProbe {
             if (state.isFaceSturdy(level, probe, Direction.UP) || state.is(Blocks.DIRT_PATH)) {
                 return probe.above().immutable();
             }
-            return column.immutable();
+            continue; // skip past non-sturdy clutter (grass, leaves) and keep scanning down
         }
         return column.immutable();
     }
