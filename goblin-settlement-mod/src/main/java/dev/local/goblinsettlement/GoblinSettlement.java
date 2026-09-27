@@ -256,6 +256,9 @@ public final class GoblinSettlement implements ModInitializer {
     }
     /** Entire settlement pauses while its anchor chunk is inactive. */
     private static void tickSettlement(ServerLevel level) {
+        // Runs before the settlement gate below: an alert must be able to lift even while the anchor's
+        // chunk is unloaded, or a resident would stay indoors forever.
+        DefenseCoordinator.tickAlert(level);
         CampGenerationCoordinator.tick(level);
         ProfessionCoordinator.tick(level);
         var founded = SettlementSavedData.get(level).settlement();

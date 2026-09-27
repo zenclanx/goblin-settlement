@@ -45,24 +45,56 @@ public final class DefenseSavedData extends SavedData {
     private static final int SCHEMA_VERSION = 1;
     private static final Codec<DefenseSavedData> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.INT.fieldOf("schema_version").forGetter(data -> data.schemaVersion),
-            GolemRecord.CODEC.listOf().optionalFieldOf("golems", List.of()).forGetter(data -> data.golems)
+            GolemRecord.CODEC.listOf().optionalFieldOf("golems", List.of()).forGetter(data -> data.golems),
+            Codec.INT.optionalFieldOf("alert_ticks", 0).forGetter(DefenseSavedData::alertTicks),
+            BlockPos.CODEC.optionalFieldOf("last_threat").forGetter(DefenseSavedData::lastThreat)
     ).apply(instance, DefenseSavedData::new));
     private static final SavedDataType<DefenseSavedData> TYPE = new SavedDataType<>(
             "goblin_defense", DefenseSavedData::new, CODEC, null);
 
     private final int schemaVersion;
     private List<GolemRecord> golems;
+    private int alertTicks;
+    private Optional<BlockPos> lastThreat;
 
     public DefenseSavedData() {
-        this(SCHEMA_VERSION, List.of());
+        this(SCHEMA_VERSION, List.of(), 0, Optional.empty());
     }
 
-    private DefenseSavedData(int schemaVersion, List<GolemRecord> golems) {
+    private DefenseSavedData(int schemaVersion, List<GolemRecord> golems, int alertTicks,
+                             Optional<BlockPos> lastThreat) {
         if (schemaVersion != SCHEMA_VERSION) {
             throw new IllegalArgumentException("Unsupported defense data version: " + schemaVersion);
         }
         this.schemaVersion = schemaVersion;
         this.golems = List.copyOf(golems);
+        this.alertTicks = Math.max(0, alertTicks);
+        this.lastThreat = lastThreat.map(BlockPos::immutable);
+    }
+
+    public int alertTicks() {
+        return alertTicks;
+    }
+
+    public Optional<BlockPos> lastThreat() {
+        return lastThreat;
+    }
+
+    /** Raises the alert, or refreshes it if one is already running. */
+    public void raiseAlert(BlockPos threat, int ticks) {
+        alertTicks = Math.max(alertTicks, ticks);
+        lastThreat = Optional.of(threat.immutable());
+        setDirty();
+    }
+
+    /** Counts the alert down by one tick. Returns whether it is still running. */
+    public boolean tickAlert() {
+        if (alertTicks <= 0) {
+            return false;
+        }
+        alertTicks--;
+        setDirty();
+        return alertTicks > 0;
     }
 
     public static DefenseSavedData get(ServerLevel level) {

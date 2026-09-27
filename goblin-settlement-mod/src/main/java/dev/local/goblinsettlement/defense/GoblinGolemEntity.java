@@ -27,7 +27,7 @@ import net.minecraft.world.level.storage.ValueOutput;
  */
 public final class GoblinGolemEntity extends PathfinderMob {
     public static final double DEFENSE_RADIUS = 24.0;
-    private static final int ALERT_TICKS = 20 * 15;
+    static final int ALERT_TICKS = 20 * 15;
 
     private GolemTier tier = GolemTier.WOOD;
     private String settlementId = "";

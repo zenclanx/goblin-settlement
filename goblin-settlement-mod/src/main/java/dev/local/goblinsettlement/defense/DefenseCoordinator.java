@@ -5,6 +5,7 @@ import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -123,6 +124,7 @@ public final class DefenseCoordinator {
         if (attacker instanceof LivingEntity living) {
             victim.retaliateAgainst(living);
         }
+        DefenseSavedData.get(level).raiseAlert(attacker.blockPosition(), SETTLEMENT_ALERT_TICKS);
         for (GoblinGolemEntity golem : level.getEntitiesOfClass(GoblinGolemEntity.class,
                 new AABB(victim.blockPosition()).inflate(GoblinGolemEntity.DEFENSE_RADIUS),
                 golem -> golem.isAlive() && !golem.settlementId().isBlank())) {
@@ -161,7 +163,28 @@ public final class DefenseCoordinator {
         }
         // Vanilla iron golems are left out on purpose: their bridge takes a victim, and a sighting has
         // none. They still defend themselves when something actually hits them.
+        if (alerted) {
+            DefenseSavedData.get(level).raiseAlert(threat.blockPosition(), SETTLEMENT_ALERT_TICKS);
+        }
         return alerted;
+    }
+
+    /** The settlement alert runs on the same rhythm as a golem's own. */
+    private static final int SETTLEMENT_ALERT_TICKS = GoblinGolemEntity.ALERT_TICKS;
+
+    /** True while the settlement is under alert and its non-combatants should be indoors. */
+    public static boolean isAlerted(ServerLevel level) {
+        return DefenseSavedData.get(level).alertTicks() > 0;
+    }
+
+    /** Where the last threat was reported, for a sentry to hold. */
+    public static Optional<BlockPos> lastThreat(ServerLevel level) {
+        return DefenseSavedData.get(level).lastThreat();
+    }
+
+    /** Counts the settlement alert down. Called once per world tick, not from the review loop. */
+    public static void tickAlert(ServerLevel level) {
+        DefenseSavedData.get(level).tickAlert();
     }
 
     /**
