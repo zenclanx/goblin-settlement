@@ -556,6 +556,10 @@ public final class TransportCoordinator {
      * Whether a declared walking cell can be walked through right now. Our own temporary barrier fence
      * is not an obstruction -- it is a construction marker, not terrain -- so a finished-but-unopened
      * bridge can be judged while its fences are still up, and a read-only command can judge it at all.
+     * Known bounded over-permissiveness: this also treats a player-placed OAK_FENCE standing on the
+     * landing cell of an already-open bridge as walkable, so the status line misses that one
+     * obstruction. Display-only -- the tick-side gate never sees that state, because it runs only
+     * before a bridge opens.
      */
     private static boolean passable(ServerLevel level, TransportPlan plan, BlockPos cell) {
         BlockState state = level.getBlockState(cell);
