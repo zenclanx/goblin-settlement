@@ -69,7 +69,7 @@
 
 验证命令全部在 `D:/MC/.minecraft/versions/1.21.11-Fabric 0.19.2/goblin-settlement-mod` 下执行。按项目约定"先写检查（红）→ 实现（绿）"：每步先建检查文件与 gradle 任务，运行得到编译失败/断言失败，再实现。
 
-### 步骤 1：数据层——`target_facility`、已服务登记、共享查询骨架
+### Task 1: 数据层——`target_facility`、已服务登记、共享查询骨架
 
 #### 1a. `TransportPlan.java` 加可选字段
 
@@ -425,7 +425,7 @@ tasks.register('transportSavedDataCheck', JavaExec) {
 
 **验证**：`./gradlew transportSavedDataCheck trafficTargetRulesCheck --offline --no-daemon` → 两个 `*Check passed`；`./gradlew compileJava --offline --no-daemon` 确认主源码编译通过。
 
-### 步骤 2：`SettlementDemand.TRANSPORT` + 4 调用点 + 扩地门禁
+### Task 2: `SettlementDemand.TRANSPORT` + 4 调用点 + 扩地门禁
 
 #### 2a. `SettlementDemand.java`
 
@@ -516,7 +516,7 @@ tasks.register('transportSavedDataCheck', JavaExec) {
 
 **验证**：`./gradlew settlementDemandCheck --offline --no-daemon` → `SettlementDemandCheck passed`；`./gradlew compileJava --offline --no-daemon`。
 
-### 步骤 3：修路/架桥判定纯函数
+### Task 3: 修路/架桥判定纯函数
 
 #### 3a. 检查 `TrafficDecisionCheck.java`（先写，运行红）
 
@@ -667,7 +667,7 @@ public final class TrafficDecision {
 
 **验证**：`./gradlew trafficDecisionCheck --offline --no-daemon` → `TrafficDecisionCheck passed`。
 
-### 步骤 4：直线探测适配器 + 协调器 `tick` + 材料门禁 + 接线
+### Task 4: 直线探测适配器 + 协调器 `tick` + 材料门禁 + 接线
 
 #### 4a. `StraightLineProbe.java`（新文件，读世界、只读不改）
 
@@ -898,7 +898,7 @@ public final class StraightLineProbe {
 
 **验证**：`./gradlew compileJava compileTestJava --offline --no-daemon`。
 
-### 步骤 5：总验收与文档收尾
+### Task 5: 总验收与文档收尾
 
 ```bash
 ./gradlew check --offline --no-daemon
