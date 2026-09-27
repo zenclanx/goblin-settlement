@@ -19,6 +19,7 @@ import net.minecraft.world.item.Items;
 public final class TrafficProposalCoordinator {
     private static final long MIN_TARGET_DISTANCE_SQ = 12L * 12L;
     private static final long PROPOSAL_INTERVAL_TICKS = 1200; // 60 seconds
+    private static final long DEFERRAL_TICKS = 24000; // 20 minutes, the expansion window's scale
     private static final int ROAD_MIN_PLANKS = 8;
     private static final int BRIDGE_MIN_PLANKS = 8;
     private static final int BRIDGE_MIN_LOGS = 4;
@@ -29,12 +30,13 @@ public final class TrafficProposalCoordinator {
     }
 
     /** Shared by status display, expansion, and this coordinator: saved data only, no world probe. */
-    public static boolean hasPendingTarget(SettlementSavedData settlement, TransportSavedData traffic) {
-        return nearestUnservedFacility(settlement, traffic).isPresent();
+    public static boolean hasPendingTarget(SettlementSavedData settlement, TransportSavedData traffic,
+                                           long nowTick) {
+        return nearestUnservedFacility(settlement, traffic, nowTick).isPresent();
     }
 
     public static Optional<BlockPos> nearestUnservedFacility(SettlementSavedData settlement,
-                                                             TransportSavedData traffic) {
+                                                             TransportSavedData traffic, long nowTick) {
         var founded = settlement.settlement();
         if (founded.isEmpty()) {
             return Optional.empty();
@@ -53,13 +55,18 @@ public final class TrafficProposalCoordinator {
         for (BlockPos pos : traffic.servedFacilities()) {
             served.add(new TrafficTargetRules.Facility(pos.getX(), pos.getY(), pos.getZ()));
         }
+        List<TrafficTargetRules.Facility> deferred = new ArrayList<>();
+        for (BlockPos pos : traffic.deferredFacilities(nowTick)) {
+            deferred.add(new TrafficTargetRules.Facility(pos.getX(), pos.getY(), pos.getZ()));
+        }
         return TrafficTargetRules.nearestBeyond(
                 new TrafficTargetRules.Facility(anchor.getX(), anchor.getY(), anchor.getZ()),
-                facilities, served, MIN_TARGET_DISTANCE_SQ)
+                facilities, served, deferred, MIN_TARGET_DISTANCE_SQ)
                 .map(facility -> new BlockPos(facility.x(), facility.y(), facility.z()));
     }
 
-    /** Register with END_WORLD_TICK, before TransportCoordinator and ExpansionCoordinator. */
+    /** Called from tickSettlement before TransportCoordinator.tick; proposes at most
+     *  one project per PROPOSAL_INTERVAL_TICKS and never modifies the world itself. */
     public static void tick(ServerLevel level) {
         if (level.getGameTime() % PROPOSAL_INTERVAL_TICKS != 0) {
             return;
@@ -67,47 +74,55 @@ public final class TrafficProposalCoordinator {
         var settlement = SettlementSavedData.get(level);
         var traffic = TransportSavedData.get(level);
         if (settlement.settlement().isEmpty() || traffic.hasIncomplete()) {
-            return;                                        // gate 2: one in-flight traffic plan
+            return;                                        // gate 1: one in-flight traffic plan
         }
         if (settlement.plans().stream().anyMatch(plan -> !plan.isComplete())) {
-            return;                                        // 3.1a symmetry: yield to active building work
+            return;                                        // gate 2 (3.1a symmetry): yield to active building work
         }
         String settlementId = settlement.settlement().orElseThrow().id();
         var supply = PublicWarehouseInventory.snapshot(level, settlement);
         var demand = SettlementDemand.assess(settlement.adultCount(), settlement.childCount(),
-                supply, false, hasPendingTarget(settlement, traffic));
+                supply, false, hasPendingTarget(settlement, traffic, level.getGameTime()));
         if (demand.priority() != SettlementDemand.Priority.TRANSPORT) {
-            return;                                        // gate 1: demand tier
+            return;                                        // gate 3: demand tier
         }
-        var target = nearestUnservedFacility(settlement, traffic);
+        var target = nearestUnservedFacility(settlement, traffic, level.getGameTime());
         if (target.isEmpty()) {
             return;
         }
+        BlockPos targetPos = target.orElseThrow();
         BlockPos anchor = settlement.settlement().orElseThrow().anchor();
-        var sample = StraightLineProbe.sample(level, settlementId, anchor, target.orElseThrow());
+        var sample = StraightLineProbe.sample(level, settlementId, anchor, targetPos);
         var decision = TrafficDecision.decide(sample.columns(), sample.targetIndex(),
                 BridgePlanner.MIN_WOOD_SPAN, BridgePlanner.MAX_WOOD_SPAN);
         switch (decision.kind()) {
-            case BRIDGE -> proposeBridge(level, settlement, settlementId, anchor,
-                    target.orElseThrow(), sample, decision);
+            case BRIDGE -> proposeBridge(level, settlement, traffic, settlementId, anchor,
+                    targetPos, decision);
             case ROAD -> {
+                // Material shortage is not a proposal failure; supplies will catch up.
                 if (PublicWarehouseInventory.countOf(level, settlement, Items.OAK_PLANKS)
-                        >= ROAD_MIN_PLANKS) {              // gate 3: real materials
-                    TransportCoordinator.startRoad(level, settlementId, target.orElseThrow());
+                        >= ROAD_MIN_PLANKS) {              // gate 4: real materials
+                    var result = TransportCoordinator.startRoad(level, settlementId, targetPos);
+                    if (!result.accepted()) {
+                        // No route, unsafe footprint, or a work conflict: park the target
+                        // so the demand tier falls back to READY and expansion resumes.
+                        traffic.defer(targetPos, level.getGameTime() + DEFERRAL_TICKS);
+                    }
                 }
             }
-            case NONE -> { }
+            case NONE -> traffic.defer(targetPos, level.getGameTime() + DEFERRAL_TICKS);
         }
     }
 
     private static void proposeBridge(ServerLevel level, SettlementSavedData settlement,
-                                      String settlementId, BlockPos anchor, BlockPos target,
-                                      StraightLineProbe.Sample sample, TrafficDecision.Decision decision) {
+                                      TransportSavedData traffic, String settlementId,
+                                      BlockPos anchor, BlockPos target,
+                                      TrafficDecision.Decision decision) {
         if (PublicWarehouseInventory.countOf(level, settlement, Items.OAK_PLANKS) < BRIDGE_MIN_PLANKS
                 || PublicWarehouseInventory.countOf(level, settlement, Items.OAK_LOG) < BRIDGE_MIN_LOGS
                 || PublicWarehouseInventory.countOf(level, settlement, Items.OAK_FENCE) < BRIDGE_MIN_FENCES
                 || PublicWarehouseInventory.countOf(level, settlement, Items.TORCH) < BRIDGE_MIN_TORCHES) {
-            return;
+            return; // material shortage is not a proposal failure; supplies will catch up
         }
         BlockPos nearBankColumn = StraightLineProbe.columnAt(anchor, target,
                 decision.gapStartInclusive() - 1);
@@ -118,7 +133,12 @@ public final class TrafficProposalCoordinator {
         if (!result.accepted()) {
             // BridgePlanner's strict survey rejected the crossing; fall back to a road,
             // exactly as the design's risk note prescribes.
-            TransportCoordinator.startRoad(level, settlementId, target);
+            var fallback = TransportCoordinator.startRoad(level, settlementId, target);
+            if (!fallback.accepted()) {
+                // Neither corridor works; park the target so the demand tier falls back
+                // to READY and expansion can claim land toward it.
+                traffic.defer(target, level.getGameTime() + DEFERRAL_TICKS);
+            }
         }
     }
 

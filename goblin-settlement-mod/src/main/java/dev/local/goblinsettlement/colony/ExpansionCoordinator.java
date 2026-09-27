@@ -41,7 +41,8 @@ public final class ExpansionCoordinator {
         }
         var supply = PublicWarehouseInventory.snapshot(level, data);
         var demand = SettlementDemand.assess(adults, data.childCount(), supply, false,
-                TrafficProposalCoordinator.hasPendingTarget(data, TransportSavedData.get(level)));
+                TrafficProposalCoordinator.hasPendingTarget(data, TransportSavedData.get(level),
+                        level.getGameTime()));
         if (demand.priority() != SettlementDemand.Priority.READY || supply.oakPlanks() < 2) {
             return;
         }

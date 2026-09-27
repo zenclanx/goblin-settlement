@@ -96,7 +96,7 @@ public final class GoblinSettlement implements ModInitializer {
                                 var demand = SettlementDemand.assess(data.adultCount(), data.childCount(),
                                         supply, data.plans().stream().anyMatch(plan -> !plan.isComplete()),
                                         TrafficProposalCoordinator.hasPendingTarget(
-                                                data, TransportSavedData.get(level)));
+                                                data, TransportSavedData.get(level), level.getGameTime()));
                                 context.getSource().sendSuccess(() -> Component.literal("Known public stock: food="
                                         + supply.food() + "/" + demand.foodTarget()
                                         + ", wheat seeds=" + supply.wheatSeeds() + "/" + demand.seedTarget()
@@ -107,7 +107,7 @@ public final class GoblinSettlement implements ModInitializer {
                                         + ", next priority=" + demand.priority()), false);
                                 context.getSource().sendSuccess(() -> Component.literal(
                                         TrafficProposalCoordinator.nearestUnservedFacility(
-                                                data, TransportSavedData.get(level))
+                                                data, TransportSavedData.get(level), level.getGameTime())
                                                 .map(pos -> "Next traffic target: " + pos.toShortString())
                                                 .orElse("No pending traffic target")), false);
                                 var professions = data.assignedProfessions();

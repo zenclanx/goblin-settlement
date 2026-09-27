@@ -83,8 +83,11 @@ public final class StraightLineProbe {
             if (state.getFluidState().is(FluidTags.WATER)) {
                 return TrafficDecision.ColumnKind.WATER;
             }
-            return state.isFaceSturdy(level, probe, Direction.UP) || state.is(Blocks.DIRT_PATH)
-                    ? TrafficDecision.ColumnKind.LAND : TrafficDecision.ColumnKind.BLOCKED;
+            if (state.isFaceSturdy(level, probe, Direction.UP) || state.is(Blocks.DIRT_PATH)) {
+                return TrafficDecision.ColumnKind.LAND;
+            }
+            // Non-sturdy clutter (grass, flowers, leaves): keep descending so a vegetated
+            // bank still classifies as LAND and lets the strict bridge survey decide.
         }
         return TrafficDecision.ColumnKind.BLOCKED;
     }

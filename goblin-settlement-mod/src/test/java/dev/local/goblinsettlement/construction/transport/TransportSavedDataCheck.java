@@ -43,6 +43,7 @@ public final class TransportSavedDataCheck {
         var old = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, legacy).getOrThrow();
         require(old.servedFacilities().isEmpty(), "old saves load without invented served facilities");
         require(old.plans().get(0).targetFacility().isEmpty(), "old plans load without an invented target");
+        require(old.deferredFacilities(0L).isEmpty(), "old saves load without invented deferrals");
 
         require(road.advance().targetFacility().equals(Optional.of(facility)), "advance keeps the target");
         require(road.rewind(0).targetFacility().equals(Optional.of(facility)), "rewind keeps the target");
@@ -67,15 +68,50 @@ public final class TransportSavedDataCheck {
         require(settlement.registerWarehouse(new BlockPos(20, 70, 0)), "query fixture warehouse");
         require(settlement.registerFarmSite(new BlockPos(15, 71, 5)), "query fixture farm");
         var fresh = new TransportSavedData();
-        require(TrafficProposalCoordinator.nearestUnservedFacility(settlement, fresh)
+        require(TrafficProposalCoordinator.nearestUnservedFacility(settlement, fresh, 0L)
                         .orElseThrow().equals(new BlockPos(15, 71, 5)),
                 "nearest unserved facility shared query");
         var nearSettlement = new SettlementSavedData();
         require(nearSettlement.found(new BlockPos(0, 70, 0)) == SettlementSavedData.FoundResult.FOUNDED,
                 "near fixture founded");
         require(nearSettlement.registerWarehouse(new BlockPos(5, 70, 0)), "near fixture warehouse");
-        require(!TrafficProposalCoordinator.hasPendingTarget(nearSettlement, fresh),
+        require(!TrafficProposalCoordinator.hasPendingTarget(nearSettlement, fresh, 0L),
                 "a warehouse next to the anchor is not a paving target");
+
+        var parked = new TransportSavedData();
+        parked.defer(facility, 24000L);
+        require(parked.isDeferred(facility, 23999L), "a facility is deferred until its unlock tick");
+        require(!parked.isDeferred(facility, 24000L), "the unlock tick itself ends the deferral");
+        require(parked.deferredFacilities(23999L).equals(List.of(facility)),
+                "the still-deferred facility is listed before expiry");
+        require(parked.deferredFacilities(24000L).isEmpty(),
+                "an expired entry is pruned by the read");
+        require(!parked.isDeferred(facility, 24000L), "pruning ends the deferral window");
+        parked.defer(facility, 24000L);
+        parked.defer(facility, 48000L);
+        require(parked.deferredFacilities(23000L).equals(List.of(facility)),
+                "re-deferral replaces the earlier unlock tick");
+
+        var deferralJson = TransportSavedData.CODEC.encodeStart(JsonOps.INSTANCE, parked).getOrThrow();
+        var deferralReload = TransportSavedData.CODEC.parse(JsonOps.INSTANCE, deferralJson).getOrThrow();
+        require(deferralReload.isDeferred(facility, 47999L), "deferral entries survive reload");
+        require(!deferralReload.isDeferred(facility, 48000L), "reloaded entries keep their unlock tick");
+
+        var parkedTarget = new TransportSavedData();
+        parkedTarget.defer(new BlockPos(15, 71, 5), 24000L);
+        require(TrafficProposalCoordinator.nearestUnservedFacility(settlement, parkedTarget, 23999L)
+                        .orElseThrow().equals(new BlockPos(20, 70, 0)),
+                "a deferred facility yields to the next unserved candidate");
+        require(TrafficProposalCoordinator.nearestUnservedFacility(settlement, parkedTarget, 24000L)
+                        .orElseThrow().equals(new BlockPos(15, 71, 5)),
+                "an expired deferral returns the nearest facility to candidacy");
+        var allParked = new TransportSavedData();
+        allParked.defer(new BlockPos(15, 71, 5), 24000L);
+        allParked.defer(new BlockPos(20, 70, 0), 24000L);
+        require(!TrafficProposalCoordinator.hasPendingTarget(settlement, allParked, 23999L),
+                "deferred facilities are not pending targets");
+        require(TrafficProposalCoordinator.hasPendingTarget(settlement, allParked, 24000L),
+                "expired deferrals restore pending targets");
         System.out.println("TransportSavedDataCheck passed");
     }
 

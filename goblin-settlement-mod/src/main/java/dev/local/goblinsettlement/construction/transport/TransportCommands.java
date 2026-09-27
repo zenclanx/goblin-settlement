@@ -98,7 +98,8 @@ public final class TransportCommands {
         var traffic = TransportSavedData.get(source.getLevel());
         var settlement = SettlementSavedData.get(source.getLevel());
         source.sendSuccess(() -> Component.literal("Served facilities=" + traffic.servedFacilities().size()
-                + ", " + TrafficProposalCoordinator.nearestUnservedFacility(settlement, traffic)
+                + ", " + TrafficProposalCoordinator.nearestUnservedFacility(
+                        settlement, traffic, source.getLevel().getGameTime())
                         .map(pos -> "next target=" + pos.toShortString())
                         .orElse("no pending target")), false);
         for (int index = Math.max(0, plans.size() - 8); index < plans.size(); index++) {

@@ -16,29 +16,47 @@ import net.minecraft.world.level.saveddata.SavedDataType;
 /** Per-dimension traffic plans, with transient indexes rebuilt after loading. */
 public final class TransportSavedData extends SavedData {
     private static final int MAX_COMPLETED_ROADS = 32;
+
+    /** A facility parked until a tick because every proposal for it failed once. */
+    public record DeferredTarget(BlockPos facility, long untilTick) {
+        static final Codec<DeferredTarget> CODEC = RecordCodecBuilder.create(instance ->
+                instance.group(BlockPos.CODEC.fieldOf("facility").forGetter(DeferredTarget::facility),
+                        Codec.LONG.fieldOf("until_tick").forGetter(DeferredTarget::untilTick))
+                        .apply(instance, DeferredTarget::new));
+
+        public DeferredTarget {
+            facility = facility.immutable();
+        }
+    }
+
     static final Codec<TransportSavedData> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(TransportPlan.CODEC.listOf().optionalFieldOf("plans", List.of())
                             .forGetter(data -> data.plans),
                     BlockPos.CODEC.listOf().optionalFieldOf("served_facilities", List.of())
-                            .forGetter(data -> data.servedFacilities))
+                            .forGetter(data -> data.servedFacilities),
+                    DeferredTarget.CODEC.listOf().optionalFieldOf("deferred_targets", List.of())
+                            .forGetter(data -> data.deferredTargets))
                     .apply(instance, TransportSavedData::new));
     private static final SavedDataType<TransportSavedData> TYPE =
             new SavedDataType<>("goblin_transport", TransportSavedData::new, CODEC, null);
 
     private List<TransportPlan> plans;
     private List<BlockPos> servedFacilities;
+    private List<DeferredTarget> deferredTargets;
     private final List<TransportPlan> openBridges = new ArrayList<>();
     private final Map<BlockPos, Integer> closedFeet = new HashMap<>();
     private final Map<String, TransportPlan> incompletePlans = new LinkedHashMap<>();
     private int inspectionCursor;
 
     public TransportSavedData() {
-        this(List.of(), List.of());
+        this(List.of(), List.of(), List.of());
     }
 
-    private TransportSavedData(List<TransportPlan> plans, List<BlockPos> servedFacilities) {
+    private TransportSavedData(List<TransportPlan> plans, List<BlockPos> servedFacilities,
+                               List<DeferredTarget> deferredTargets) {
         this.plans = List.copyOf(plans);
         this.servedFacilities = List.copyOf(servedFacilities);
+        this.deferredTargets = List.copyOf(deferredTargets);
         for (TransportPlan plan : this.plans) {
             index(plan);
         }
@@ -58,6 +76,49 @@ public final class TransportSavedData extends SavedData {
 
     public List<BlockPos> servedFacilities() {
         return servedFacilities;
+    }
+
+    /** Park a facility until untilTick after every proposal for it failed once;
+     *  re-deferring the same facility replaces its earlier unlock tick. */
+    public void defer(BlockPos facility, long untilTick) {
+        BlockPos immutable = facility.immutable();
+        var updated = new ArrayList<>(deferredTargets);
+        updated.removeIf(entry -> entry.facility().equals(immutable));
+        updated.add(new DeferredTarget(immutable, untilTick));
+        deferredTargets = List.copyOf(updated);
+        setDirty();
+    }
+
+    /**
+     * Facilities still inside their deferral window at nowTick. Expired entries are
+     * pruned here so the list cannot grow without bound; the saved data has no clock
+     * of its own, so pruning rides these periodic reads.
+     */
+    public List<BlockPos> deferredFacilities(long nowTick) {
+        var retained = new ArrayList<DeferredTarget>(deferredTargets.size());
+        boolean pruned = false;
+        for (DeferredTarget entry : deferredTargets) {
+            if (entry.untilTick() > nowTick) {
+                retained.add(entry);
+            } else {
+                pruned = true;
+            }
+        }
+        if (pruned) {
+            deferredTargets = List.copyOf(retained);
+            setDirty();
+        }
+        return retained.stream().map(DeferredTarget::facility).toList();
+    }
+
+    /** True while the facility is inside an unexpired deferral window. */
+    public boolean isDeferred(BlockPos facility, long nowTick) {
+        for (DeferredTarget entry : deferredTargets) {
+            if (entry.facility().equals(facility) && entry.untilTick() > nowTick) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** True while any plan is unfinished; the proposal and expansion gates share this. */

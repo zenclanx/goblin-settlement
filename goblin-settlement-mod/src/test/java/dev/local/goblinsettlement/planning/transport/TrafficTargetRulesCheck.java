@@ -23,6 +23,21 @@ public final class TrafficTargetRulesCheck {
                 .orElseThrow().equals(tiedNorth), "equal distances break by x, then z, then y");
         require(TrafficTargetRules.nearestBeyond(anchor, List.of(), List.of(), floor).isEmpty(),
                 "no facilities means no target");
+        require(TrafficTargetRules.nearestBeyond(anchor, List.of(farm, warehouse), List.of(),
+                        List.of(farm), floor).orElseThrow().equals(warehouse),
+                "a deferred facility is skipped like a served one");
+        require(TrafficTargetRules.nearestBeyond(anchor, List.of(farm), List.of(),
+                        List.of(farm), floor).isEmpty(),
+                "a deferred facility alone leaves no target");
+        require(TrafficTargetRules.nearestBeyond(anchor, List.of(farm, warehouse), List.of(warehouse),
+                        List.of(farm), floor).isEmpty(),
+                "served plus deferred leaves no candidate");
+        require(TrafficTargetRules.nearestBeyond(anchor, List.of(farm, warehouse), List.of(),
+                        List.of(), floor).orElseThrow().equals(farm),
+                "an empty deferred list changes nothing");
+        require(TrafficTargetRules.nearestBeyond(anchor, List.of(farm), List.of(farm),
+                        List.of(), floor).isEmpty(),
+                "the four-argument form still skips served facilities");
         System.out.println("TrafficTargetRulesCheck passed");
     }
 

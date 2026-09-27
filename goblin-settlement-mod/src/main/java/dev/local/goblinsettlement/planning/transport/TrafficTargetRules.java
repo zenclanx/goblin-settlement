@@ -17,16 +17,25 @@ public final class TrafficTargetRules {
      *  Ties break by x, then z, then y. Empty when no candidate qualifies. */
     public static Optional<Facility> nearestBeyond(Facility anchor, List<Facility> facilities,
                                                    List<Facility> served, long minDistanceSquared) {
+        return nearestBeyond(anchor, facilities, served, List.of(), minDistanceSquared);
+    }
+
+    /** As above, additionally skipping facilities still inside their deferral window
+     *  after a failed proposal attempt; those become candidates again once it expires. */
+    public static Optional<Facility> nearestBeyond(Facility anchor, List<Facility> facilities,
+                                                   List<Facility> served, List<Facility> deferred,
+                                                   long minDistanceSquared) {
         Objects.requireNonNull(anchor, "anchor");
         Objects.requireNonNull(facilities, "facilities");
         Objects.requireNonNull(served, "served");
+        Objects.requireNonNull(deferred, "deferred");
         if (minDistanceSquared < 0) {
             throw new IllegalArgumentException("Minimum distance cannot be negative");
         }
         Facility best = null;
         long bestDistance = Long.MAX_VALUE;
         for (Facility facility : facilities) {
-            if (served.contains(facility)) {
+            if (served.contains(facility) || deferred.contains(facility)) {
                 continue;
             }
             long dx = (long) facility.x() - anchor.x();
