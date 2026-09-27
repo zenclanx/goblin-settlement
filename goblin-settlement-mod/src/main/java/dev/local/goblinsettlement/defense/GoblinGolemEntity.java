@@ -110,7 +110,30 @@ public final class GoblinGolemEntity extends PathfinderMob {
         return true;
     }
 
-    private static boolean isPermittedAttacker(LivingEntity entity) {
+    /**
+     * Call when a settlement sentry reports a hostile it can see. Paired with alertToResidentAttack:
+     * the guards below are the same ones, minus the three that need a victim -- a sighting has none.
+     * Changing one of the two means checking the other.
+     */
+    public boolean alertToSighting(LivingEntity threat) {
+        if (threat == null || !(level() instanceof ServerLevel level) || settlementId.isBlank()
+                || !threat.isAlive() || threat.level() != level
+                || !isPermittedAttacker(threat)
+                || distanceToSqr(threat) > DEFENSE_RADIUS * DEFENSE_RADIUS
+                || threat.distanceToSqr(home.getX() + 0.5, home.getY() + 0.5, home.getZ() + 0.5)
+                        > DEFENSE_RADIUS * DEFENSE_RADIUS) {
+            return false;
+        }
+        SettlementSavedData data = SettlementSavedData.get(level);
+        if (data.settlement().map(value -> !value.id().equals(settlementId)).orElse(true)) {
+            return false;
+        }
+        setTarget(threat);
+        alertTicks = ALERT_TICKS;
+        return true;
+    }
+
+    static boolean isPermittedAttacker(LivingEntity entity) {
         return entity instanceof Monster || entity instanceof ServerPlayer player
                 && !player.isCreative() && !player.isSpectator();
     }

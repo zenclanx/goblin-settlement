@@ -3,12 +3,15 @@ package dev.local.goblinsettlement.defense;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
+import java.util.Comparator;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.golem.IronGolem;
+import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.phys.AABB;
 
 /**
@@ -120,6 +123,39 @@ public final class DefenseCoordinator {
             golem.alertToResidentAttack(victim, attacker);
         }
         VanillaIronGolemBridge.alert(level, victim, attacker);
+    }
+
+    /** How far a sentry can pick out a hostile. Deliberately half a golem's own defence radius. */
+    private static final double SIGHTING_RADIUS = 12.0;
+
+    /**
+     * A patrolling sentry reports what it can see. Only monsters count: GAME_DESIGN is explicit that a
+     * player who merely carries a weapon or walks past is not an enemy, and an attack on a resident
+     * already reaches the golems through onResidentAttack. Returns true when at least one golem took
+     * the alert, so the caller can show that in its status line.
+     */
+    public static boolean reportSighting(ServerLevel level, GoblinCitizenEntity sentry) {
+        if (level == null || sentry == null || sentry.level() != level) {
+            return false;
+        }
+        LivingEntity threat = level.getEntitiesOfClass(LivingEntity.class,
+                        new AABB(sentry.blockPosition()).inflate(SIGHTING_RADIUS),
+                        entity -> entity instanceof Monster && entity.isAlive())
+                .stream()
+                .min(Comparator.comparingDouble(entity -> entity.distanceToSqr(sentry)))
+                .orElse(null);
+        if (threat == null) {
+            return false;
+        }
+        boolean alerted = false;
+        for (GoblinGolemEntity golem : level.getEntitiesOfClass(GoblinGolemEntity.class,
+                new AABB(sentry.blockPosition()).inflate(GoblinGolemEntity.DEFENSE_RADIUS),
+                golem -> golem.isAlive() && !golem.settlementId().isBlank())) {
+            alerted |= golem.alertToSighting(threat);
+        }
+        // Vanilla iron golems are left out on purpose: their bridge takes a victim, and a sighting has
+        // none. They still defend themselves when something actually hits them.
+        return alerted;
     }
 
     private static boolean accessibleWarehouse(ServerLevel level, SettlementSavedData settlement,

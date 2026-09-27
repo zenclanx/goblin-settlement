@@ -9,6 +9,7 @@ import dev.local.goblinsettlement.colony.WorkKind;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
 import dev.local.goblinsettlement.construction.transport.TransportPlan;
+import dev.local.goblinsettlement.defense.DefenseCoordinator;
 import dev.local.goblinsettlement.defense.PatrolCoordinator;
 import dev.local.goblinsettlement.economy.DroppedMaterialLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
@@ -999,6 +1000,9 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private static final double PATROL_ARRIVE_DISTANCE_SQ = 4.0;
 
     private void tickPatrolWork(ServerLevel level) {
+        // Reported before the movement branches: arriving at a waypoint returns early, and standing at a
+        // crossroads watching is exactly when a sentry should be looking around.
+        boolean alerting = DefenseCoordinator.reportSighting(level, this);
         var target = PatrolCoordinator.waypointFor(level, settlementId, patrolIndex);
         if (target.isEmpty()) {
             waitReason = "no patrol route";
@@ -1008,10 +1012,10 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         BlockPos destination = target.get();
         if (distanceToSqr(destination.getCenter()) <= PATROL_ARRIVE_DISTANCE_SQ) {
             patrolIndex++;
-            waitReason = "";
+            waitReason = alerting ? "spotted a hostile" : "";
             return;
         }
-        waitReason = "patrolling";
+        waitReason = alerting ? "spotted a hostile" : "patrolling";
         getNavigation().moveTo(destination.getX() + 0.5, destination.getY(),
                 destination.getZ() + 0.5, 1.0);
     }
