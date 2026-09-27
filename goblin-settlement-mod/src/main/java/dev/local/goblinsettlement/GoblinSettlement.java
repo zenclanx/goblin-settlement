@@ -123,6 +123,8 @@ public final class GoblinSettlement implements ModInitializer {
                                                 .orElse("No pending traffic target")), false);
                                 context.getSource().sendSuccess(() -> Component.literal(
                                         TransportCommands.trafficLine(TransportSavedData.get(level))), false);
+                                context.getSource().sendSuccess(() -> Component.literal(
+                                        TransportCommands.connectivityLine(level)), false);
                                 var professions = data.assignedProfessions();
                                 StringBuilder trades = new StringBuilder();
                                 for (var profession : Profession.values()) {
