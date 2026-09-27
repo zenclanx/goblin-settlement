@@ -17,10 +17,10 @@ public final class TrafficTargetRulesCheck {
                 .orElseThrow().equals(warehouse), "a served facility is skipped");
         require(TrafficTargetRules.nearestBeyond(anchor, List.of(anchor), List.of(), floor).isEmpty(),
                 "the settlement anchor never paves itself");
-        var tied = new TrafficTargetRules.Facility(10, 70, 4);
-        var tie = new TrafficTargetRules.Facility(4, 70, 10);
-        require(TrafficTargetRules.nearestBeyond(anchor, List.of(tied, tie), List.of(), floor)
-                .orElseThrow().equals(tie), "equal distances break by x, then z, then y");
+        var tiedEast = new TrafficTargetRules.Facility(13, 70, 0);
+        var tiedNorth = new TrafficTargetRules.Facility(0, 70, 13);
+        require(TrafficTargetRules.nearestBeyond(anchor, List.of(tiedEast, tiedNorth), List.of(), floor)
+                .orElseThrow().equals(tiedNorth), "equal distances break by x, then z, then y");
         require(TrafficTargetRules.nearestBeyond(anchor, List.of(), List.of(), floor).isEmpty(),
                 "no facilities means no target");
         System.out.println("TrafficTargetRulesCheck passed");
