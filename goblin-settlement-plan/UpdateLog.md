@@ -448,3 +448,11 @@
 - [2026-09-27 15:46:00 +08:00] 验证：./gradlew build --offline --no-daemon BUILD SUCCESSFUL（29 秒），12 项独立检查全部 *Check passed：Blueprint、HousingRules、PlotCoordinates、PopulationRules、ProfessionRules、ProtectedRectangle、SettlementDemand、SettlementSavedData、TrafficDecision、TrafficTargetRules、TransportSavedData、WorkerAssignmentRules。无编译警告。产物 build/libs/goblin-settlement-0.1.0.jar：415472 字节、时间戳 2026-09-27 15:46。未启动游戏、未运行专用服务端、未触碰常用存档。
 - [2026-09-27 15:47:00 +08:00] 记录并行情况：本轮开工时发现 goblin-settlement-plan/ 下有**美术代理未提交的改动**（UpdateLog 新增"美术样板：A 版成年男哥布林"一段、CURRENT_STATUS 的日期行与"美术候选"段）。本轮只暂存自己改的代码文件，未触碰其内容；Task 4 提交文档时两者在同一批文件里，一并保留提交，并在本条写明来源，避免误记为本轮成果。
 - [2026-09-27 15:48:00 +08:00] 未完成：**改动全部落在从未游戏内验证过的工人路径上**（HOUSING_FETCHING / HOUSING_DELIVERING / returnCarriedToSupply），编译与纯函数检查不能证明它在游戏里跑得对，这是统一测试时要优先观察的部分；现有几何仍是清一色橡木木板，"能放别的材质"只被 BlueprintCheck 的合成用例覆盖、没有真实蓝图验证；过渡约束删除后，材质写错在游戏里的表现是工人反复 waitReason 卡住而不是启动时报错，排查需看 waitReason；数据包重载、其余内容数据化、以及**通用施工路径的材料泛化**（本轮新发现的未做项）均未做。
+
+## [2026-09-27 15:42:00 +08:00 – 2026-09-27 15:55:42 +08:00] 美术样板眼部内嵌调整
+
+- [2026-09-27 15:55:42 +08:00] 用户确认 A 版成年男整体造型，同时指出眼球过于凸出，并要求继续完成模型。明确交付对象是可编辑 `.bbmodel` 三维工程，预览 PNG 仅用于查看。
+- [2026-09-27 15:55:42 +08:00] 在 `Models/goblin_male_a_final/` 修改 `build_model.py` 并重建主工程及独立 PNG：眼白面从前方退后一格，移除四个凸出的独立虹膜/瞳孔方块，把虹膜/瞳孔绘到眼白贴图，上眼睑仍保持前层遮挡。方块数由 112 降至 108；修改前工程、贴图、脚本及预览已保存在 `_development/pre_inset_eyes/`。
+- [2026-09-27 15:55:42 +08:00] 用 Blockbench MCP 载入改后 `.bbmodel` 并重拍正、斜、侧、背四视角及行走、转头抬手姿势；重启本轮启动的 Blockbench 后再次从磁盘载入，确认 108 方块、六主分组和贴图可见。核对内嵌与独立 PNG 字节一致，三段动画的骨骼引用和关键帧范围有效，六张预览可读。
+- [2026-09-27 15:55:42 +08:00] 重新导出 108 方块的 Blockbench 原生 Java 几何，生成 `GoblinModelCandidate.java` 并执行离线 `compileArtCandidate`：BUILD SUCCESSFUL。未将候选安装到模组运行时；游戏内缩放、脚底高度、旧职业贴图升级、动作/碰撞/性能仍待后续集成与专用测试世界验收。
+- [2026-09-27 15:55:42 +08:00] 更新 `README.md` 和 CURRENT_STATUS.md，明确 `.bbmodel` 是实际模型，眼部细节待用户复核；通用 3D 格式的额外导出未交付，不影响已验证的 Blockbench 主工程。
