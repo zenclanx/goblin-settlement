@@ -11,7 +11,8 @@ import java.util.Set;
 public final class BlueprintCheck {
     private static final String RESOURCE =
             "/data/goblin_settlement/housing_blueprints.json";
-    private static final Set<String> KNOWN = Set.of("minecraft:oak_planks");
+    private static final Set<String> KNOWN =
+            Set.of("minecraft:oak_planks", "minecraft:stone");
 
     public static void main(String[] args) throws Exception {
         BlueprintSet data = loadRealFile();
@@ -22,7 +23,7 @@ public final class BlueprintCheck {
         checkChainRules();
         checkEntrance();
         checkBounds();
-        checkTransitionalBlockRule();
+        checkBlocksAreNotRestricted();
         System.out.println("BlueprintCheck passed");
     }
 
@@ -52,7 +53,7 @@ public final class BlueprintCheck {
         for (var step : data.steps(2, 2)) {
             require(step.x() >= -3 && step.x() <= 3 && step.z() >= -2 && step.z() <= 2
                     && step.y() >= 0 && step.y() <= 4, "every step stays inside the blueprint box");
-            require(step.block().equals("minecraft:oak_planks"), "the transitional block rule holds");
+            require(KNOWN.contains(step.block()), "every step names a known block");
         }
         boolean threw = false;
         try {
@@ -147,21 +148,18 @@ public final class BlueprintCheck {
         require(reserveProblem(8, 24) == 0, "positive reserves pass");
     }
 
-    private static void checkTransitionalBlockRule() {
+    private static void checkBlocksAreNotRestricted() {
+        // Materials are general now: any known block with an item form is allowed.
         var stone = new HousingRules.Step(0, 3, 0, "minecraft:stone");
         var capacity = List.of(new BlueprintSet.Stage("a", "", List.of(stone)),
                 cap("b", "a"), cap("c", "b"));
-        var quality = List.of(cap("q0", ""), cap("q1", "q0"));
-        var problems = new BlueprintSet(capacity, quality, 8, 24).validate(KNOWN);
-        require(problems.size() == 1,
-                "a known block that is not oak planks is rejected by the transitional rule: "
-                        + problems);
+        var accepted = valid(capacity);
+        require(accepted.isEmpty(), "a known block other than oak planks is accepted: " + accepted);
 
         var unknown = new HousingRules.Step(0, 3, 0, "minecraft:not_a_block");
         var otherCapacity = List.of(new BlueprintSet.Stage("a", "", List.of(unknown)),
                 cap("b", "a"), cap("c", "b"));
-        require(new BlueprintSet(otherCapacity, quality, 8, 24).validate(KNOWN).size() == 1,
-                "an id outside the known set is rejected");
+        require(valid(otherCapacity).size() == 1, "an id outside the known set is still rejected");
     }
 
     private static BlueprintSet.Stage cap(String id, String requires) {

@@ -19,9 +19,6 @@ public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
     public static final int MIN_Z = -2;
     public static final int MAX_Z = 2;
 
-    /** The only block the data may name until the worker path learns other materials. */
-    public static final String TRANSITIONAL_BLOCK = "minecraft:oak_planks";
-
     /** {@code requires} is empty for a chain head, otherwise the id of the previous stage. */
     public record Stage(String id, String requires, List<HousingRules.Step> steps) {
     }
@@ -142,10 +139,6 @@ public record BlueprintSet(List<Stage> capacity, List<Stage> quality,
             }
             if (!knownBlocks.contains(step.block())) {
                 problems.add(name + "/" + stage.id() + ": unknown block " + step.block());
-            } else if (!TRANSITIONAL_BLOCK.equals(step.block())) {
-                problems.add(name + "/" + stage.id() + ": " + step.block()
-                        + " is not yet supported -- until the worker path carries other materials,"
-                        + " the data may only use " + TRANSITIONAL_BLOCK);
             }
         }
     }
