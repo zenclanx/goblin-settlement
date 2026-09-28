@@ -92,10 +92,10 @@ public final class TransportCoordinator {
         return new StartResult(true, "PLANNED", Optional.of(plan));
     }
 
-    /** Enqueue a four-column wooden bridge with two walking lanes and outer rails. */
-    public static StartResult startWoodBridge(
-            ServerLevel level, String settlementId, BlockPos nearBankFoot,
-            Direction direction) {
+    /** Enqueue a four-column bridge of this kind toward the far bank. */
+    public static StartResult startBridge(ServerLevel level, String settlementId,
+                                          BlockPos nearBankFoot, Direction direction,
+                                          TransportPlan.Kind kind) {
         Objects.requireNonNull(level, "level");
         Objects.requireNonNull(settlementId, "settlementId");
         Objects.requireNonNull(nearBankFoot, "nearBankFoot");
@@ -106,7 +106,7 @@ public final class TransportCoordinator {
         }
         BridgePlanner.Result result = BridgePlanner.planBridge(
                 level, settlementId, nearBankFoot, direction,
-                BridgePlanner.MIN_WOOD_SPAN, BridgePlanner.MAX_WOOD_SPAN);
+                BridgeMaterials.minSpan(kind), BridgeMaterials.maxSpan(kind));
         if (result.candidate().isEmpty()) {
             return rejected(result.status().name());
         }
@@ -118,7 +118,7 @@ public final class TransportCoordinator {
         List<TransportPlan.Step> steps = new ArrayList<>();
         for (BlockPos foot : barriers) {
             steps.add(new TransportPlan.Step(TransportPlan.Phase.BARRIERS, foot,
-                    BuildMaterial.OAK_FENCE, TransportPlan.Rule.AIR));
+                    BridgeMaterials.barrier(kind), TransportPlan.Rule.AIR));
         }
         Set<BlockPos> approachGround = new LinkedHashSet<>();
         for (BlockPos foot : candidate.nearApproachFeet()) approachGround.add(foot.below());
@@ -130,7 +130,7 @@ public final class TransportCoordinator {
                 return rejected("UNSAFE_BRIDGE_APPROACH");
             }
             steps.add(new TransportPlan.Step(TransportPlan.Phase.APPROACHES, site,
-                    BuildMaterial.OAK_PLANKS, TransportPlan.Rule.APPROACH_GROUND));
+                    BridgeMaterials.deck(kind), TransportPlan.Rule.APPROACH_GROUND));
         }
 
         for (int frame = 0; frame < candidate.span(); frame++) {
@@ -144,21 +144,21 @@ public final class TransportCoordinator {
                 for (int y = base.getY() + 1; y < deck.getY(); y++) {
                     BlockPos post = new BlockPos(deck.getX(), y, deck.getZ());
                     steps.add(new TransportPlan.Step(TransportPlan.Phase.SUPPORTS, post,
-                            BuildMaterial.OAK_LOG, TransportPlan.Rule.SUPPORT));
+                            BridgeMaterials.support(kind), TransportPlan.Rule.SUPPORT));
                 }
             }
         }
         for (BlockPos deck : candidate.deckSites()) {
             steps.add(new TransportPlan.Step(TransportPlan.Phase.SURFACE, deck,
-                    BuildMaterial.OAK_PLANKS, TransportPlan.Rule.AIR_OR_WATER));
+                    BridgeMaterials.deck(kind), TransportPlan.Rule.AIR_OR_WATER));
         }
         for (BlockPos rail : candidate.railSites()) {
             steps.add(new TransportPlan.Step(TransportPlan.Phase.RAILINGS, rail,
-                    BuildMaterial.OAK_FENCE, TransportPlan.Rule.AIR));
+                    BridgeMaterials.railing(kind), TransportPlan.Rule.AIR));
         }
         for (BlockPos light : candidate.lightSites()) {
             steps.add(new TransportPlan.Step(TransportPlan.Phase.LIGHTING, light,
-                    BuildMaterial.TORCH, TransportPlan.Rule.AIR));
+                    BridgeMaterials.lighting(kind), TransportPlan.Rule.AIR));
         }
 
         Set<BlockPos> closure = new LinkedHashSet<>();
@@ -170,7 +170,7 @@ public final class TransportCoordinator {
             return rejected("WORK_CONFLICT");
         }
         TransportPlan plan = new TransportPlan(
-                UUID.randomUUID().toString(), settlementId, TransportPlan.Kind.WOOD_BRIDGE,
+                UUID.randomUUID().toString(), settlementId, kind,
                 steps, 0, false, barriers, List.copyOf(closure), candidate.surveyedBases(),
                 Optional.empty(), Optional.empty(), Optional.empty());
         if (!traffic.add(plan)) {

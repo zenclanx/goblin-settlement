@@ -46,27 +46,41 @@ public final class TransportCommands {
                                         Permissions.COMMANDS_MODERATOR))
                                 .then(Commands.argument("near_bank_foot", BlockPosArgument.blockPos())
                                         .then(Commands.argument("direction", StringArgumentType.word())
-                                                .executes(context -> {
-                                                    CommandSourceStack source = context.getSource();
-                                                    String id = settlementId(source.getLevel());
-                                                    if (id == null) {
-                                                        source.sendFailure(Component.literal(
-                                                                "No settlement in this dimension"));
-                                                        return 0;
-                                                    }
-                                                    Direction direction = horizontalDirection(
-                                                            StringArgumentType.getString(context, "direction"));
-                                                    if (direction == null) {
-                                                        source.sendFailure(Component.literal(
-                                                                "Use north, east, south, or west"));
-                                                        return 0;
-                                                    }
-                                                    var result = TransportCoordinator.startWoodBridge(
-                                                            source.getLevel(), id,
-                                                            BlockPosArgument.getBlockPos(context, "near_bank_foot"),
-                                                            direction);
-                                                    return report(source, result);
-                                                }))))));
+                                                .executes(context -> startBridgeCommand(
+                                                        context.getSource(), context, null))
+                                                .then(Commands.argument("kind", StringArgumentType.word())
+                                                        .executes(context -> startBridgeCommand(
+                                                                context.getSource(), context,
+                                                                StringArgumentType.getString(context, "kind")))))))));
+    }
+
+    /** Start a bridge of the named kind, defaulting to the wooden one when the word is absent. */
+    private static int startBridgeCommand(CommandSourceStack source, com.mojang.brigadier.context.CommandContext<CommandSourceStack> context,
+                                          String kindWord) {
+        String id = settlementId(source.getLevel());
+        if (id == null) {
+            source.sendFailure(Component.literal("No settlement in this dimension"));
+            return 0;
+        }
+        Direction direction = horizontalDirection(StringArgumentType.getString(context, "direction"));
+        if (direction == null) {
+            source.sendFailure(Component.literal("Use north, east, south, or west"));
+            return 0;
+        }
+        TransportPlan.Kind kind = TransportPlan.Kind.WOOD_BRIDGE;
+        if (kindWord != null) {
+            kind = switch (kindWord.toLowerCase(Locale.ROOT)) {
+                case "wood" -> TransportPlan.Kind.WOOD_BRIDGE;
+                case "stone" -> TransportPlan.Kind.STONE_BRIDGE;
+                default -> null;
+            };
+            if (kind == null) {
+                source.sendFailure(Component.literal("Use wood or stone"));
+                return 0;
+            }
+        }
+        return report(source, TransportCoordinator.startBridge(source.getLevel(), id,
+                BlockPosArgument.getBlockPos(context, "near_bank_foot"), direction, kind));
     }
 
     private static String settlementId(ServerLevel level) {

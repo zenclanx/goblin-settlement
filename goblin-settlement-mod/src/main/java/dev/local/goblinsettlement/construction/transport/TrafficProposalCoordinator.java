@@ -138,7 +138,8 @@ public final class TrafficProposalCoordinator {
         BlockPos nearBankFoot = StraightLineProbe.surfaceFoot(level, settlementId,
                 nearBankColumn, anchor.getY());
         Direction direction = dominantDirection(anchor, target);
-        var result = TransportCoordinator.startWoodBridge(level, settlementId, nearBankFoot, direction);
+        var result = TransportCoordinator.startBridge(level, settlementId, nearBankFoot, direction,
+                TransportPlan.Kind.WOOD_BRIDGE);
         if (!result.accepted()) {
             // BridgePlanner's strict survey rejected the crossing; fall back to a road,
             // exactly as the design's risk note prescribes.
