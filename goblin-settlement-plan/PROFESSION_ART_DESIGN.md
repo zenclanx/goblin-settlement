@@ -1,0 +1,115 @@
+# 职业美术接入 设计（第一轮：农民）
+
+更新日期：2026-09-28。依据：GAME_DESIGN 第 3 节职业表（各职业有识别外观：农民＝草帽、锄头；林工＝斧头、肩带……）；`Models/goblin_professions_a/README.md` 与各职业 README 的接入规格；CURRENT_STATUS「美术候选」段。
+
+上一轮（`ART_INTEGRATION_DESIGN.md`，第六十一轮）接入的是**成年男女的基础身体**，并把八个职业的旧 64×64 贴图删掉，导致**七个职业暂时长得一模一样**——那是上一轮唯一可见的退步，且已由用户确认。本轮开始把它补回来。
+
+## 0. 范围
+
+| | 内容 |
+| --- | --- |
+| **本轮做** | **农民**一套（男、女）的职业外观进游戏，跑通「职业 × 性别 → 选模型与贴图」这条本轮真正的新逻辑 |
+| **用户已定的三处** | ①先只做农民一套（男女），管线确认后再铺开；②**只接外观**，手持锄头留到"工具成为物品"那一轮；③用**组合模型**（下节 §2），不做基础 + 装备分层 |
+| **明确不做** | 其余六职业（**含尚未经用户审阅的哨卫 P07**）、手持道具、儿童、五款傀儡、音效、公告牌方块 |
+| **不新增** | 不改生成器的算法、不改存档结构、不动实体的职业同步链路 |
+
+## 1. 现状（已核对）
+
+**美术侧交付**（`Models/goblin_professions_a/`）：七职业 × 男女各有**组合工程**（`goblin_<职业>_<性别>_pNN.bbmodel` + 1024×1024 PNG）、**独立装备工程**、**带手持道具的检查副本**，以及每职业一份 `manifest.json`。P01 农民至 P06 工匠已获用户认可；**P07 哨卫待用户审阅**。
+
+**组合工程的形状（本轮实地核对，两套农民工程）**：
+
+| | 基础（上一轮） | 农民组合 |
+| --- | --- | --- |
+| 顶层分组 | 六个 | **六个**（`head` / `body` / `left_arm` / `right_arm` / `left_leg` / `right_leg`） |
+| `meta.box_uv` | 真 | 真 |
+| 元素带 `faces` | 无 | **无** |
+| 多轴旋转元素 | 无 | **无** |
+| 缺 `uv_offset` 的元素 | 无 | **无** |
+| `resolution` | 256×256 | **512×512** |
+| PNG | 512×512 | **1024×1024** |
+| 立方体数 | 108 / 129 | 130 / 152 |
+
+**结论：现有生成器一行不改就能吃下组合工程。** 上面每一行都正好落在 §3.4 的"支持"一侧；`LayerDefinition.create(mesh, u, v)` 的 `u`/`v` 由生成器读 `resolution` 得出，所以 512 是自动的。
+
+**`manifest.json` 给了什么**：基础工程路径与其 sha256、组合中被**移除**的基础部件名（斜肩带、腰扣那一批）、被**内缩**以避免共面闪纹的部件名、装备工程名、组合工程名，以及**装备部件 uuid → 骨骼名**的映射。**按方案 A 这些都不需要读**——美术已经在组合工程里装配完毕——但它是"组合里发生过什么"的记录，将来改用分层式时会用上。
+
+**代码侧现状**：
+
+- `client/GoblinRenderer.java` 是"二选一"：`this.model = state.female ? female : male`，贴图 `TEXTURE_MALE` / `TEXTURE_FEMALE`。
+- `client/GoblinRenderState` 已有 `profession` 与 `female` 两个字段（上一轮建立），**本轮的输入已经齐了，不需要新增同步字段**。
+- `colony/Profession` 是 `UNASSIGNED` + 七职业的枚举。
+- `SettlementSavedData.assignProfession` 是**一次性**的（只给当前 `UNASSIGNED` 的成人赋值，其余一律返回 false），所以今天**居民不会转岗**——外观烧进网格这件事在今天的规则下不会出问题。
+- 生成器的 `MODELS` 表把"项目 id → 工程路径 + 生成的类名"列在一起；`artModelCheck` 上一轮已改成**由裁剪件清单驱动**，并要求每个裁剪件都有对应的模型映射（缺映射直接报错）。
+
+## 2. 数据流与新增产物
+
+```text
+Models/goblin_professions_a/goblin_farmer_{male,female}_p01.bbmodel
+   │  python tools/generate_models.py --crop
+   ▼
+goblin-settlement-mod/tools/models/goblin_farmer_{male,female}_p01.json     [进仓]
+   │  python tools/generate_models.py
+   ▼
+client/model/GoblinFarmer{Male,Female}Model.java                            [进仓，生成物]
+   │  LayerDefinition.create(mesh, 512, 512)   ← 由 resolution 自动得出
+   ▼
+ModelLayerLocation goblin_farmer_male / goblin_farmer_female
+   │
+   ▼
+渲染器按 (职业, 性别) 选中
+```
+
+贴图：`Models/goblin_professions_a/goblin_farmer_{male,female}_p01.png`（1024×1024）复制到
+`src/main/resources/assets/goblin_settlement/textures/entity/goblin_farmer_{male,female}.png`。
+
+**生成器只加两行**（`MODELS` 表的两项）。算法、裁剪格式、拒绝规则一律不动。
+
+## 3 客户端怎么选（本轮的核心）
+
+现在是"二选一"，而七职业做完就是**十六选一**（2 基础 + 7×2 职业）。所以不写成一堆字段，写成**按性别分组的小结构**：
+
+```java
+/** 某一性别可用的身体：基础一套，外加每个已有美术的职业一套。 */
+private record Bodies(EntityModel<GoblinRenderState> base,
+                      Map<Profession, EntityModel<GoblinRenderState>> outfits) {
+    EntityModel<GoblinRenderState> forProfession(Profession profession) {
+        return outfits.getOrDefault(profession, base);
+    }
+}
+```
+
+- 渲染器持有 `Bodies male` 与 `Bodies female`；`submit` 里
+  `this.model = (state.female ? female : male).forProfession(state.profession);`
+- 贴图同构：每性别一份 `Map<Profession, Identifier>`，`getTextureLocation` 走同一次查表，缺省回基础贴图。
+- **退回基础身体是刻意的**：其余六职业的美术虽已交付但本轮不接，退回基础身体保证它们仍正常渲染，而不是变成缺贴图。**这也是本轮唯一的行为变化**——除了农民，其他职业与上一轮完全一样。
+- 登记处：`GoblinSettlementClient` 多注册两个模型层；`GoblinModel`（傀儡占位）与 `GOLEM_LAYER` 一律不动。
+
+## 4 验证
+
+- **已有检查自动扩展**：`artModelCheck` 已由裁剪件清单驱动，加两个裁剪件即自动纳入——验六个分组名、脚底在艺术地面线、盒式 UV 不越出贴图、**PNG 像素恰为 `resolution` 的两倍**（512 → 1024），以及烘制后六个分组的位置。**若忘记给新裁剪件登记模型映射，它会直接报错**（这是上一轮补上的那条）。
+- **新增一条覆盖性断言**：设计声称"农民有职业外观"。要在构建期钉住的是——**每个在代码里登记了职业外观的 `(职业, 性别)`，在裁剪件清单里都有对应项**。防的是"注册了但资源没进仓"：那种情况在游戏里只表现为缺贴图占位，是**纯运行时故障，构建期看不见**。
+  **默认做法**：并入既有的 `artModelCheck`，**检查总数保持 21 项不变**。只有当实现时确认它既不需要客户端类、又与裁剪件校验毫无关系时，才单开一项，并在日志里说明为什么不能并。
+- 完整离线构建 + 全部检查。
+- **不可纯测**（照例写进日志与状态文件）：帽子在头上转动的实际效果、1024 贴图的观感与显存占用、职业外观在缩放/远距离下是否仍可辨认、多人同屏性能。
+
+## 5 风险与已知边界
+
+- **1024 贴图配 512 逻辑 UV** 是**所有职业共用的新拓扑**，理解错就整体纹理错位：靠"先只做农民一套"与 PNG 尺寸断言兜住。
+- **外观烧进网格**：组合式做不到"拆掉配饰恢复基础角色"。今天不需要（居民不转岗，`assignProfession` 一次性），但**若将来要"职业装备可掉落/可换"，得改架构**。这条边界要写进状态文件。
+- **模型数与贴图数随职业线性增长**：七职业全做完是 14 个模型类 + 14 张 1024 贴图。可接受，但值得记一笔，作为"何时该改分层"的判据。
+- **哨卫 P07 未经审阅**：本轮不接它，所以它的造型改动不影响本轮；接它之前应先取得用户认可。
+- **其余六职业退回基础身体**：这是本轮期间的可见中间态（比上一轮好一点——至少农民不再与它们相同）。
+- **仍未做游戏内验证**：与整支分支一样。
+
+## 6 后续轮次的落点
+
+1. **其余六职业**（林工、矿工、建筑工、搬运员、工匠，以及待审的哨卫）：同一管线铺开，每加一个职业就是 `MODELS` 表两行 + 两张贴图 + 登记两处。
+2. **手持道具**：等"工具成为物品"那一轮，用 `manifest.json` 里记的挂点偏移，做成挂在手臂上的渲染层。
+3. **儿童**：模型 + 更小的实体尺寸与缩放 + 年龄同步（本轮仍未引入年龄同步）。
+4. **五款傀儡**：五个模型 + 等级同步（`GoblinGolemEntity.tier` 至今**没有同步到客户端**）+ 核心发光的独立渲染层。
+5. **音效与公告牌**：美术的首批样板（4 段样音、公告牌外观）**尚未经用户审阅**，且整套音效与物品/设施图标要等审阅后才扩量；公告牌是一个功能方块（注册、方块状态、放置、交互、动态信息都在代码侧），属功能轮而非美术轮。
+
+## 7 落地结果（实现后补记）
+
+（待本轮实现后补写。）
