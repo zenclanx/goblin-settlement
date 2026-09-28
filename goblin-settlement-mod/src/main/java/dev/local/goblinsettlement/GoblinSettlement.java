@@ -38,6 +38,7 @@ import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.mining.MiningCoordinator;
 import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.housing.BedProvisioningCoordinator;
+import dev.local.goblinsettlement.housing.HousingAssignmentCoordinator;
 import dev.local.goblinsettlement.housing.HousingBlueprints;
 import dev.local.goblinsettlement.housing.HousingCoordinator;
 import dev.local.goblinsettlement.housing.HousingSavedData;
@@ -287,6 +288,7 @@ public final class GoblinSettlement implements ModInitializer {
         SmeltingCoordinator.tick(level);
         HousingCoordinator.tick(level);
         BedProvisioningCoordinator.tick(level);
+        HousingAssignmentCoordinator.tick(level);
         PatrolCoordinator.tick(level);
         DefenseCoordinator.tick(level);
         FamilyCoordinator.tick(level);
