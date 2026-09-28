@@ -22,10 +22,6 @@ public final class TrafficProposalCoordinator {
     private static final long PROPOSAL_INTERVAL_TICKS = 1200; // 60 seconds
     private static final long DEFERRAL_TICKS = 24000; // 20 minutes, the expansion window's scale
     private static final int ROAD_MIN_PLANKS = 8;
-    private static final int BRIDGE_MIN_PLANKS = 8;
-    private static final int BRIDGE_MIN_LOGS = 4;
-    private static final int BRIDGE_MIN_FENCES = 4;
-    private static final int BRIDGE_MIN_TORCHES = 4;
 
     private TrafficProposalCoordinator() {
     }
@@ -104,9 +100,18 @@ public final class TrafficProposalCoordinator {
         var sample = StraightLineProbe.sample(level, settlementId, anchor, targetPos);
         var decision = TrafficDecision.decide(sample.columns(), sample.targetIndex(),
                 BridgePlanner.MIN_WOOD_SPAN, BridgePlanner.MAX_WOOD_SPAN);
-        switch (decision.kind()) {
+        TransportPlan.Kind kind = decision.kind() == TrafficDecision.Kind.BRIDGE
+                ? TransportPlan.Kind.WOOD_BRIDGE : null;
+        if (kind == null) {
+            decision = TrafficDecision.decide(sample.columns(), sample.targetIndex(),
+                    BridgePlanner.MIN_STONE_SPAN, BridgePlanner.MAX_STONE_SPAN);
+            if (decision.kind() == TrafficDecision.Kind.BRIDGE) {
+                kind = TransportPlan.Kind.STONE_BRIDGE;
+            }
+        }
+        switch (kind == null ? decision.kind() : TrafficDecision.Kind.BRIDGE) {
             case BRIDGE -> proposeBridge(level, settlement, traffic, settlementId, anchor,
-                    targetPos, decision);
+                    targetPos, decision, kind);
             case ROAD -> {
                 // Material shortage is not a proposal failure; supplies will catch up.
                 if (PublicWarehouseInventory.countOf(level, settlement, Items.OAK_PLANKS)
@@ -126,12 +131,12 @@ public final class TrafficProposalCoordinator {
     private static void proposeBridge(ServerLevel level, SettlementSavedData settlement,
                                       TransportSavedData traffic, String settlementId,
                                       BlockPos anchor, BlockPos target,
-                                      TrafficDecision.Decision decision) {
-        if (PublicWarehouseInventory.countOf(level, settlement, Items.OAK_PLANKS) < BRIDGE_MIN_PLANKS
-                || PublicWarehouseInventory.countOf(level, settlement, Items.OAK_LOG) < BRIDGE_MIN_LOGS
-                || PublicWarehouseInventory.countOf(level, settlement, Items.OAK_FENCE) < BRIDGE_MIN_FENCES
-                || PublicWarehouseInventory.countOf(level, settlement, Items.TORCH) < BRIDGE_MIN_TORCHES) {
-            return; // material shortage is not a proposal failure; supplies will catch up
+                                      TrafficDecision.Decision decision, TransportPlan.Kind kind) {
+        for (var entry : BridgeMaterials.required(kind).entrySet()) {
+            if (PublicWarehouseInventory.countOf(level, settlement, entry.getKey().item())
+                    < entry.getValue()) {
+                return; // material shortage is not a proposal failure; supplies will catch up
+            }
         }
         BlockPos nearBankColumn = StraightLineProbe.columnAt(anchor, target,
                 decision.gapStartInclusive() - 1);
@@ -139,7 +144,7 @@ public final class TrafficProposalCoordinator {
                 nearBankColumn, anchor.getY());
         Direction direction = dominantDirection(anchor, target);
         var result = TransportCoordinator.startBridge(level, settlementId, nearBankFoot, direction,
-                TransportPlan.Kind.WOOD_BRIDGE);
+                kind);
         if (!result.accepted()) {
             // BridgePlanner's strict survey rejected the crossing; fall back to a road,
             // exactly as the design's risk note prescribes.
