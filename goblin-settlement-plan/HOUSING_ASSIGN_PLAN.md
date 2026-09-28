@@ -40,18 +40,18 @@
 在 `SettlementSavedDataCheck` 的 `main` 里、`require(data.markResidentDead("resident-adult"), ...)` **之前**加：
 
 ```java
-        require(data.assignHome("resident-adult", new BlockPos(12, 64, 12)),
+        require(data.assignHome("resident-adult", java.util.Optional.of(new BlockPos(12, 64, 12))),
                 "a living resident can be given a home");
         require(data.resident("resident-adult").orElseThrow().home()
                         .equals(java.util.Optional.of(new BlockPos(12, 64, 12))),
                 "the home is recorded on the roster");
-        require(data.assignHome("resident-adult", new BlockPos(20, 64, 20)),
+        require(data.assignHome("resident-adult", java.util.Optional.of(new BlockPos(20, 64, 20))),
                 "a home can be changed, unlike a trade or a role");
         require(data.assignHome("resident-adult", java.util.Optional.empty()),
                 "and it can be cleared");
         require(data.resident("resident-adult").orElseThrow().home().isEmpty(),
                 "clearing leaves no home behind");
-        require(data.assignHome("resident-adult", new BlockPos(12, 64, 12)),
+        require(data.assignHome("resident-adult", java.util.Optional.of(new BlockPos(12, 64, 12))),
                 "and set again");
         checkHomeSurvivesEveryRosterEdit();
 ```
@@ -189,11 +189,11 @@ Expected: `BUILD SUCCESSFUL`，19 项检查全部 `*Check passed`（本任务**�
 
 Run: `grep -n "new ResidentRecord" src/main/java/dev/local/goblinsettlement/colony/ResidentRecord.java`
 
-Expected: **8 处**，每处的最后一个实参都是 `home` 或 `Optional.empty()`（`adult` / `child` 两个工厂是 `Optional.empty()`，其余六个是 `home`）。**数一数，不要靠看。**
+Expected: **9 处**——本任务前原有的 **8 处**（`adult` / `child` 两个工厂，以及 `withReproductiveRole` / `withProfession` / `advanceFamilyTime` 两分支 / `withPostBirthRest` / `deceased`），加上本任务新写的 `withHome` 自身那一处。逐一核对：两个工厂的末参是 `Optional.empty()`，其余七处的末参是 `home`（`withHome` 是 `value`）。**数一数，不要靠看**——`advanceFamilyTime` 每 tick 都跑，漏一处就是把归属静默清空。
 
 再 Run: `grep -rn "new ResidentRecord" src/main/java/`
 
-Expected: **只有 `ResidentRecord.java` 里那 8 处**——`SettlementSavedData` 造居民走 `adult` / `child` 工厂，本轮不需要改它那两行。
+Expected: **只有 `ResidentRecord.java` 里那 9 处**——`SettlementSavedData` 造居民走 `adult` / `child` 工厂，本轮不需要改它那两行。
 
 - [ ] **Step 7: 提交**
 
