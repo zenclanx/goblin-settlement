@@ -166,4 +166,79 @@ ModelLayerLocation goblin_male#main / goblin_female#main
 
 ## 10. 落地结果（实现后补记）
 
-（待本轮实现后补写。）
+### 10.1 生成器的最终形态
+
+`goblin-settlement-mod/tools/generate_models.py`，两个入口，**刻意分开**：
+
+- `--crop`：读 `Models/` 下的 `.bbmodel` 工程（如 `Models/goblin_male_a_final/goblin_male_a_final.bbmodel`），只留 `elements` / `groups` / `outliner` / `resolution` / `name`，写到 `goblin-settlement-mod/tools/models/`（如 `goblin_male_a.json`）。
+- 默认运行：读那份裁剪件，产出 Java。
+
+**为什么必须分两步**：`Models/` 不在版本控制里（根 `.gitignore` 是 `/*`，只放行 `.gitignore` / `README.md` / `goblin-settlement-mod/` / `goblin-settlement-plan/`；`git ls-files Models` 为空）。它是美术组的活工作区、随时会变，构建不能依赖它。所以**进仓的裁剪件才是本模组几何的唯一可复现来源**——这是结构性约束，不是取舍。
+
+生成并提交：`GoblinMaleModel.java`、`GoblinFemaleModel.java`，两者都继承**手写**的 `GoblinBodyModel`，后者持有唯一一份共享的程序化 `setupAnim`（从那套占位 `GoblinModel` 逐字搬来）。六个必需分组、公开的 `(ModelPart)` 构造器、`createLayer()` 都由生成器产出。
+
+### 10.2 变换规则是实地验证出来的（不是猜的）
+
+四条规则，**逐条**对上美术自己手工适配的 `GoblinModelCandidate.java`：
+
+1. 分组轴心 = `(-origin.x, 24 - origin.y, origin.z)`；
+2. 立方体的 x 绕其轴心**镜像**，y **翻转**；
+3. 嵌套子组的 `PartPose` 是**相对父级位置**的（"绝对减父级"）；
+4. 单轴 Blockbench 旋转**同号**、以弧度记。
+
+**交叉校验（§3.3）**：`SCALE = 1` 下生成器**逐字重现**那份候选——**108/108 个盒子、16/16 个姿势完全一致，两条差异清单均为空**。
+
+### 10.3 缩放绕地面线，脚底不需要额外补偿量
+
+艺术 y 范围 **0 .. 47**，模型空间地面线 `y = 24`；缩放 0.5 绕地面线做（`y_scaled = 24 + 0.5*(y - 24)`）。脚底（未缩放时的 y=24）因此**钉在原地**、顶端落到 0.5，模型高 **23.5 模型单位 = 1.47 格**，与实体碰撞高 **1.45** 几乎相等——这正是"碰撞箱不动"这个决定成立的原因，不需要另算一个补偿量。
+
+### 10.4 `artModelCheck` 的实际形状
+
+本轮新增的**第 21 项**独立检查，两半：
+
+1. **验提交进仓的裁剪件**（不依赖任何客户端类）：顶层恰好是规定的六个分组名、脚底基准为 0（艺术网格，最低 y == 0）、逐立方体断言其**盒式 UV 展开矩形不越出贴图**（自 `uv_offset` 起算、`2*(w+d)` × `(h+d)`）、以及全部为盒式 UV（不带 `faces`）。
+2. **验真实几何**：调 `createLayer().bakeRoot()` 得到烘好的 `ModelPart`，按名断言六个分组真的在（`root.hasChild(name)`），并带**一条负控**（`!root.hasChild("no_such_part")`），使一个"对什么都答 true 的 `hasChild`"无法让循环变成空转；另断言网格确实带着立方体几何。
+
+**设计 §7.2 的悬而未决项已定**：loom 的 `sourceSets.client` 输出**确实并进了检查任务的 classpath**（`build.gradle` 里 `ArtModelCheck` 那段），所以第二半真的跑起来了，**没有退化成只验裁剪件**。
+
+### 10.5 渲染器切换的最终签名
+
+- `GoblinRenderer` 持有两份烘好的模型；`submit(...)` 在**调 `super.submit(...)` 之前**把选中的那一份赋给受保护的 `model` 字段（`this.model = state.female ? female : male;`）——因为这个版本的提交路径**直接读 `model` 字段、不走 `getModel()`**；`getModel()` 一并覆写以返回 `model`（它是 `RenderLayerParent` 要求的公开读取口）。**与设计 §4.2 一致，无偏离。**
+- 贴图随性别走：`goblin_male.png` / `goblin_female.png`，均 512×512，模型 `LayerDefinition.create(mesh, 256, 256)`。
+
+### 10.6 实现期与设计/计划不符之处
+
+1. **计划自带的生成器 `pose()` 绕 `y = 0` 缩放，而不是绕地面线**——这会让每个模型**上浮 0.75 格**；而交叉校验对它**结构性失明**，因为 `SCALE = 1` 时两种写法重合。已更正为绕 `GROUND` 缩放。
+2. **`ArtModelCheck` 原先把立方体的*空间* x/z 与贴图分辨率相比**——这在任何一个居中的模型上都恒假（它**判错了 108 个正确立方体里的 103 个**）。已换成盒式 UV 展开矩形不越界的判据，审查认定它**强于**被替换的那条。
+3. **设计 §7 第一部分自己写错了同一条不变量**（"所有立方体在 `[0, resolution]` 内"），已就地更正（提交 `5c8be01`）。
+4. **计划提供的一条注释事实错误**：它称渲染器的双重构造"只花一个外壳、不是第二次烘"（`costs a shell, not a second bake`）。追客户端 jar 确认 `bakeLayer` 里**没有任何缓存**，所以那**确实是第二次烘**（在第一次 `submit` 时被丢弃）。**交付源码里的注释已按事实更正**（提交 `15c32e5`）；**计划 Task 4 的代码片段里仍留着旧的错误措辞**，本次收尾未动它。
+5. **计划里一条约束建立在假前提上**：它要求保留 `GOBLIN_LAYER`，理由是"傀儡复用"——**傀儡从来烘的是自己的 `GOLEM_LAYER`**，`GOBLIN_LAYER` 已是死代码，**已删除**（提交 `15c32e5`）。**设计 §1/§5 本来就写对了**，是计划摘要时写岔的；计划那一条已就地更正（提交 `6dfc9f6`）。
+
+### 10.7 性别来源
+
+`ResidentRecord.looksFemale()` 借用既有的 `effectiveReproductiveRole()`，**不新增持久字段**；实体侧 `DATA_FEMALE` 同步标志在与职业同一条周期块里刷新，`GoblinRenderState.female` 把它带到客户端。**与设计 §4.1 一致。**
+
+### 10.8 旧资源处置与遗留物
+
+- **删除**：8 张旧 64×64 贴图（`goblin.png` 与七张职业贴图）以及 `GoblinRenderer` 里按职业切贴图的逻辑。
+- **保留**：`GoblinModel`、`goblin_golem.png`（傀儡线仍用）。`GoblinModel` 这个名字**此后只服务傀儡**（§8 已记的命名瑕疵，未改名）。
+- **遗留物（值得记）**：`goblin-settlement-mod/tools/generate_entity_textures.py` 是**半活跃**的——它写九张 64×64 文件，即本轮退役的那八个名字**加上 `goblin_golem.png`**；而 `goblin_golem.png` 是**它唯一生成、且仍在使用**的产物。重跑它会**重建本轮已退役的资源**，因此**刻意未动**。
+
+### 10.9 未完成与未验证
+
+- **完全没有游戏内验证**：模型观感、光照、缩放与脚底是否真的对、耳朵/头发相对碰撞箱的穿墙程度、多人同屏渲染性能——**全部不可纯测**。
+- **七职业外观现在暂时一致**（退役的职业贴图映射不到 256 逻辑 UV 的模型上）——**本轮唯一可见的退步**，已由用户在开工前确认。
+- **`SCALE = 1` 交叉校验只覆盖成年男**：成年女没有参照候选，她的几何只能依赖生成器本身是对的。
+
+### 10.10 审查遗留项（本轮不修）
+
+1. 裁剪件里一个"含 `rotation` 字段但其值为 null"的元素会抛**裸 `TypeError`**，而不是走生成器的 `fail(...)`；
+2. `ArtModelCheck.checkBaked` **写死了两个模型类**，所以将来加第三份裁剪件会**跳过烘制那一半**；
+3. `SettlementSavedDataCheck.checkAppearanceSex` 里有一条 `require(x == x)` 式断言，是**恒真**的；
+4. `GoblinRenderState.profession` 现在**只写不读**（渲染器不再按职业选贴图）。
+
+### 10.11 验证
+
+完整离线构建 `./gradlew clean build --offline --no-daemon` → **BUILD SUCCESSFUL**，**21 项**独立检查全部 `*Check passed`，**无编译警告**，耗时 **59 秒**。产物 `build/libs/goblin-settlement-0.1.0.jar` = **561852** 字节（上轮 469445：两张 512×512 贴图合计约 92 KB，抵掉删掉的八张 64×64）。
+
+本轮提交，按序：`3eec77a`（设计）· `50cd93f`（计划）· `e8619de`（生成网格）· `8998b84`（烘制检查 + 旋转组拒绝）· `5c8be01`（设计更正）· `5f33769`（性别同步）· `e113d4b`（注册与渲染）· `15c32e5`（删死层、修注释）· `6dfc9f6`（计划更正）。
