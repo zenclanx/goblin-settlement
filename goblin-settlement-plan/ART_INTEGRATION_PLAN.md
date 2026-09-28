@@ -19,7 +19,8 @@
 - **不支持的形状必须明确失败**，不许静默画错：非盒式 UV（`box_uv` 为假或元素带 `faces`）、多于一个非零旋转轴、顶层分组名不是规定的六个、缺 `resolution`。
 - **缩放 0.5 只在一处施加**（生成器里），渲染器里不留缩放魔数。
 - **不新增持久字段**：性别借用 `ResidentRecord.effectiveReproductiveRole()`（设计 §4.1）。
-- **`GoblinModel`、`GOBLIN_LAYER`、`goblin_golem.png` 不许删**——傀儡本轮仍复用它们（设计 §1）。
+- **占位模型不许删**：`GoblinModel` 与 `goblin_golem.png` 仍是傀儡的模型与贴图，`defense/GolemRenderer.java` 在自己的 `GOLEM_LAYER` 下烘它们。
+  **（实现期更正）** 本条原文还写了"`GOBLIN_LAYER` 不许删"，理由是"傀儡复用"——**那条理由不成立**：傀儡一直用的是自己的 `GOLEM_LAYER`，`GOBLIN_LAYER` 在本轮换成 `GOBLIN_MALE_LAYER` / `GOBLIN_FEMALE_LAYER` 之后就没有任何地方烘它了，已是死代码，**已在 Task 4 的修复轮删除**。设计 §1/§5 本来就写对了（点名 `GOLEM_LAYER`），是计划摘要时写岔的。
 - 检查项数由 **20 增至 21**（新增 `artModelCheck`）。构建结束时 21 项必须全部 `*Check passed`。
 - 不做游戏内验证（按用户约定）。模型观感、光照、缩放与脚底是否真的对、穿墙程度都**不可纯测**，写进日志与状态文件。
 - `goblin-settlement-plan/` 下可能有并行 agent 的未提交改动：文档任务先跑 `git status`。`UpdateLog.md` **只许在末尾追加**。
