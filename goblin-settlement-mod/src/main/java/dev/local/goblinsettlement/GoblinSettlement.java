@@ -329,7 +329,7 @@ public final class GoblinSettlement implements ModInitializer {
         var entries = new java.util.ArrayList<String>();
         int notLoaded = 0;
         for (var home : homes) {
-            if (!level.shouldTickBlocksAt(home.bed())) {
+            if (!HousingAssignmentCoordinator.canJudge(level, home.bed())) {
                 notLoaded++;
                 continue;
             }

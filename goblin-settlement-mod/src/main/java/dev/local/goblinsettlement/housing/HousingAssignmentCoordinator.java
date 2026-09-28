@@ -38,19 +38,9 @@ public final class HousingAssignmentCoordinator {
             return;
         }
         String id = settlement.get().id();
-        var judged = new ArrayList<HousingAssignment.HomeSlot>();
-        var unjudged = new HashSet<HousingAssignment.BedKey>();
-        for (var home : HousingSavedData.get(level).homes(id)) {
-            var bed = key(home.bed());
-            if (level.shouldTickBlocksAt(home.bed())) {
-                judged.add(new HousingAssignment.HomeSlot(bed, HousingCoordinator.homeCapacity(level, home)));
-            } else {
-                // Its capacity would read as the air of an unloaded chunk, so it takes no part at all.
-                unjudged.add(bed);
-            }
-        }
+        var view = view(level, id);
         int applied = 0;
-        for (var edit : HousingAssignment.plan(judged, Set.copyOf(unjudged), roster(data))) {
+        for (var edit : HousingAssignment.plan(view.judged(), view.unjudged(), roster(data))) {
             if (applied >= BUDGET) {
                 break;
             }
@@ -96,20 +86,45 @@ public final class HousingAssignmentCoordinator {
         return count;
     }
 
+    /** The homes we can read right now, and the beds of those we cannot. */
+    public record View(List<HousingAssignment.HomeSlot> judged, Set<HousingAssignment.BedKey> unjudged) { }
+
     /**
-     * Whether this home can take one more resident, or empty when it cannot be judged: the bed is not a
-     * registered home, or it sits in a chunk that is not ticking. Callers fall back to their own rule on
-     * empty rather than reading it as "full".
+     * Whether this home's capacity can be read right now. The one gate: the planner, the birth test and
+     * the status line all ask here rather than repeating the chunk test.
      */
-    public static Optional<Boolean> roomAt(ServerLevel level, String id, SettlementSavedData data,
-                                           BlockPos bed) {
-        if (!level.shouldTickBlocksAt(bed)) {
+    public static boolean canJudge(ServerLevel level, BlockPos bed) {
+        return level.shouldTickBlocksAt(bed);
+    }
+
+    /** Every registered home, split into the ones whose capacity we can read and the ones we cannot. */
+    public static View view(ServerLevel level, String id) {
+        var judged = new ArrayList<HousingAssignment.HomeSlot>();
+        var unjudged = new HashSet<HousingAssignment.BedKey>();
+        for (var home : HousingSavedData.get(level).homes(id)) {
+            var bed = key(home.bed());
+            if (canJudge(level, home.bed())) {
+                judged.add(new HousingAssignment.HomeSlot(bed, HousingCoordinator.homeCapacity(level, home)));
+            } else {
+                // Its capacity would read as the air of an unloaded chunk, so it takes no part at all.
+                unjudged.add(bed);
+            }
+        }
+        return new View(List.copyOf(judged), Set.copyOf(unjudged));
+    }
+
+    /**
+     * Whether the settlement has anywhere to put another resident, or empty when nothing can be judged:
+     * there are no registered homes at all, or every one of them sits in a chunk we cannot read. Callers
+     * fall back to their own rule on empty rather than reading it as "full" -- the opening camp registers
+     * no homes, and a hard "no" there would stop it breeding for good.
+     */
+    public static Optional<Boolean> hasRoomAnywhere(ServerLevel level, String id, SettlementSavedData data) {
+        var view = view(level, id);
+        if (view.judged().isEmpty()) {
             return Optional.empty();
         }
-        var home = HousingSavedData.get(level).homes(id).stream()
-                .filter(candidate -> candidate.bed().equals(bed))
-                .findFirst();
-        return home.map(found -> occupancy(data, bed) < HousingCoordinator.homeCapacity(level, found));
+        return Optional.of(HousingAssignment.hasRoom(view.judged(), roster(data)));
     }
 
     private static List<HousingAssignment.ResidentSlot> roster(SettlementSavedData data) {

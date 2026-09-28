@@ -18,6 +18,8 @@ public final class HousingAssignmentCheck {
         checkNothingToDoProducesNothing();
         checkApplyingThePlanIsIdempotent();
         checkOccupancyCountsTheResidentsPointingHere();
+        checkMixedBatchOrdering();
+        checkHasAnyRoom();
         System.out.println("HousingAssignmentCheck passed");
     }
 
@@ -126,6 +128,38 @@ public final class HousingAssignmentCheck {
                 "occupancy counts the residents pointing at this bed");
         require(HousingAssignment.occupancy(roster, bed(20, 0)) == 1, "and only those");
         require(HousingAssignment.occupancy(roster, bed(99, 0)) == 0, "an unoccupied bed counts nobody");
+    }
+
+    /**
+     * A batch holding both an assignment and an unbind. bedFor sorts the unbind by the bed it leaves and
+     * the assignment by the bed it joins, so the two must interleave by their reference bed, not by kind.
+     */
+    private static void checkMixedBatchOrdering() {
+        var homes = List.of(home(10, 0, 1), home(20, 0, 1), home(30, 0, 1));
+        var roster = List.of(resident("a", bed(10, 0)), resident("b", bed(10, 0)),
+                resident("c", bed(20, 0)), resident("d", bed(5, 0)));
+        var changes = HousingAssignment.plan(homes, Set.of(), roster);
+        // The first home keeps only a (capacity 1); b is evicted into the empty third home; d's home does
+        // not exist and nothing is left to hold it; c stays where it is and emits no edit.
+        require(changes.size() == 2, "one assignment and one unbind, in that batch");
+        require(changes.get(0).residentId().equals("d") && changes.get(0).home().isEmpty(),
+                "the unbind sorts by the bed it leaves (x=5), ahead of the assignment");
+        require(changes.get(1).residentId().equals("b")
+                        && changes.get(1).home().equals(Optional.of(bed(30, 0))),
+                "and the assignment sorts by the bed it joins (x=30)");
+    }
+
+    private static void checkHasAnyRoom() {
+        require(HousingAssignment.hasRoom(List.of(home(10, 0, 2)), List.of(resident("a", bed(10, 0)))),
+                "a home with a free slot has room");
+        require(!HousingAssignment.hasRoom(List.of(home(10, 0, 1), home(20, 0, 1)),
+                        List.of(resident("a", bed(10, 0)), resident("b", bed(20, 0)))),
+                "every home exactly full has no room");
+        require(!HousingAssignment.hasRoom(List.of(home(10, 0, 1)),
+                        List.of(resident("a", bed(10, 0)), resident("b", bed(10, 0)))),
+                "a home over capacity has no room");
+        require(!HousingAssignment.hasRoom(List.of(), List.of(resident("a", null))),
+                "no homes at all has no room");
     }
 
     private static HousingAssignment.BedKey bed(int x, int z) {

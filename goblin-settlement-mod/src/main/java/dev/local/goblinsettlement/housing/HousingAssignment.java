@@ -48,11 +48,28 @@ public final class HousingAssignment {
     }
 
     /**
+     * Whether any home we can judge still has a free slot. False when every judged home is full; an
+     * empty list is false too, which is why callers must decide for themselves what "nothing to judge"
+     * means rather than reading this as full.
+     */
+    public static boolean hasRoom(List<HomeSlot> homes, List<ResidentSlot> residents) {
+        for (HomeSlot home : homes) {
+            if (occupancy(residents, home.bed()) < home.capacity()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Where everyone should live, as the edits that get them there. Empty when nothing needs to change.
      *
      * A home we cannot judge (its chunk is not ticking, so its capacity is unknowable) takes no part in
      * the assignment, and the residents living in it are left exactly as they are: reading an unloaded
      * home as full would evict people from a house that is perfectly fine.
+     *
+     * Resident ids are unique by contract -- the roster has one entry per id, and the caller's mapping
+     * filters by it -- so a duplicate id never reaches here; if one did, the result is undefined.
      */
     public static List<Change> plan(List<HomeSlot> homes, Set<BedKey> unjudged,
                                     List<ResidentSlot> residents) {

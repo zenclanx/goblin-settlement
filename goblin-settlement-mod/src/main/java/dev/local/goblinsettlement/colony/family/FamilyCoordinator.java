@@ -61,11 +61,11 @@ public final class FamilyCoordinator {
         Housing housing = housing(level, data, settlement.get().id(), settlement.get().anchor(),
                 occupied + 1);
         boolean foodForBirth = supply.complete() && supply.food() >= 2 * occupied;
-        boolean spareBed = housing.count() >= occupied;
+        boolean housingAvailable = roomForAnother(level, data, settlement.get().id(),
+                housing.count() >= occupied);
         for (var pregnancy : data.readyBirths()) {
             FamilyConditions conditions = conditions(level, pregnancy.motherId(), pregnancy.fatherId(),
-                    roomForMother(level, data, settlement.get().id(), pregnancy.motherId(), spareBed),
-                    foodForBirth);
+                    housingAvailable, foodForBirth);
             if (!housing.beds().isEmpty() && data.commitBirth(pregnancy.childId(), conditions)) {
                 placePendingNewborns(level, data, settlement.get().id(), settlement.get().anchor());
             }
@@ -130,17 +130,14 @@ public final class FamilyCoordinator {
     }
 
     /**
-     * The bed test GAME_DESIGN section 4 asks for, applied to the mother's own home: her house must
-     * actually hold one more. A mother the roster gives no home, whose home is gone, or whose home we
-     * cannot read right now falls back to the settlement-wide test -- without that fallback the opening
-     * camp, which registers no homes at all, would never see another birth.
+     * Whether there is anywhere to put another resident: some home in the settlement still has a free
+     * slot. When nothing can be judged -- no registered homes at all, or every one of them in a chunk we
+     * cannot read -- this falls back to the settlement-wide bed count. Without that fallback the opening
+     * camp, which registers no homes, would never see another birth.
      */
-    private static boolean roomForMother(ServerLevel level, SettlementSavedData data, String id,
-                                         String motherId, boolean settlementHasSpareBed) {
-        return data.resident(motherId)
-                .flatMap(ResidentRecord::home)
-                .flatMap(bed -> HousingAssignmentCoordinator.roomAt(level, id, data, bed))
-                .orElse(settlementHasSpareBed);
+    private static boolean roomForAnother(ServerLevel level, SettlementSavedData data, String id,
+                                          boolean settlementHasSpareBed) {
+        return HousingAssignmentCoordinator.hasRoomAnywhere(level, id, data).orElse(settlementHasSpareBed);
     }
 
     private static GoblinCitizenEntity entity(ServerLevel level, String id) {
