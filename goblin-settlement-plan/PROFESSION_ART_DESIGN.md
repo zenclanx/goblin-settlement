@@ -160,3 +160,16 @@ private record Bodies(EntityModel<GoblinRenderState> base,
 - **组合式做不到"拆掉配饰恢复基础角色"**：今天不需要（居民不转岗，`assignProfession` 一次性），但将来要"职业装备可掉落/可换"就得改架构。
 - **其余六职业未接**，含**尚未经用户审阅的哨卫 P07**；儿童、五款傀儡、音效、公告板方块仍未引入（**年龄同步与傀儡等级同步也未引入**）。
 - **音效与公告板是美术交付的首批样板、待用户审阅**；物品图标与设施图标目录因此仍为空。
+
+### 7.9 终审修复波（第六十二轮收尾，全分支终审后）
+
+终审只报一项 Important（**不是 bug，当前无错**）：「安全网看不见一行指向哪个网格类」——四具身体（两具基础 + 农民男女）烘出的顶层轴心完全相同，所以"裁剪件对、类错"的一行能同时通过 `checkBaked` 与 `checkTexture`。四条修复：
+
+1. **裁剪件 ↔ 类的链接：从"手打字符串"改成"写成一个记号"**。`generate_models.py` 在每个生成类的构造器旁多输出一行 `public static final String CROP = "<工程 id>";`（生成头注释与其余输出**逐字未动**；重跑生成器，四份裁剪件 `.json` 的 **sha256 逐字节不变**），`GoblinBodies` 四行的裁剪件字面量全部换成 `GoblinMaleModel.CROP` / `GoblinFemaleModel.CROP` / `GoblinFarmerMaleModel.CROP` / `GoblinFarmerFemaleModel.CROP`。**手打的裁剪件字符串从此不存在**：一行要写裁剪件，必须点名一个生成类（常量本身由**编译器**解析——名字写错编译不过），于是**裁剪件与类写成了同一个记号**，再也写不出一份"和它点名的类对不上"的裁剪件；若把类点成表里另一行已认领的类，那一行会**与那个类自己那一行撞车**（同一裁剪件被两行认领）而**构建失败**。这条链接因此从"人工核对"变成"**写不出不一致 + 点错即失败**"。
+2. **贴图错位进构建**：`checkTexture` 在尺寸断言之后**解码 PNG**（`javax.imageio.ImageIO`）算出**非透明像素的外接矩形**，要求每个元素的盒式 UV 展开矩形（`u0 .. u0+2(w+d)`、`v0 .. v0+(h+d)`，像素 ×2、远边向下取整）落在其中，越界即**点名元素**失败。§5 第一条那条头号风险（1024 贴图配 512 逻辑 UV、整体纹理错位）从此在构建里可见。四具身体实测均有余量：男农民 bbox `(0,0,510,642)`、女农民 `(0,0,508,666)`。
+3. **`getAsDouble()` 落到元素坐标**（关闭 §7.7 第 2 条）：`checkCrop` 读元素 `from`/`to` 与最低/最高改用 `getAsDouble()` + 既有 `1e-3` 容差；`resolution` 仍是整数，分组轴心仍是整数（四份裁剪件逐份核对过），位姿断言仍然精确。
+4. **并行 map 收敛、命名空间归位**（关闭 §7.7 第 1、3 条）：`GoblinRenderer.Bodies` 的 `outfits` / `textures` 两张并列 map 收成一个 `Map<Profession, Outfit>`（`record Outfit(EntityModel<GoblinRenderState> model, Identifier texture)`——模型与贴图**按构造成对**，改一处忘另一处不可能再发生），行为不变；贴图命名空间改用 `GoblinSettlement.MOD_ID` 取代字面量。**§7.7 三条 parked 至此全部关闭。**
+
+**验证**：`./gradlew clean build --offline --no-daemon` → **BUILD SUCCESSFUL**，**21 项**独立检查全部 `*Check passed`（`artModelCheck passed (4 crops, 4 baked models)`；**不新增检查任务**——新断言在 `artModelCheck` 内部），**无编译警告**，耗时 **52 秒**；`build/libs/goblin-settlement-0.1.0.jar` = **702463** 字节。**非空转证明**（均在临时副本上做完即还原、工作树干净）：把农民男那一行**连类一起**指向 `GoblinMaleModel` → `artModelCheck` 失败 `Duplicate key goblin_male_a`（**构建失败，不是 javac**）；把农民男裁剪件里 `farmer_hat_crown_top` 的 `uv_offset` 从 `[0,280]` 挪到 `[0,480]`（裁剪那一半仍通过）→ **新断言失败**并点名该元素。完整命令与输出见 `.superpowers/sdd/PROFESSION_ART_PLAN/final-fix-report.md`。
+
+**残留（本轮未关，记档待裁决）**：第 1 条只把**裁剪件那一处**绑到类上；一行的 `createLayer` / 构造器仍是**另行书写的表达式**。因此"保留正确的 `Xxx.CROP`、只把这两个工厂换成别的类"（也就是终审那条 Important 的**另一半**：右裁剪件、错类）**仍能通过全部检查**——只是这样的行会把两个不同的类名并排写在同一行里，肉眼可见。若要彻底关掉，得让"类"在一行里只点名一次（例如由生成类同时给出裁剪件与两个工厂的**捆绑常量**），属结构性改动，本轮**未做**。
