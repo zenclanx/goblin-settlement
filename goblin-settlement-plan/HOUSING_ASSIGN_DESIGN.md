@@ -200,4 +200,39 @@ conditions(level, motherId, fatherId, housing.count() >= occupied, foodForBirth)
 
 ## 10. 落地结果（实现后补记）
 
-（待本轮实现后补写。）
+本轮（**第六十轮：住宅住户分配**）已实现并提交到 `main`，13 个提交，从设计/计划（`70a3d31`）到本轮最后一个提交（`e6b9edc`）。§0 的四条范围全部落地，逐条对照如下；末尾列明**未做**与**顺带更正**。
+
+### 10.1 逐条交付
+
+- **① 归属只存在居民侧（§2）**：`ResidentRecord` 新增 `Optional<BlockPos> home`，`BlockPos.CODEC.optionalFieldOf("home")` 读入、无默认值（旧档读作**无房**），**未升 schema 版本**。`withHome` 是无条件取值变换，`SettlementSavedData.assignHome(String, Optional<BlockPos>)` 只做"找到 id、替换、标脏"。§2.3 点名的陷阱是**真陷阱**：`ResidentRecord.java` 内 **8 处既有的 `new ResidentRecord(...)`** 全部需要串上 `home`——`advanceFamilyTime` 每 tick 都跑，漏一处就会静默清空那个居民的归属。计划 Step 6 原写"8 处居民构造"，**正确的总数是 9**（8 处既有 + 新增的 `withHome` 一处），见 §10.3。
+- **② 分配是一条纯规则（§3）**：新增 `housing/HousingAssignment`，**只吃 int 与 record、不碰 Minecraft 类型**。三趟推导出**完整目标状态**：先对每栋已判定的房子按容量保留最低 id 的住户、其余解除；再把归属指向"已消失或不可判定房子"的居民解除；最后把剩下的无房居民放进第一栋有空位的房子；输出的是**净变化**（不是三条规则的动作序列），因而幂等。新增本轮**第 20 项**独立检查 `housingAssignmentCheck`（此前 19 项），覆盖无房者入房、全满留作无房、消失解除、超容按 id 保留、确定性、输出顺序、`unjudged`、只含真变化、幂等。
+- **③ 硬约束落到户（§4、§5）**：`FamilyCoordinator` 的生育门从聚落级的 `housing.count() >= occupied` 改为先问**母亲自己那栋房**的 `roomForMother`（住户数 < 容量才放行）；该房**不可判定**（母女无归属 / 房子已消失 / 房子不可 tick）时**回落到旧的聚落级判据**，`!housing.beds().isEmpty()` 保留不动。新居民（含新生儿）与任何无房居民走同一条 §3 规则——有房有空位就进，住不下就**留作无房**，不新造需求机制，"缺房 → `HOUSING` 需求档 → 扩建"那条既有链路**一行未改**。放床逃生口原样保留。
+- **④ 显示（§7）**：`status` 的 `Housing:` 汇总行末尾追加 `homeless=K`；既有的 `Housing work:` 行改成逐栋的 `Homes:` 行，每栋给出**住几人/容量**，卡住的栋在原位带上原因——**沿用现成的 `housingReportLine` 门禁**（它本就问 `HousingCoordinator.blockedReason`），不重写、不新抄一遍。一栋 home 都没有时输出 `Homes: none`。
+- **容量的唯一算式（§8 的委派）**：`HousingCoordinator.homeCapacity` 成为"这栋房能住几人"的**唯一算式**，`shelterCapacity` 改为 `stage1Built ? homeCapacity : 0`（逐字等价的委派）。`housingRulesCheck` 按设计的理由**不新增断言**（委派等价，既有 `builtCapacity` 的两条腿断言继续覆盖它）。这一条**不是一次就做对的**，见 §10.3 第 4 条。
+
+### 10.2 节点与实测
+
+- 新增 `housing/HousingAssignmentCoordinator`：每 `INTERVAL_TICKS = 40` tick 读一次世界（扫名册 + 逐房过 `level.shouldTickBlocksAt` + 读容量）→ 调纯规则 → 按 `BUDGET = 8` 截断 → 逐条 `assignHome`，接入 `GoblinSettlement.tickSettlement`，**排在 `BedProvisioningCoordinator.tick` 之后、`PatrolCoordinator.tick` 之前**（床先落地、归属先算好，生育门才读到新鲜的）。两个常量都带"发明值、无依据、须按实测重定"的源码注释（见 §10.3 第 5 条）。
+- 完整离线构建 `./gradlew clean build --offline --no-daemon`：**BUILD SUCCESSFUL**，**20** 项独立检查全部 `*Check passed`，**无编译警告**，耗时 **1m 3s**。产物 `build/libs/goblin-settlement-0.1.0.jar` = **468421** 字节。
+
+### 10.3 实现期更正的缺陷（**全部在计划/设计文本，不在交付的代码**）
+
+- 计划 Task 1 的测试片段把裸 `BlockPos` 传给 `assignHome`，而它声明的签名收 `Optional<BlockPos>`；同任务 Step 6 的 grep 期望写"8 处居民构造"，**正确是 9**。
+- 计划 Task 1 的旧档夹具漏了 `"schema_version"`，而 `SettlementSavedData.CODEC` 用 `fieldOf`（**必填**）、不是 `optionalFieldOf`——**早先一次对本代码库的调查把它报错了，计划继承了这个错误**。
+- 设计的 §8 要求两条 `settlementSavedDataCheck` 断言，计划漏了：居民 `home` 经 encode/decode 后仍在；无 `home` 键的文档读入后**是无房**。
+- **Task 3 未由其自己的简报完成**：`BedProvisioningCoordinator.spareCapacityAnchors` 还在内联算同一份未加闸的容量，直到一次后续提交把它合并到 `HousingCoordinator.homeCapacity`，"房子容量的唯一算式"才真的成立。
+- Task 4 交付的常量**未满足设计 §6** 关于发明值须带"没有依据、须按实测重定"注释的要求——`INTERVAL_TICKS` 一处注释都没有。
+- Task 6 重写了方法的行为，却把 Javadoc 留成**旧的描述**。
+
+### 10.4 实现前与用户定下的两处取舍（§4.2 已列，此处记结果）
+
+- **无房家庭回落聚落级床位判据**（而非"无房就不生"）：严格的逐户规则会让一栋 home 都没登记的初始营地**永不生育**，而 GAME_DESIGN §11 期望营地能到 8～12 人。
+- **门看的是母亲的那栋房**（而非父母双方、也非任一方）：伴侣本轮不同住。
+
+### 10.5 一处诚实的非对称（已知，未在游戏内验证）
+
+**受孕侧的判据 `housingForConception` 仍是聚落级的**。用户的批准只覆盖**出生条件**，所以刻意没动它。后果：当每栋房都住满、但床位并不短缺时，受孕与出生会**一起停**；堵塞最终能自解，是因为 `BedCensus.shortage`（beds < slots + 1）仍然成立，`HOUSING` 需求档与扩建因此保持开放。**未在游戏内验证。**
+
+### 10.6 明确未做（承接 §0 的"明确不做"，结果未变）
+
+伴侣同住绑定、孩子随父母的房、睡觉/寻床行为、房子本身的拆除与改建、住户数预留、按距离就近入房——一条都没做。实体公告牌方块仍不在（同 §7）。§8 列出的"不可纯测"项——分配协调器读世界的整条路径（`shouldTickBlocksAt` 闸、逐房读容量）、生育门在真实家庭上的效果、`status` 那两行、以及"无房人数"在真实聚落里的走势——**本轮与整条分支一样没有做游戏内验证**，只有编译与独立检查的证据。另有一处刻意不放进纯层：`DECEASED` 的过滤落在 MC 层的名册映射里（纯规则按契约只收存活居民），由代码审查与 `ResidentWorkLookup` 的既有口径保证。
