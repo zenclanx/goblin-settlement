@@ -1,6 +1,7 @@
 package dev.local.goblinsettlement.colony;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import dev.local.goblinsettlement.construction.BuildMaterial;
 import dev.local.goblinsettlement.interaction.ProtectedRectangle;
@@ -44,6 +45,18 @@ public final class SettlementSavedDataCheck {
         require(data.assignHome("resident-adult", java.util.Optional.of(new BlockPos(12, 64, 12))),
                 "and set again");
         checkHomeSurvivesEveryRosterEdit();
+        var homeJson = SettlementSavedData.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow();
+        var homeLoaded = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, homeJson).getOrThrow();
+        require(homeLoaded.resident("resident-adult").orElseThrow().home()
+                        .equals(java.util.Optional.of(new BlockPos(12, 64, 12))),
+                "the home survives a save and load");
+
+        var legacy = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE,
+                JsonParser.parseString(
+                        "{\"schema_version\":1,\"residents\":[{\"id\":\"legacy\",\"stage\":\"ADULT\"}]}"))
+                .getOrThrow();
+        require(legacy.resident("legacy").orElseThrow().home().isEmpty(),
+                "a save written before homes existed loads as homeless");
         require(data.markResidentDead("resident-adult"), "death updates the resident record");
         require(!data.markResidentDead("resident-adult"), "repeat death does not change population twice");
         require(data.adultCount() == 0 && data.residents().size() == 1,

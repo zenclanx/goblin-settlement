@@ -62,7 +62,8 @@ public record ResidentRecord(String id, LifeStage stage, Optional<String> mother
     public ResidentRecord {
         if (id == null || id.isBlank() || stage == null || motherId == null || fatherId == null
                 || reproductiveRole == null || profession == null || home == null) {
-            throw new IllegalArgumentException("Resident identity, stage and parent references are required");
+            throw new IllegalArgumentException(
+                    "Resident identity, stage, parent, role, trade and home references are required");
         }
         if (motherId.filter(id::equals).isPresent() || fatherId.filter(id::equals).isPresent()) {
             throw new IllegalArgumentException("A resident cannot be their own parent");
