@@ -117,7 +117,9 @@ public final class GoblinSettlement implements ModInitializer {
                                 int beds = BedCensus.count(level, data);
                                 int occupied = data.occupiedPopulationSlots();
                                 context.getSource().sendSuccess(() -> Component.literal("Housing: beds=" + beds
-                                        + ", occupied slots=" + occupied + ", spare=" + (beds - occupied)), false);
+                                        + ", occupied slots=" + occupied + ", spare=" + (beds - occupied)
+                                        + ", homeless=" + HousingAssignmentCoordinator.homeless(level,
+                                                settlement.get().id(), data)), false);
                                 context.getSource().sendSuccess(() -> Component.literal(
                                         housingReportLine(level, data)), false);
                                 context.getSource().sendSuccess(() -> Component.literal(
@@ -305,12 +307,12 @@ public final class GoblinSettlement implements ModInitializer {
     private static String housingReportLine(ServerLevel level, SettlementSavedData data) {
         var settlement = data.settlement();
         if (settlement.isEmpty()) {
-            return "Housing work: no settlement in this dimension";
+            return "Homes: no settlement in this dimension";
         }
         String id = settlement.get().id();
         if (!HousingBlueprints.available()) {
             // Every home would otherwise report this same reason, finished ones included.
-            return "Housing work: nothing can start, the blueprint data is unavailable";
+            return "Homes: nothing can start, the blueprint data is unavailable";
         }
         var homes = new java.util.ArrayList<>(HousingSavedData.get(level).homes(id));
         // Order as the scan that discovers homes walks: x, then z, then y.
@@ -322,7 +324,7 @@ public final class GoblinSettlement implements ModInitializer {
             int byZ = Integer.compare(left.bed().getZ(), right.bed().getZ());
             return byZ != 0 ? byZ : Integer.compare(left.bed().getY(), right.bed().getY());
         });
-        var stalled = new java.util.ArrayList<String>();
+        var entries = new java.util.ArrayList<String>();
         int notLoaded = 0;
         for (var home : homes) {
             if (!level.shouldTickBlocksAt(home.bed())) {
@@ -330,23 +332,24 @@ public final class GoblinSettlement implements ModInitializer {
                 continue;
             }
             var reason = HousingCoordinator.blockedReason(level, data, home, id);
-            if (reason.isPresent()) {
-                stalled.add(home.bed().toShortString() + "(" + reason.orElseThrow() + ")");
-            }
+            entries.add(home.bed().toShortString() + " "
+                    + HousingAssignmentCoordinator.occupancy(data, home.bed()) + "/"
+                    + HousingCoordinator.homeCapacity(level, home)
+                    + (reason.isPresent() ? " [" + reason.orElseThrow() + "]" : ""));
         }
         String unloaded = notLoaded == 0 ? "" : ", " + notLoaded + " not loaded";
-        if (stalled.isEmpty()) {
-            return "Housing work: every home can start its next step" + unloaded;
+        if (entries.isEmpty()) {
+            return "Homes: none" + unloaded;
         }
-        var builder = new StringBuilder("Housing work: ").append(stalled.size()).append(" stalled: ");
-        for (int index = 0; index < Math.min(HOUSING_REPORT_LIMIT, stalled.size()); index++) {
+        var builder = new StringBuilder("Homes: ");
+        for (int index = 0; index < Math.min(HOUSING_REPORT_LIMIT, entries.size()); index++) {
             if (index > 0) {
                 builder.append(", ");
             }
-            builder.append(stalled.get(index));
+            builder.append(entries.get(index));
         }
-        if (stalled.size() > HOUSING_REPORT_LIMIT) {
-            builder.append(", +").append(stalled.size() - HOUSING_REPORT_LIMIT).append(" more");
+        if (entries.size() > HOUSING_REPORT_LIMIT) {
+            builder.append(", +").append(entries.size() - HOUSING_REPORT_LIMIT).append(" more");
         }
         return builder.toString() + unloaded;
     }}
