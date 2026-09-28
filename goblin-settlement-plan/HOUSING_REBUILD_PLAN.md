@@ -212,9 +212,9 @@ Expected: `BUILD SUCCESSFUL`，19 项全部 `*Check passed`，无编译警告。
 
 - [ ] **Step 5: 核对没有第二份判据**
 
-Run: `grep -rn "reserved\|蓝图层\|blueprint" src/main/java/dev/local/goblinsettlement/housing/BedProvisioningCoordinator.java`
+Run: `grep -rn "stages(\|BlueprintSet\|reserved" src/main/java/dev/local/goblinsettlement/housing/BedProvisioningCoordinator.java`
 
-Expected: 判据只有 `BlueprintSet.reserved`（经由 `reservedCells` 的坐标换算）——该文件里**不应出现任何"哪一层会用到哪些格"的自己判断**，只做锚点偏移。
+Expected: 该文件只**读蓝图已有的级表**（`HousingBlueprints.stages(home.style())`）并把每一级的相对坐标**加上锚点**换算成世界格——**不自己判断"哪一层会用到哪些格"**。（它不直接调 `BlueprintSet.reserved` 是对的：那是一个按坐标的成员判定，而这里要的是**整套格子**；两者都从同一份级表派生，`reserved` 与 `reservedCells` 是这个事实的两种查询形状。）
 
 - [ ] **Step 6: 提交**
 
