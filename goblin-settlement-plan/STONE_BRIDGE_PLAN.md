@@ -572,9 +572,9 @@ Expected: `BUILD SUCCESSFUL`，19 项全部 `*Check passed`。
 
 - [ ] **Step 5: 核对材料只有一个出处**
 
-Run: `grep -rn "BuildMaterial\.\(OAK_PLANKS\|OAK_LOG\|OAK_FENCE\|TORCH\|COBBLESTONE\)" src/main/java/dev/local/goblinsettlement/construction/transport/TransportCoordinator.java`
+Run: `grep -rn "BuildMaterial\." src/main/java/dev/local/goblinsettlement/construction/transport/TransportCoordinator.java`
 
-Expected: **一条都没有**——桥的用料全部经 `BridgeMaterials`（同一文件里 `startRoad` 的道路用料仍直接指名 `OAK_PLANKS`，那是**道路**的用料规则，属它自己，不在本轮范围）。
+Expected: **`startBridge` 里一处都没有**（桥的用料全部经 `BridgeMaterials`）。剩下的几处**都是既有的非桥站点**、不要动：`startRoad` 的道路铺面、`startWidening` 的加宽车道（那是**道路**线的用料规则），以及 `siteReady` 里"火把可以悬空"那条读 `step.material()` 的规则（它是在**读**某一步声明的材料，不是在选材料）。**判据是"造桥这一段不再自己挑材料"，不是"这个文件里不许出现材料名"。**
 
 - [ ] **Step 6: 提交**
 
