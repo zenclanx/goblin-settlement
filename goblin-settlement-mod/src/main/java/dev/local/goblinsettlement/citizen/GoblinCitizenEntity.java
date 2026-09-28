@@ -850,10 +850,10 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 workStage = WorkStage.TRANSPORT_COMPLETE;
                 return;
             }
-            if (level.getBlockState(buildPos).is(Blocks.OAK_PLANKS)
-                    || level.getBlockState(buildPos).is(Blocks.OAK_LOG)
-                    || level.getBlockState(buildPos).is(Blocks.OAK_FENCE)
-                    || level.getBlockState(buildPos).is(Blocks.TORCH)) {
+            // The step itself says which material counts as "already built", so a new kind is never
+            // silently left holding its item at a cell somebody else already filled.
+            if (assignedStep.isPresent()
+                    && level.getBlockState(buildPos).is(assignedStep.orElseThrow().material().block())) {
                 workStage = WorkStage.TRANSPORT_RETURNING;
                 return;
             }

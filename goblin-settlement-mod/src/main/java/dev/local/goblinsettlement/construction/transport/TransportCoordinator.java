@@ -100,6 +100,7 @@ public final class TransportCoordinator {
         Objects.requireNonNull(settlementId, "settlementId");
         Objects.requireNonNull(nearBankFoot, "nearBankFoot");
         Objects.requireNonNull(direction, "direction");
+        Objects.requireNonNull(kind, "kind");
         TransportSavedData traffic = TransportSavedData.get(level);
         if (hasActivePlan(traffic)) {
             return rejected("TRAFFIC_WORK_ACTIVE");

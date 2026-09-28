@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.construction.transport;
 
 import dev.local.goblinsettlement.construction.BuildMaterial;
 import dev.local.goblinsettlement.planning.bridge.BridgePlanner;
+import java.util.Arrays;
 import java.util.List;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
@@ -12,6 +13,7 @@ public final class BridgeMaterialsCheck {
         Bootstrap.bootStrap();
         checkWoodBridgeMaterials();
         checkStoneBridgeMaterials();
+        checkKindNamesAreStable();
         checkTheTwoListsDifferOnlyWhereTheyShould();
         checkKindsAreGuarded();
         checkOnlyOnePlaceAnswersWhatABridgeIs();
@@ -36,6 +38,19 @@ public final class BridgeMaterialsCheck {
         require(BridgeMaterials.railing(kind) == BuildMaterial.OAK_FENCE,
                 "a stone bridge still uses wooden railings: the economy produces no stone railing");
         require(BridgeMaterials.lighting(kind) == BuildMaterial.TORCH, "lighting is still torches");
+        require(BridgeMaterials.barrier(kind) == BuildMaterial.OAK_FENCE,
+                "a stone bridge still raises fence barriers: three places hardcode OAK_FENCE");
+    }
+
+    /**
+     * These names are what saves already hold. Renaming a kind would silently change what every
+     * finished bridge and pending project is, and a new kind would answer half the questions below
+     * with the wooden default until its row is added, so both are pinned here.
+     */
+    private static void checkKindNamesAreStable() {
+        List<String> names = Arrays.stream(TransportPlan.Kind.values()).map(Enum::name).toList();
+        require(names.equals(List.of("ROAD", "WOOD_BRIDGE", "STONE_BRIDGE")),
+                "the stored kind names are the ones already in saves");
     }
 
     /** The two kinds differ in exactly one thing: what the deck and the supports are made of. */

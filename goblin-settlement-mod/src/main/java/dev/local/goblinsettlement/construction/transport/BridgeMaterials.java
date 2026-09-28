@@ -67,6 +67,8 @@ public final class BridgeMaterials {
         var required = new LinkedHashMap<BuildMaterial, Integer>();
         required.put(deck(kind), kind == TransportPlan.Kind.STONE_BRIDGE
                 ? COBBLESTONE_FLOOR : PLANK_FLOOR);
+        // A kind whose deck and support are the same material (stone) has this second put replace the
+        // first: give the two floors different materials before letting them differ in value.
         required.put(support(kind), kind == TransportPlan.Kind.STONE_BRIDGE
                 ? COBBLESTONE_FLOOR : LOG_FLOOR);
         required.put(railing(kind), FENCE_FLOOR);
