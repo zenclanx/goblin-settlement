@@ -131,9 +131,7 @@ public final class BedProvisioningCoordinator {
         for (var home : HousingSavedData.get(level).homes(id)) {
             int used = HousingRules.bedsNear(axes, home.bed().getX(), home.bed().getY(),
                     home.bed().getZ(), HousingRules.BIND_RADIUS);
-            int capacity = HousingRules.builtCapacity(home.capacityTarget(),
-                    HousingCoordinator.stageFullyBuilt(level, home, 1),
-                    HousingCoordinator.stageFullyBuilt(level, home, 2));
+            int capacity = HousingCoordinator.homeCapacity(level, home);
             if (used < capacity) {
                 result.add(home.bed());
             }
