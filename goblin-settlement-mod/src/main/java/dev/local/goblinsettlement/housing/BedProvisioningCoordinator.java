@@ -4,7 +4,9 @@ import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -77,6 +79,7 @@ public final class BedProvisioningCoordinator {
                 SCANS.remove(level);
             } else {
                 scan.spareAnchors = spareCapacityAnchors(level, id, scan.heads);
+                scan.reserved = reservedCells(level, id, scan.spareAnchors);
                 scan.phase = Phase.FIND;
                 scan.next = 0;
             }
@@ -85,10 +88,11 @@ public final class BedProvisioningCoordinator {
         } else {
             // Only a complete second count may authorize a real withdrawal.
             scan.spareAnchors = spareCapacityAnchors(level, id, scan.heads);
+            scan.reserved = reservedCells(level, id, scan.spareAnchors);
             if (scan.count < data.occupiedPopulationSlots() + 1
                     && PublicWarehouseInventory.snapshot(level, data).complete()
                     && siteSuitable(level, data, id, scan.site.foot(), scan.site.head(), scan.beds,
-                            scan.spareAnchors)) {
+                            scan.spareAnchors, scan.reserved)) {
                 placeFromWarehouse(level, data, id, scan.site.foot(), scan.site.head(), scan.site.facing());
             }
             SCANS.remove(level);
@@ -137,6 +141,31 @@ public final class BedProvisioningCoordinator {
         return result;
     }
 
+    /**
+     * Every world cell the spare homes' own blueprints will need, at any stage. A bed placed there would
+     * stand where a later step must go; this line only ever adds blocks, so that step could never be
+     * placed and the home would stall for good. Only homes with a spare slot can be bound to, so only
+     * their blueprints are collected -- the union over every style would rule out positions that are
+     * actually fine.
+     */
+    private static Set<BlockPos> reservedCells(ServerLevel level, String id, List<BlockPos> spareAnchors) {
+        if (spareAnchors.isEmpty() || !HousingBlueprints.available()) {
+            return Set.of();
+        }
+        var reserved = new HashSet<BlockPos>();
+        for (var home : HousingSavedData.get(level).homes(id)) {
+            if (!spareAnchors.contains(home.bed())) {
+                continue;
+            }
+            for (List<HousingBlueprints.ResolvedStep> stage : HousingBlueprints.stages(home.style())) {
+                for (HousingBlueprints.ResolvedStep step : stage) {
+                    reserved.add(home.bed().offset(step.x(), step.y(), step.z()));
+                }
+            }
+        }
+        return Set.copyOf(reserved);
+    }
+
     private static Site findSite(ServerLevel level, SettlementSavedData data, Scan scan,
                                  SettlementSavedData.Plot plot) {
         for (int x = plot.x() * 8; x < plot.x() * 8 + 8; x++) {
@@ -145,7 +174,8 @@ public final class BedProvisioningCoordinator {
                     BlockPos foot = new BlockPos(x, scan.y + dy, z);
                     for (Direction facing : DIRECTIONS) {
                         BlockPos head = foot.relative(facing);
-                        if (siteSuitable(level, data, scan.id, foot, head, scan.beds, scan.spareAnchors)) {
+                        if (siteSuitable(level, data, scan.id, foot, head, scan.beds, scan.spareAnchors,
+                                scan.reserved)) {
                             return new Site(foot, head, facing);
                         }
                     }
@@ -166,6 +196,7 @@ public final class BedProvisioningCoordinator {
         private final List<BlockPos> beds = new ArrayList<>();
         private final List<BlockPos> heads = new ArrayList<>();
         private List<BlockPos> spareAnchors = List.of();
+        private Set<BlockPos> reserved = Set.of();
         private Phase phase = Phase.COUNT;
         private int next;
         private int count;
@@ -179,7 +210,7 @@ public final class BedProvisioningCoordinator {
     }
     private static boolean siteSuitable(ServerLevel level, SettlementSavedData data, String id,
                                         BlockPos foot, BlockPos head, List<BlockPos> beds,
-                                        List<BlockPos> spareAnchors) {
+                                        List<BlockPos> spareAnchors, Set<BlockPos> reserved) {
         for (BlockPos pos : List.of(foot, head)) {
             // Reject occupied and weak ground before the more expensive permission checks.
             if (!level.shouldTickBlocksAt(pos)
@@ -190,6 +221,8 @@ public final class BedProvisioningCoordinator {
                     || !level.getFluidState(pos.below()).isEmpty()
                     || !level.getBlockState(pos.below()).isFaceSturdy(level, pos.below(), Direction.UP)
                     || nearFacilities(data, pos) || nearBed(beds, pos)
+                    // A blueprint reserves this cell, so a bed here would block a later step for good.
+                    || reserved.contains(pos)
                     // While any home has spare capacity, a new bed must sit in some such home's
                     // binding radius; with no spare home anywhere (including none), binding is off.
                     || (!spareAnchors.isEmpty() && spareAnchors.stream()
