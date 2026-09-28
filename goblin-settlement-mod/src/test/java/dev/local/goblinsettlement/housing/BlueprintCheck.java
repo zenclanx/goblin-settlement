@@ -26,6 +26,8 @@ public final class BlueprintCheck {
         checkEntrance();
         checkBounds();
         checkBlocksAreNotRestricted();
+        checkCellsUsedByABlueprint(data);
+        checkBedHeadroomStaysFree(data);
         System.out.println("BlueprintCheck passed");
     }
 
@@ -244,6 +246,33 @@ public final class BlueprintCheck {
     private static int reserveProblem(int basic, int expanded) {
         var capacity = List.of(cap("a", ""), cap("b", "a"), cap("c", "b"));
         return setOf(capacity, basic, expanded).validate(KNOWN).size();
+    }
+
+    /** The rule the bed placement asks: does any stage of this style put a block on this cell? */
+    private static void checkCellsUsedByABlueprint(BlueprintSet data) {
+        for (int style = 0; style < data.styleCount(); style++) {
+            var first = data.stages(style).get(0).get(0);
+            require(data.reserved(style, first.x(), first.y(), first.z()),
+                    "a cell the blueprint builds on is reserved (style " + style + ")");
+            require(!data.reserved(style, 0, 99, 0),
+                    "a cell far above the box is not reserved (style " + style + ")");
+            require(!data.reserved(style, 12, 0, 12),
+                    "a cell far outside the box is not reserved (style " + style + ")");
+        }
+        require(data.reserved(999, 0, 0, 0) == data.reserved(0, 0, 0, 0),
+                "an out-of-range style degrades to the first style rather than throwing");
+    }
+
+    /**
+     * The bed stands on the anchor, so the anchor's own headroom must stay clear: a block there would
+     * make that first bed unusable, and a stage may never build it. Hand-checked when the styles were
+     * written; pinned here so changing the geometry cannot quietly break the bed.
+     */
+    private static void checkBedHeadroomStaysFree(BlueprintSet data) {
+        for (int style = 0; style < data.styleCount(); style++) {
+            require(!data.reserved(style, 0, 1, 0), "the cell above the bed head stays clear (style " + style + ")");
+            require(!data.reserved(style, 0, 2, 0), "and the one above it too (style " + style + ")");
+        }
     }
 
     private static void require(boolean condition, String message) {

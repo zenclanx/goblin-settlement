@@ -101,6 +101,22 @@ public record BlueprintSet(List<Style> styles, int reserveBasic, int reserveExpa
         return List.copyOf(result);
     }
 
+    /**
+     * Whether any stage of this style puts a block on the cell at this offset from the home's bed. A bed
+     * standing here would sit where a later step must go, and this line only ever adds blocks -- the
+     * step could then never be placed and the home would stall for good.
+     */
+    public boolean reserved(int styleIndex, int x, int y, int z) {
+        for (List<HousingRules.Step> stage : stages(styleIndex)) {
+            for (HousingRules.Step step : stage) {
+                if (step.x() == x && step.y() == y && step.z() == z) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** All problems found, empty when the data is sound. */
     public List<String> validate(Set<String> knownBlocks) {
         List<String> problems = new ArrayList<>();
