@@ -1,5 +1,7 @@
 package dev.local.goblinsettlement.client.model;
 
+import dev.local.goblinsettlement.colony.Profession;
+import java.util.Optional;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.CubeListBuilder;
@@ -181,5 +183,14 @@ public final class GoblinFarmerFemaleModel extends GoblinBodyModel {
                 .texOffs(15, 324).addBox(-1.75F, -0.55F, -5.15F, 3.65F, 4.05F, 0.6F)
                 .texOffs(32, 324).addBox(-1.75F, 3F, -5.3F, 3.65F, 0.5F, 0.15F), PartPose.offset(-2F, 16F, 0F));
         return LayerDefinition.create(mesh, 512, 512);
+    }
+
+    /**
+     * This mesh's row in GoblinBodies. Naming the class once is what keeps the crop, the layer and the
+     * model in step -- a row can no longer pair one class's crop with another's geometry.
+     */
+    public static GoblinBodies.Body body(boolean female, Optional<Profession> profession, String texture) {
+        return new GoblinBodies.Body(female, profession, CROP, texture,
+                GoblinFarmerFemaleModel::createLayer, GoblinFarmerFemaleModel::new);
     }
 }

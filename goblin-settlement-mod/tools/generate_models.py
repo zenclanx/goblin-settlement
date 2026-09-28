@@ -44,6 +44,17 @@ MODELS = {
     "goblin_female_a": ("goblin_female_a/goblin_female_a.bbmodel", "GoblinFemaleModel"),
     "goblin_farmer_male_p01": ("goblin_professions_a/goblin_farmer_male_p01.bbmodel", "GoblinFarmerMaleModel"),
     "goblin_farmer_female_p01": ("goblin_professions_a/goblin_farmer_female_p01.bbmodel", "GoblinFarmerFemaleModel"),
+    "goblin_forester_male_p02": ("goblin_professions_a/goblin_forester_male_p02.bbmodel", "GoblinForesterMaleModel"),
+    "goblin_forester_female_p02": ("goblin_professions_a/goblin_forester_female_p02.bbmodel", "GoblinForesterFemaleModel"),
+    "goblin_miner_male_p03": ("goblin_professions_a/goblin_miner_male_p03.bbmodel", "GoblinMinerMaleModel"),
+    "goblin_miner_female_p03": ("goblin_professions_a/goblin_miner_female_p03.bbmodel", "GoblinMinerFemaleModel"),
+    "goblin_builder_male_p04": ("goblin_professions_a/goblin_builder_male_p04.bbmodel", "GoblinBuilderMaleModel"),
+    "goblin_builder_female_p04": ("goblin_professions_a/goblin_builder_female_p04.bbmodel", "GoblinBuilderFemaleModel"),
+    "goblin_hauler_male_p05": ("goblin_professions_a/goblin_hauler_male_p05.bbmodel", "GoblinHaulerMaleModel"),
+    "goblin_hauler_female_p05": ("goblin_professions_a/goblin_hauler_female_p05.bbmodel", "GoblinHaulerFemaleModel"),
+    "goblin_artisan_male_p06": ("goblin_professions_a/goblin_artisan_male_p06.bbmodel", "GoblinArtisanMaleModel"),
+    "goblin_artisan_female_p06": ("goblin_professions_a/goblin_artisan_female_p06.bbmodel", "GoblinArtisanFemaleModel"),
+    "goblin_sentry_male_p07": ("goblin_professions_a/goblin_sentry_male_p07.bbmodel", "GoblinSentryMaleModel"),
 }
 
 
@@ -276,6 +287,8 @@ def generate(project, class_name):
     lines = [
         "package dev.local.goblinsettlement.client.model;",
         "",
+        "import dev.local.goblinsettlement.colony.Profession;",
+        "import java.util.Optional;",
         "import net.minecraft.client.model.geom.ModelPart;",
         "import net.minecraft.client.model.geom.PartPose;",
         "import net.minecraft.client.model.geom.builders.CubeListBuilder;",
@@ -304,6 +317,16 @@ def generate(project, class_name):
         emitter.walk(node, "root", (0, 0, 0), "        ")
     lines.append("        return LayerDefinition.create(mesh, %d, %d);"
                  % (data["resolution"]["width"], data["resolution"]["height"]))
+    lines.append("    }")
+    lines.append("")
+    lines.append("    /**")
+    lines.append("     * This mesh's row in GoblinBodies. Naming the class once is what keeps the crop, the layer and the")
+    lines.append("     * model in step -- a row can no longer pair one class's crop with another's geometry.")
+    lines.append("     */")
+    lines.append("    public static GoblinBodies.Body body(boolean female, Optional<Profession> profession,"
+                 " String texture) {")
+    lines.append("        return new GoblinBodies.Body(female, profession, CROP, texture,")
+    lines.append("                %s::createLayer, %s::new);" % (class_name, class_name))
     lines.append("    }")
     lines.append("}")
 

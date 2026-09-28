@@ -27,14 +27,21 @@ public final class GoblinBodies {
     }
 
     public static final List<Body> BODIES = List.of(
-            new Body(false, Optional.empty(), GoblinMaleModel.CROP, "goblin_male",
-                    GoblinMaleModel::createLayer, GoblinMaleModel::new),
-            new Body(true, Optional.empty(), GoblinFemaleModel.CROP, "goblin_female",
-                    GoblinFemaleModel::createLayer, GoblinFemaleModel::new),
-            new Body(false, Optional.of(Profession.FARMER), GoblinFarmerMaleModel.CROP, "goblin_farmer_male",
-                    GoblinFarmerMaleModel::createLayer, GoblinFarmerMaleModel::new),
-            new Body(true, Optional.of(Profession.FARMER), GoblinFarmerFemaleModel.CROP, "goblin_farmer_female",
-                    GoblinFarmerFemaleModel::createLayer, GoblinFarmerFemaleModel::new));
+            GoblinMaleModel.body(false, Optional.empty(), "goblin_male"),
+            GoblinFemaleModel.body(true, Optional.empty(), "goblin_female"),
+            GoblinFarmerMaleModel.body(false, Optional.of(Profession.FARMER), "goblin_farmer_male"),
+            GoblinFarmerFemaleModel.body(true, Optional.of(Profession.FARMER), "goblin_farmer_female"),
+            GoblinForesterMaleModel.body(false, Optional.of(Profession.FORESTER), "goblin_forester_male"),
+            GoblinForesterFemaleModel.body(true, Optional.of(Profession.FORESTER), "goblin_forester_female"),
+            GoblinMinerMaleModel.body(false, Optional.of(Profession.MINER), "goblin_miner_male"),
+            GoblinMinerFemaleModel.body(true, Optional.of(Profession.MINER), "goblin_miner_female"),
+            GoblinBuilderMaleModel.body(false, Optional.of(Profession.BUILDER), "goblin_builder_male"),
+            GoblinBuilderFemaleModel.body(true, Optional.of(Profession.BUILDER), "goblin_builder_female"),
+            GoblinHaulerMaleModel.body(false, Optional.of(Profession.HAULER), "goblin_hauler_male"),
+            GoblinHaulerFemaleModel.body(true, Optional.of(Profession.HAULER), "goblin_hauler_female"),
+            GoblinArtisanMaleModel.body(false, Optional.of(Profession.ARTISAN), "goblin_artisan_male"),
+            GoblinArtisanFemaleModel.body(true, Optional.of(Profession.ARTISAN), "goblin_artisan_female"),
+            GoblinSentryMaleModel.body(false, Optional.of(Profession.SENTRY), "goblin_sentry_male"));
 
     private GoblinBodies() {
     }

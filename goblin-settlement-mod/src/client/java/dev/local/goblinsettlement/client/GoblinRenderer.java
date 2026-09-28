@@ -22,8 +22,7 @@ public final class GoblinRenderer
 
     /**
      * One sex's bodies: the undressed base plus one outfit per trade that has art. A trade with no art
-     * falls back to the base, which is why every lookup takes a default rather than returning null --
-     * six of the seven trades are still undressed.
+     * falls back to the base, which is why every lookup takes a default rather than returning null.
      */
     private record Bodies(Outfit base, Map<Profession, Outfit> outfits) {
         EntityModel<GoblinRenderState> body(Profession profession) {

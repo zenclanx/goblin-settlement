@@ -281,14 +281,18 @@ public final class ArtModelCheck {
 
     /**
      * The table itself must be sane before anything reads it: no two rows may serve the same
-     * (profession, sex), and no row may claim a crop that is not committed. A duplicate row would
-     * silently shadow another one, and the reader that loses would never notice.
+     * (profession, sex), no row may claim a crop that is not committed, and a row's sex must agree with
+     * its own crop's name (every crop is called {@code goblin_..._male} or {@code goblin_..._female}, so
+     * a copy-paste slip that flips the flag but not the name is caught here rather than in game). A
+     * duplicate row would silently shadow another one, and the reader that loses would never notice.
      */
     private static void checkBodiesAgreeWithTheirCrops() throws IOException {
         Set<String> served = new HashSet<>();
         for (GoblinBodies.Body body : GoblinBodies.BODIES) {
             String key = body.profession().map(Enum::name).orElse("BASE") + "/" + body.female();
             require(served.add(key), "two bodies claim " + key);
+            require(body.female() == body.crop().contains("female"),
+                    "the body " + body.crop() + " disagrees with its own name about sex");
             Path crop = Path.of("tools", "models", body.crop() + ".json");
             require(Files.isRegularFile(crop),
                     "the body " + body.crop() + " has a committed crop at " + crop);
