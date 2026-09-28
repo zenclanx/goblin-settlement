@@ -300,9 +300,11 @@ public final class GoblinSettlement implements ModInitializer {
     private static final int HOUSING_REPORT_LIMIT = 8;
 
     /**
-     * Which unfinished homes cannot start their next step, and why. Read-only. A home whose bed sits in
-     * an inactive chunk is skipped and counted rather than judged from unloaded blocks; the reason
-     * itself comes only from HousingCoordinator.blockedReason, so this line restates no gate of its own.
+     * Every judged home with how full it is, and why the ones that cannot start their next step are
+     * stuck. Read-only. A home whose bed sits in an inactive chunk is skipped and counted rather than
+     * judged from unloaded blocks; the counts come from HousingAssignmentCoordinator and
+     * HousingCoordinator.homeCapacity, and the reason only from HousingCoordinator.blockedReason, so
+     * this line restates no gate and counts nothing of its own.
      */
     private static String housingReportLine(ServerLevel level, SettlementSavedData data) {
         var settlement = data.settlement();
