@@ -3,6 +3,7 @@ package dev.local.goblinsettlement.defense;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -74,17 +75,26 @@ public final class GoblinGolemEntity extends PathfinderMob {
     }
 
     /**
-     * The synced tier, safe to call on either side. A name this build cannot draw -- a legacy save's
-     * {@code IRON}, which the entity is migrated off before it is ever meant to be rendered, or a
-     * corrupt one -- reads as wood, the tier the entity's own attributes start at, rather than throwing
-     * at a player. The renderer's loud failure is for the other direction: a table with no art for a
-     * tier it was handed.
+     * The tier the client should draw, or empty when it must draw nothing at all.
+     *
+     * <p>Two synced values have no drawable art and both read as empty rather than as a tier: a value with
+     * no custom art of its own -- iron, the vanilla entity a custom golem is migrated onto -- and a name
+     * this build does not know, which only a corrupt or hand-edited save can carry. Neither may reach the
+     * renderer as a tier, because the renderer has no art for them and by design throws rather than wear
+     * another tier's skin. Drawing nothing for the few seconds until the server's next migration pass
+     * corrects the entity is the honest failure, and the lesser evil next to a crash.
+     *
+     * <p>Iron arrives here only from a save: nothing this build does leaves a world entity sitting on it
+     * (a paid upgrade to iron converts straight to the vanilla entity, and the one upgrade path that steps
+     * through the iron constant does so on an entity not yet added to the world). So this is a migration
+     * and corrupt-data guard, not a path live code reaches.
      */
-    public GolemTier tierForRender() {
+    public Optional<GolemTier> tierForRender() {
         try {
-            return GolemTier.valueOf(getEntityData().get(DATA_TIER));
+            GolemTier synced = GolemTier.valueOf(getEntityData().get(DATA_TIER));
+            return synced.hasCustomArt() ? Optional.of(synced) : Optional.empty();
         } catch (IllegalArgumentException exception) {
-            return GolemTier.WOOD;
+            return Optional.empty();
         }
     }
 

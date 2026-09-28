@@ -5,3 +5,4 @@ logs/
 .idea/
 *.iml
 function-bank/.workbuddy/
+__pycache__/

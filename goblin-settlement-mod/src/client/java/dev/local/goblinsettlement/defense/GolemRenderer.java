@@ -23,10 +23,11 @@ import net.minecraft.util.ARGB;
 /**
  * Draws each custom golem with the art of its residing tier, its core drawn full-bright on top.
  *
- * <p>The tier comes from the entity's synced data, so the client draws what the server owns. Every tier
- * this entity can render has a row in {@link GolemBodies} -- iron is the vanilla entity and is migrated
- * off before it is ever drawn -- so there is no fallback tier here: a tier with no art is a build error
- * and fails loudly rather than quietly wearing another tier's skin.
+ * <p>The tier comes from the entity's synced data, so the client draws what the server owns. The entity's
+ * reader hands over only tiers that have art of their own ({@code GolemTier.hasCustomArt()}); a synced
+ * value with no art -- iron, or a name this build does not know -- arrives empty and is drawn as nothing.
+ * So no tier here has a fallback: a tier that has art in the entity's eyes but no row in the table is a
+ * build error, and it fails loudly rather than quietly wearing another tier's skin.
  */
 public final class GolemRenderer
         extends MobRenderer<GoblinGolemEntity, GoblinRenderState, EntityModel<GoblinRenderState>> {
@@ -102,17 +103,29 @@ public final class GolemRenderer
      * The submit path reads the {@code model} field rather than calling {@code getModel()}, so choosing
      * a tier means assigning that field before the superclass submits -- and it is the same field the
      * glow layer below redraws, so the core cannot land on another tier's mesh.
+     *
+     * <p>An empty tier returns first: the entity has synced a tier this renderer has no art for, and
+     * drawing nothing is the honest answer to data it cannot dress. Returning here is also what keeps the
+     * two reads below safe -- both are reached only from the super {@code submit} this guards.
      */
     @Override
     public void submit(GoblinRenderState state, PoseStack pose, SubmitNodeCollector collector,
                        CameraRenderState camera) {
-        this.model = outfit(state.tier).model();
+        if (state.tier.isEmpty()) {
+            return;
+        }
+        this.model = outfit(state.tier.get()).model();
         super.submit(state, pose, collector, camera);
     }
 
+    /**
+     * Reached only from the super {@code submit} gated above (the client path is submit -&gt;
+     * getRenderType -&gt; here, read from the client jar), so the tier is present. The throw keeps a
+     * caller that reached this some other way loud, rather than letting a null texture through.
+     */
     @Override
     public Identifier getTextureLocation(GoblinRenderState state) {
-        return outfit(state.tier).texture();
+        return outfit(state.tier.orElseThrow()).texture();
     }
 
     /**
@@ -151,10 +164,10 @@ public final class GolemRenderer
         @Override
         public void submit(PoseStack pose, SubmitNodeCollector collector, int packedLight,
                            GoblinRenderState state, float yRot, float xRot) {
-            if (state.isInvisible) {
+            if (state.isInvisible || state.tier.isEmpty()) {
                 return;
             }
-            Outfit outfit = renderer.outfit(state.tier);
+            Outfit outfit = renderer.outfit(state.tier.get());
             collector.order(1).submitModel(outfit.model(), state, pose,
                     RenderTypes.eyes(outfit.mask()), packedLight,
                     LivingEntityRenderer.getOverlayCoords(state, 0.0F), ARGB.white(1.0F),

@@ -459,18 +459,19 @@ public final class ArtModelCheck {
      * The golem table's own sanity pass, the twin of the one above. A row is built by its class's
      * {@code body()} and takes every field from that class's constants, so the ways a row can point at
      * the wrong art are narrow and each is named here: two rows claiming one tier (which would silently
-     * shadow a mesh), a row claiming iron (the vanilla entity, which this renderer must never draw), and
-     * a row whose crop name disagrees with its own tier. That last one is the goblin rule -- "a row names
-     * its class once" -- applied to the axis a golem is keyed on instead of sex and trade: a row cannot
-     * pair one tier's name with another tier's crop. Every other tier must be covered, so a golem cannot
-     * reach a tier whose art nobody ever added.
+     * shadow a mesh), a row whose crop name disagrees with its own tier, and a row with no committed crop.
+     * That crop-name rule is the goblin rule -- "a row names its class once" -- applied to the axis a golem
+     * is keyed on instead of sex and trade: a row cannot pair one tier's name with another tier's crop.
+     *
+     * <p>The last loop ties the table to {@link GolemTier#hasCustomArt()}: the rows must cover exactly the
+     * tiers that claim custom art, no more and no fewer. That equality is what makes the entity's synced
+     * reader safe -- it hands the renderer a tier only when {@code hasCustomArt()} is true -- so this is the
+     * proof that every such tier, and only such a tier, has a mesh waiting for it.
      */
     private static void checkGolemBodiesAgreeWithTheirCrops() {
         Set<GolemTier> served = new HashSet<>();
         for (GolemBodies.Body body : GolemBodies.BODIES) {
             require(served.add(body.tier()), "two golem bodies claim the " + body.tier() + " tier");
-            require(body.tier() != GolemTier.IRON,
-                    "the golem body " + body.crop() + " claims the iron tier, which is vanilla's entity");
             require(body.crop().contains(body.tier().name().toLowerCase(Locale.ROOT)),
                     "the golem body " + body.crop() + " disagrees with its own tier " + body.tier());
             Path crop = Path.of("tools", "models_golem", body.crop() + ".json");
@@ -478,11 +479,11 @@ public final class ArtModelCheck {
                     "the golem " + body.crop() + " has a committed crop at " + crop);
         }
         for (GolemTier tier : GolemTier.values()) {
-            if (tier == GolemTier.IRON) {
-                continue;
-            }
-            require(served.contains(tier),
-                    "no golem body has art for the " + tier + " tier, which the entity can reach");
+            require(served.contains(tier) == tier.hasCustomArt(),
+                    tier.hasCustomArt()
+                            ? "no golem body has art for the " + tier + " tier, which the entity can reach"
+                            : "a golem body claims the " + tier
+                                    + " tier, which has no custom art of its own");
         }
     }
 }

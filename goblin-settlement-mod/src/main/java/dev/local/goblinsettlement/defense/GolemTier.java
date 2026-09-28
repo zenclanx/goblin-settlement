@@ -55,4 +55,18 @@ public enum GolemTier {
     public Optional<GolemTier> next() {
         return ordinal() + 1 < values().length ? Optional.of(values()[ordinal() + 1]) : Optional.empty();
     }
+
+    /**
+     * Whether a custom golem entity draws this tier from art of its own. Iron does not: it is the vanilla
+     * entity, and a custom golem is migrated onto that type rather than ever drawn wearing iron.
+     *
+     * <p>This is the one place that fact lives, because two sides depend on it and must not drift. On the
+     * server the entity's synced reader hands the client only the tiers where this is true, so a save
+     * carrying {@code IRON} draws nothing instead of reporting a tier the renderer has no art for. On the
+     * client {@code ArtModelCheck} requires {@code GolemBodies} to cover exactly these tiers, which is what
+     * makes that reader's promise true rather than merely hopeful.
+     */
+    public boolean hasCustomArt() {
+        return this != IRON;
+    }
 }
