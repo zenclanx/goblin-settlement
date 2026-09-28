@@ -117,8 +117,13 @@ def crop(project, source):
             fail("%s: element %s is not a cube" % (project, element.get("name")))
         if element.get("faces"):
             fail("%s: element %s uses per-face uv" % (project, element["name"]))
-        elements.append({key: element.get(key) for key in
-                         ("name", "uuid", "from", "to", "origin", "rotation", "uv_offset", "box_uv")})
+        # A rotation key present but null means the same as an absent one: no rotation. Crop files are
+        # copied verbatim from the art project, which can spell an unrotated cube either way.
+        cropped = {key: element.get(key) for key in
+                   ("name", "uuid", "from", "to", "origin", "uv_offset", "box_uv")}
+        if element.get("rotation") is not None:
+            cropped["rotation"] = element["rotation"]
+        elements.append(cropped)
     groups = []
     for group in raw.get("groups", []):
         # The crop keeps only a group's name, uuid and origin, and the emitter reads none of its
@@ -176,7 +181,10 @@ def rotations(element):
     """Blockbench degrees -> radians, same sign. More than one non-zero axis is refused: the two
     systems compose rotation axes in different orders, so a multi-axis part needs its own
     derivation before it can be trusted."""
-    rx, ry, rz = element.get("rotation", [0, 0, 0])
+    # A rotation key that is present but null means no rotation, exactly like an absent one -- an
+    # older or hand-edited crop can spell it that way, and element.get(key, default) would hand back
+    # the null instead of the default.
+    rx, ry, rz = element.get("rotation") or [0, 0, 0]
     nonzero = [axis for axis, value in zip("xyz", (rx, ry, rz)) if value]
     if len(nonzero) > 1:
         fail("element %s rotates on %s axes; only single-axis rotation is derived"

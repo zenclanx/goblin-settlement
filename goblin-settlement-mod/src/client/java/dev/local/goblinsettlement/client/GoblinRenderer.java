@@ -55,10 +55,9 @@ public final class GoblinRenderer
         super.submit(state, pose, collector, camera);
     }
 
-    @Override
-    public EntityModel<GoblinRenderState> getModel() {
-        return model;
-    }
+    // No getModel() override: the inherited LivingEntityRenderer.getModel() already returns the
+    // protected model field, which submit(...) assigns before the superclass reads it, so an override
+    // would be behaviourally identical and only invite the next reader to look for a difference.
 
     @Override
     public Identifier getTextureLocation(GoblinRenderState state) {
