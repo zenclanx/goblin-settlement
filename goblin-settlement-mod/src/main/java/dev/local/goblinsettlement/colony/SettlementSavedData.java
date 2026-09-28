@@ -323,6 +323,29 @@ public final class SettlementSavedData extends SavedData {
         return false;
     }
 
+    /**
+     * Records where a resident lives, or clears it. Reassignable by design -- unlike a trade or a role,
+     * a home is unbound and bound again as houses appear, fill up and are emptied.
+     */
+    public boolean assignHome(String residentId, Optional<BlockPos> home) {
+        if (home == null) {
+            return false;
+        }
+        for (int index = 0; index < residents.size(); index++) {
+            ResidentRecord current = residents.get(index);
+            if (current.id().equals(residentId)
+                    && current.stage() != ResidentRecord.LifeStage.DECEASED
+                    && !current.home().equals(home)) {
+                var updated = new ArrayList<>(residents);
+                updated.set(index, current.withHome(home));
+                residents = List.copyOf(updated);
+                setDirty();
+                return true;
+            }
+        }
+        return false;
+    }
+
     public List<String> unassignedAdultIds() {
         return residents.stream()
                 .filter(record -> record.stage() == ResidentRecord.LifeStage.ADULT)

@@ -4,11 +4,12 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.Optional;
+import net.minecraft.core.BlockPos;
 
 /** Identity and family history live in the settlement, even while the entity is unloaded. */
 public record ResidentRecord(String id, LifeStage stage, Optional<String> motherId, Optional<String> fatherId,
                              ReproductiveRole reproductiveRole, Profession profession,
-                             long childActiveTicks, long restTicks) {
+                             long childActiveTicks, long restTicks, Optional<BlockPos> home) {
     public static final long GROWTH_TICKS = 60L * 60 * 20;
     public static final long POST_BIRTH_REST_TICKS = 30L * 60 * 20;
 
@@ -54,12 +55,13 @@ public record ResidentRecord(String id, LifeStage stage, Optional<String> mother
             PROFESSION_CODEC.optionalFieldOf("profession", Profession.UNASSIGNED)
                     .forGetter(ResidentRecord::profession),
             Codec.LONG.optionalFieldOf("child_active_ticks", 0L).forGetter(ResidentRecord::childActiveTicks),
-            Codec.LONG.optionalFieldOf("rest_ticks", 0L).forGetter(ResidentRecord::restTicks)
+            Codec.LONG.optionalFieldOf("rest_ticks", 0L).forGetter(ResidentRecord::restTicks),
+            BlockPos.CODEC.optionalFieldOf("home").forGetter(ResidentRecord::home)
     ).apply(instance, ResidentRecord::new));
 
     public ResidentRecord {
         if (id == null || id.isBlank() || stage == null || motherId == null || fatherId == null
-                || reproductiveRole == null || profession == null) {
+                || reproductiveRole == null || profession == null || home == null) {
             throw new IllegalArgumentException("Resident identity, stage and parent references are required");
         }
         if (motherId.filter(id::equals).isPresent() || fatherId.filter(id::equals).isPresent()) {
@@ -76,12 +78,12 @@ public record ResidentRecord(String id, LifeStage stage, Optional<String> mother
 
     public static ResidentRecord adult(String id) {
         return new ResidentRecord(id, LifeStage.ADULT, Optional.empty(), Optional.empty(),
-                ReproductiveRole.UNSPECIFIED, Profession.UNASSIGNED, 0, 0);
+                ReproductiveRole.UNSPECIFIED, Profession.UNASSIGNED, 0, 0, Optional.empty());
     }
 
     public static ResidentRecord child(String id, String motherId, String fatherId) {
         return new ResidentRecord(id, LifeStage.CHILD, Optional.of(motherId), Optional.of(fatherId),
-                ReproductiveRole.UNSPECIFIED, Profession.UNASSIGNED, 0, 0);
+                ReproductiveRole.UNSPECIFIED, Profession.UNASSIGNED, 0, 0, Optional.empty());
     }
 
     /** Stable fallback for existing residents whose older saves had no role field. */
@@ -98,7 +100,7 @@ public record ResidentRecord(String id, LifeStage stage, Optional<String> mother
                 || reproductiveRole != ReproductiveRole.UNSPECIFIED) {
             throw new IllegalArgumentException("Only a living resident with no role can be assigned a role");
         }
-        return new ResidentRecord(id, stage, motherId, fatherId, role, profession, childActiveTicks, restTicks);
+        return new ResidentRecord(id, stage, motherId, fatherId, role, profession, childActiveTicks, restTicks, home);
     }
 
     public ResidentRecord withProfession(Profession value) {
@@ -107,7 +109,19 @@ public record ResidentRecord(String id, LifeStage stage, Optional<String> mother
             throw new IllegalArgumentException("Only a living adult with no trade can be given one");
         }
         return new ResidentRecord(id, stage, motherId, fatherId, reproductiveRole, value,
-                childActiveTicks, restTicks);
+                childActiveTicks, restTicks, home);
+    }
+
+    /**
+     * Where this resident lives, or nothing. Unlike a trade and a role this is not a one-off: a resident
+     * is unbound when its home is gone or overfull and bound again later, so there is no guard here.
+     */
+    public ResidentRecord withHome(Optional<BlockPos> value) {
+        if (value == null) {
+            throw new IllegalArgumentException("A home reference cannot be null");
+        }
+        return new ResidentRecord(id, stage, motherId, fatherId, reproductiveRole, profession,
+                childActiveTicks, restTicks, value);
     }
 
     public ResidentRecord advanceFamilyTime(long ticks) {
@@ -117,22 +131,22 @@ public record ResidentRecord(String id, LifeStage stage, Optional<String> mother
         if (stage == LifeStage.CHILD) {
             long age = childActiveTicks + Math.min(ticks, GROWTH_TICKS - childActiveTicks);
             return new ResidentRecord(id, age == GROWTH_TICKS ? LifeStage.ADULT : LifeStage.CHILD,
-                    motherId, fatherId, reproductiveRole, profession, age, 0);
+                    motherId, fatherId, reproductiveRole, profession, age, 0, home);
         }
         if (stage == LifeStage.ADULT && restTicks > 0) {
             return new ResidentRecord(id, stage, motherId, fatherId, reproductiveRole, profession,
-                    childActiveTicks, restTicks - Math.min(ticks, restTicks));
+                    childActiveTicks, restTicks - Math.min(ticks, restTicks), home);
         }
         return this;
     }
 
     public ResidentRecord withPostBirthRest() {
         return new ResidentRecord(id, stage, motherId, fatherId, reproductiveRole, profession,
-                childActiveTicks, stage == LifeStage.ADULT ? POST_BIRTH_REST_TICKS : restTicks);
+                childActiveTicks, stage == LifeStage.ADULT ? POST_BIRTH_REST_TICKS : restTicks, home);
     }
 
     public ResidentRecord deceased() {
         return new ResidentRecord(id, LifeStage.DECEASED, motherId, fatherId,
-                reproductiveRole, profession, childActiveTicks, restTicks);
+                reproductiveRole, profession, childActiveTicks, restTicks, home);
     }
 }

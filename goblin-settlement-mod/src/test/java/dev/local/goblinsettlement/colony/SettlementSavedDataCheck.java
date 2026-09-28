@@ -30,6 +30,20 @@ public final class SettlementSavedDataCheck {
         var rosterJson = SettlementSavedData.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow();
         var rosterReloaded = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, rosterJson).getOrThrow();
         require(rosterReloaded.residents().equals(data.residents()), "unloaded roster survives reload");
+        require(data.assignHome("resident-adult", java.util.Optional.of(new BlockPos(12, 64, 12))),
+                "a living resident can be given a home");
+        require(data.resident("resident-adult").orElseThrow().home()
+                        .equals(java.util.Optional.of(new BlockPos(12, 64, 12))),
+                "the home is recorded on the roster");
+        require(data.assignHome("resident-adult", java.util.Optional.of(new BlockPos(20, 64, 20))),
+                "a home can be changed, unlike a trade or a role");
+        require(data.assignHome("resident-adult", java.util.Optional.empty()),
+                "and it can be cleared");
+        require(data.resident("resident-adult").orElseThrow().home().isEmpty(),
+                "clearing leaves no home behind");
+        require(data.assignHome("resident-adult", java.util.Optional.of(new BlockPos(12, 64, 12))),
+                "and set again");
+        checkHomeSurvivesEveryRosterEdit();
         require(data.markResidentDead("resident-adult"), "death updates the resident record");
         require(!data.markResidentDead("resident-adult"), "repeat death does not change population twice");
         require(data.adultCount() == 0 && data.residents().size() == 1,
@@ -193,5 +207,40 @@ public final class SettlementSavedDataCheck {
         if (!condition) {
             throw new AssertionError(message);
         }
+    }
+
+    /**
+     * Every path a resident can take through the family code rebuilds the record, and each one has to
+     * carry the home along: a missed constructor argument would drop it silently, and only at runtime --
+     * advanceFamilyTime runs every tick, so the home would vanish within a tick of being assigned.
+     */
+    private static void checkHomeSurvivesEveryRosterEdit() {
+        var home = java.util.Optional.of(new BlockPos(12, 64, 12));
+        var idle = new ResidentRecord("r1", ResidentRecord.LifeStage.ADULT,
+                java.util.Optional.empty(), java.util.Optional.empty(),
+                ResidentRecord.ReproductiveRole.MOTHER, Profession.UNASSIGNED, 0, 0, home);
+        require(idle.withPostBirthRest().home().equals(home), "rest keeps the home");
+        require(idle.deceased().home().equals(home), "death keeps the home");
+        require(idle.withProfession(Profession.FARMER).home().equals(home), "taking a trade keeps the home");
+
+        var roleless = new ResidentRecord("r2", ResidentRecord.LifeStage.ADULT,
+                java.util.Optional.empty(), java.util.Optional.empty(),
+                ResidentRecord.ReproductiveRole.UNSPECIFIED, Profession.UNASSIGNED, 0, 0, home);
+        require(roleless.withReproductiveRole(ResidentRecord.ReproductiveRole.FATHER).home().equals(home),
+                "taking a role keeps the home");
+
+        var resting = new ResidentRecord("r3", ResidentRecord.LifeStage.ADULT,
+                java.util.Optional.empty(), java.util.Optional.empty(),
+                ResidentRecord.ReproductiveRole.UNSPECIFIED, Profession.UNASSIGNED, 0, 100, home);
+        require(resting.advanceFamilyTime(20).home().equals(home), "an adult's rest clock keeps the home");
+
+        var growing = new ResidentRecord("c1", ResidentRecord.LifeStage.CHILD,
+                java.util.Optional.of("m"), java.util.Optional.of("f"),
+                ResidentRecord.ReproductiveRole.UNSPECIFIED, Profession.UNASSIGNED, 0, 0, home);
+        require(growing.advanceFamilyTime(20).home().equals(home), "growing up keeps the home");
+
+        require(ResidentRecord.adult("a").home().isEmpty(), "a registered adult starts with no home");
+        require(ResidentRecord.child("c2", "m", "f").home().isEmpty(),
+                "a newborn starts with no home until one is assigned");
     }
 }
