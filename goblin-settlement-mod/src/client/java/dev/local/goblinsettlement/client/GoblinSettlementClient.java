@@ -12,9 +12,6 @@ import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.resources.Identifier;
 
 public final class GoblinSettlementClient implements ClientModInitializer {
-    /** The golem still uses the placeholder model; it gets its own art in a later round. */
-    public static final ModelLayerLocation GOBLIN_LAYER = new ModelLayerLocation(
-            Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, "goblin"), "main");
     public static final ModelLayerLocation GOBLIN_MALE_LAYER = new ModelLayerLocation(
             Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, "goblin_male"), "main");
     public static final ModelLayerLocation GOBLIN_FEMALE_LAYER = new ModelLayerLocation(
@@ -22,7 +19,6 @@ public final class GoblinSettlementClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        EntityModelLayerRegistry.registerModelLayer(GOBLIN_LAYER, GoblinModel::createLayer);
         EntityModelLayerRegistry.registerModelLayer(GOBLIN_MALE_LAYER, GoblinMaleModel::createLayer);
         EntityModelLayerRegistry.registerModelLayer(GOBLIN_FEMALE_LAYER, GoblinFemaleModel::createLayer);
         EntityRenderers.register(ModEntities.GOBLIN, GoblinRenderer::new);

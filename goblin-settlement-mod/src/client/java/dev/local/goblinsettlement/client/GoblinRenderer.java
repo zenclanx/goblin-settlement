@@ -20,8 +20,9 @@ public final class GoblinRenderer
     private final EntityModel<GoblinRenderState> female;
 
     public GoblinRenderer(EntityRendererProvider.Context context) {
-        // super(...) needs a model; the two below are the ones we actually swap between. They wrap the
-        // same baked ModelPart the layer registry produced, so this costs a shell, not a second bake.
+        // super(...) must be the first statement, so it cannot take the field below -- this bakes the
+        // male mesh twice and throws one tree away on the first submit. Cheap, and the alternative
+        // (a shared holder) buys nothing here.
         super(context, new GoblinMaleModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_MALE_LAYER)), 0.3F);
         male = new GoblinMaleModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_MALE_LAYER));
         female = new GoblinFemaleModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_FEMALE_LAYER));
