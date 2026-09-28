@@ -274,15 +274,21 @@ public final class HousingCoordinator {
     }
 
     /**
+     * How many residents this home holds: its bed, plus one for each capacity stage actually built. The
+     * target alone is not enough -- a raised target whose geometry has not been placed adds no room, so
+     * the household count must follow the world. Read-only.
+     */
+    public static int homeCapacity(ServerLevel level, HousingSavedData.Home home) {
+        return HousingRules.builtCapacity(home.capacityTarget(), stageFullyBuilt(level, home, 1),
+                stageFullyBuilt(level, home, 2));
+    }
+
+    /**
      * Beds this home actually provides, or 0 when even its walls are not up yet. Callers ask how many
      * can shelter here; "which stage is built" is an implementation detail of this answer.
      */
     public static int shelterCapacity(ServerLevel level, HousingSavedData.Home home) {
-        if (!stageFullyBuilt(level, home, 1)) {
-            return 0;
-        }
-        return HousingRules.builtCapacity(home.capacityTarget(), true,
-                stageFullyBuilt(level, home, 2));
+        return stageFullyBuilt(level, home, 1) ? homeCapacity(level, home) : 0;
     }
 
     static boolean stageFullyBuilt(ServerLevel level, HousingSavedData.Home home, int stageIndex) {
