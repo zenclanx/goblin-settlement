@@ -112,4 +112,51 @@ private record Bodies(EntityModel<GoblinRenderState> base,
 
 ## 7 落地结果（实现后补记）
 
-（待本轮实现后补写。）
+（本节写于实现之后，2026-09-28。落点提交：`160954f` 设计 / `b754278` 计划 / `784fa34` 一具身体一张表 + 农民 / `0f8483f` 注册与渲染都走表。）
+
+### 7.1 生成器只加了两行
+
+§1 的核对结论成立。两套农民组合工程正好落在生成器**已支持**的一侧——顶层六个分组、盒式 UV、无逐面 UV、无多轴旋转、无缺 `uv_offset` 的元素；`resolution` 是 512×512，生成器读它，所以 `LayerDefinition.create(mesh, 512, 512)` 自动得出。因此 `tools/generate_models.py` **只多了 `MODELS` 表的两项**（`goblin_farmer_male_p01` / `goblin_farmer_female_p01`），算法、裁剪格式、拒绝规则与变换一行未改。§2 的数据流（`--crop` → 裁剪件 → 生成类 → 贴图 → 注册）全流程跑通。
+
+### 7.2 一张表，三个读者
+
+新增 `client/model/GoblinBodies`，其 `BODIES` 列出客户端能渲染的每一具身体：两具未着装的基础身体（男女）加农民两套（男女）。每行带几何裁剪件名、贴图基名、`createLayer` 工厂与 `ModelPart → 模型` 构造器。三个读者共用它：
+
+- `GoblinSettlementClient` 按行注册一个模型层；
+- `GoblinRenderer` 烘制并按行取用；
+- `artModelCheck` 验证每行的裁剪件、贴图尺寸与烘出的几何。
+
+层 id 由裁剪件名经**唯一函数** `GoblinSettlementClient.layer(String)` 派生，注册与烘焙共用它——两处不可能对不上；**加一个职业只改这一处**。
+
+### 7.3 渲染器的选择与刻意的退路
+
+§3 写的"渲染器持有 `Bodies male` / `Bodies female`"落地时**形状略有不同，就地更正**：`Bodies` 把模型与贴图**合在一个 record** 里（`base` + `baseTexture` + 两张并列的 map `outfits` / `textures`），查表方法是两个（`body(Profession)` / `texture(Profession)`），不是设计里的单个 `forProfession()`。`submit` 与 `getTextureLocation` 读**同一行**，所以农民不可能用别的职业的贴图。
+
+其余六职业与 `UNASSIGNED` 回退到基础身体与基础贴图——**这是刻意的**，让未着装的职业仍然可渲染，而不是显示缺贴图。这也是本轮**唯一的行为变化**。
+
+### 7.4 检查：从表派生，断言一条没少
+
+`artModelCheck` 原先硬编码的那份 crop → 模型类映射被删除，改为从 `GoblinBodies.BODIES` 派生。审查用**定向 diff** 确认 `checkCrop` / `checkTexture` / `checkBaked` **没有任何 hunk**——这三处里既有断言全部原样保留、强度未减，本轮 19 条既有断言一条不少（逐条点名）：`checkCrop` 十条（resolution 存在 / 分组不带 rotation / 分组恰为六个必需名 / 有元素 / 全部盒式 UV / 三条 extent 不反向 / uv 展开在 u 内 / 在 v 内 / 脚底落在艺术地面线 / 高度上限），`checkTexture` 三条（贴图存在 / PNG 头完整 / 像素恰为逻辑 UV 的两倍），`checkBaked` 五条（`bakeRoot` 非空 / `hasChild` 负控能分辨 / 六个分组都在 / 六个分组的位姿与裁剪件轴心一致 / 烘出的网格真带几何），另加 main 里那条"裁剪件必须有可渲染身体映射"。**检查总数仍是 21 项，不新增检查任务。**
+
+新增 `checkBodiesAgreeWithTheirCrops` 守住表本身：同一 `(职业, 性别)` 不得被两行认领、每行的裁剪件必须进仓。**覆盖性质的两个方向都是闭合的**：登记了却没有裁剪件会失败，验证了裁剪件却没有登记（main 的 `body != null`）也会失败。
+
+### 7.5 一处必要的实现期偏离（已对着 Fabric API 核实）
+
+计划逐字给的 `registerModelLayer(layer, body.layer())` 在**本版本 Fabric 不能编译**——`EntityModelLayerRegistry.registerModelLayer` 收的是 `TexturedModelDataProvider`，不是 `Supplier<LayerDefinition>`。实现在**唯一调用点**改成 `body.layer()::get`，共享的表一字未动。审查对着 Fabric API 源码确认了这条诊断。
+
+### 7.6 §4 第二条是"有意收紧"，不是偏离
+
+§4 第二条要的是"每个在代码里**登记了**职业外观的 `(职业, 性别)`，在裁剪件清单里都有对应项"。计划（自查 §2）把它实现成**更强的形式**：登记不再散落在渲染器里，只有 `GoblinBodies.BODIES` 一张表，注册处、渲染器、检查三者都从它读。于是"登记了但资源没进仓"这类错误**从结构上消失**——检查遍历的就是登记本身；换来一条**真会失败**的新断言（同一 `(职业, 性别)` 不得被两行认领）；代价是检查里那份硬编码映射被换成从表派生。**这不是丢掉了 §4 的措辞，是把它的目标换了个更难写错的形状。**
+
+### 7.7 刻意不修的审查发现（parked，记录不改）
+
+- `Bodies` 带两张**并列 map**（`outfits` / `textures`），同一次填充。今天按构造成立，但将来改一处而忘另一处，就会**重新引入跨职业贴图错配**——本轮存在的意义正是防它，值得尽早收敛（后两轮还要再加十二行）。
+- `checkCrop` 用 `getAsInt()` 读元素坐标，而职业裁剪件带**小数**，所以裁剪那一半的 uv 展开与最低/最高检查跑在**截断后的整数**上（本轮没咬到——分组轴心是整数，位姿断言仍然精确——但上一轮日志已经承诺"职业到了就改 `getAsDouble()`"）。
+- 贴图命名空间写死 `"goblin_settlement"` 字面量，与 `GoblinSettlement.MOD_ID` 并存。
+
+### 7.8 未做 / 未验证
+
+- **不做玩法验收**：帽子随头部转动的实际效果、1024 贴图的观感与显存、职业外观在缩放/远距离下的辨识度、多人同屏性能，**全部不可纯测**（只有编译与独立检查）。
+- **组合式做不到"拆掉配饰恢复基础角色"**：今天不需要（居民不转岗，`assignProfession` 一次性），但将来要"职业装备可掉落/可换"就得改架构。
+- **其余六职业未接**，含**尚未经用户审阅的哨卫 P07**；儿童、五款傀儡、音效、公告板方块仍未引入（**年龄同步与傀儡等级同步也未引入**）。
+- **音效与公告板是美术交付的首批样板、待用户审阅**；物品图标与设施图标目录因此仍为空。
