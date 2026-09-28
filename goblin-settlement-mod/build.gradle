@@ -213,6 +213,14 @@ tasks.register('bridgeMaterialsCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.construction.transport.BridgeMaterialsCheck'
 }
 
+tasks.register('artModelCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks the committed art crops: groups, ground line, texture bounds, box uv.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.client.ArtModelCheck'
+}
+
 tasks.register('housingAssignmentCheck', JavaExec) {
     group = 'verification'
     description = 'Checks who lives in which home, and that the rule is deterministic.'
@@ -242,4 +250,5 @@ tasks.named('check') {
     dependsOn tasks.named('constructionMaterialCheck')
     dependsOn tasks.named('bridgeMaterialsCheck')
     dependsOn tasks.named('housingAssignmentCheck')
+    dependsOn tasks.named('artModelCheck')
 }
