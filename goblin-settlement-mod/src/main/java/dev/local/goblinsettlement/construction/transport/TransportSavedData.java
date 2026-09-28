@@ -387,7 +387,7 @@ public final class TransportSavedData extends SavedData {
         if (!plan.isComplete()) {
             incompletePlans.put(plan.id(), plan);
         }
-        if (plan.kind() != TransportPlan.Kind.WOOD_BRIDGE) {
+        if (!plan.isBridge()) {
             return;
         }
         if (plan.open()) {
@@ -401,7 +401,7 @@ public final class TransportSavedData extends SavedData {
 
     private void unindex(TransportPlan plan) {
         incompletePlans.remove(plan.id());
-        if (plan.kind() != TransportPlan.Kind.WOOD_BRIDGE) {
+        if (!plan.isBridge()) {
             return;
         }
         if (plan.open()) {

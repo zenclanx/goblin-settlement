@@ -186,7 +186,7 @@ public final class TransportCommands {
             }
         }
         for (TransportPlan plan : traffic.plans()) {
-            if (plan.kind() != TransportPlan.Kind.WOOD_BRIDGE
+            if (!plan.isBridge()
                     || plan.completedSteps() != plan.steps().size()) {
                 continue;
             }

@@ -266,7 +266,7 @@ public final class TransportCoordinator {
             }
             return;
         }
-        if (plan.kind() == TransportPlan.Kind.WOOD_BRIDGE
+        if (plan.isBridge()
                 && plan.completedSteps() >= plan.barrierFeet().size()
                 && plan.completedSteps() < plan.steps().size()) {
             for (int index = 0; index < plan.barrierFeet().size(); index++) {
@@ -282,7 +282,7 @@ public final class TransportCoordinator {
                 traffic.replace(plan.rewind(missing));
                 return;
             }
-            if (plan.kind() == TransportPlan.Kind.WOOD_BRIDGE) {
+            if (plan.isBridge()) {
                 // A crossing nobody can walk is not opened. The saved closure keeps it impassable, and
                 // the temporary fences stay up, so a bridge that is not yet crossable still looks like
                 // a site rather than a finished bridge behind an invisible wall.
