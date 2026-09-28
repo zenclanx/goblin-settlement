@@ -40,7 +40,7 @@
 **Interfaces:**
 - Consumes: 无
 - Produces:
-  - `TransportPlan.Kind.STONE_BRIDGE`、`TransportPlan.isBridge() -> boolean`
+  - `TransportPlan.Kind.STONE_BRIDGE`、`TransportPlan.Kind.isBridge() -> boolean`（权威）与委托它的 `TransportPlan.isBridge()`
   - `BridgePlanner.MIN_STONE_SPAN = 13`、`BridgePlanner.MAX_STONE_SPAN = 24`
   - `BridgePlanner.planBridge(ServerLevel, String, BlockPos, Direction, int minSpan, int maxSpan) -> Result`（**取代 `planWoodBridge`**）
   - `BuildMaterial.COBBLESTONE`
@@ -198,26 +198,35 @@ Expected: `:compileTestJava FAILED`，报错形如 `找不到符号: 变量 STON
     }
 ```
 
-3b. 紧凑构造器里那句桥的校验（`kind == Kind.WOOD_BRIDGE && ...`）改为用新判据（**在校验里不能用 `this`**，所以直接写成两个枚举的并列判断，或者把该判断提前到一个静态助手——用后者）：
+3b. 紧凑构造器里那句桥的校验（`kind == Kind.WOOD_BRIDGE && ...`）改为用新判据，并在**枚举上**加权威方法、在记录上留一个委托：
+
+`Kind` 枚举里加：
 
 ```java
-        if (isBridgeKind(kind) && (barrierFeet.size() != 4 || closedFootprint.isEmpty())) {
-            throw new IllegalArgumentException("Bridge needs four barriers and a closed footprint");
+        /** True for every bridge kind; a new kind is taught to the whole line by this one answer. */
+        public boolean isBridge() {
+            return this == WOOD_BRIDGE || this == STONE_BRIDGE;
         }
 ```
 
-并在类里加：
+记录上加一个委托（供手里拿着一个计划的调用方，例如 `TransportSavedData.index`）：
 
 ```java
     /** True for every bridge kind; a new kind is taught to the whole line by this one answer. */
     public boolean isBridge() {
-        return isBridgeKind(kind);
-    }
-
-    private static boolean isBridgeKind(Kind candidate) {
-        return candidate == Kind.WOOD_BRIDGE || candidate == Kind.STONE_BRIDGE;
+        return kind.isBridge();
     }
 ```
+
+校验那句改为：
+
+```java
+        if (kind.isBridge() && (barrierFeet.size() != 4 || closedFootprint.isEmpty())) {
+            throw new IllegalArgumentException("Bridge needs four barriers and a closed footprint");
+        }
+```
+
+（**权威在枚举上**、记录只委托：第一步的检查就是在 `Kind` 的常量上调用 `isBridge()` 的。）
 
 - [ ] **Step 4: `BridgePlanner` 按区间勘察**
 
@@ -390,7 +399,7 @@ Expected: `BUILD SUCCESSFUL`，**19 项**检查全部 `*Check passed`（含新�
 
 Run: `grep -rn "planWoodBridge\|MAX_WOOD_SPAN\|MIN_WOOD_SPAN" src/`
 
-Expected: 常量只在 `BridgePlanner` 定义、在 `BridgeMaterials` 与 `TransportCoordinator` 使用；`planWoodBridge` **一处不剩**。
+Expected: 常量只在 `BridgePlanner` 定义、在 `BridgeMaterials` 使用；**`TrafficProposalCoordinator` 里那处把 `MIN_WOOD_SPAN/MAX_WOOD_SPAN` 传给 `TrafficDecision.decide` 的调用是既有的**（Task 4 才会把它换成两档），本任务不要动它；`planWoodBridge` **一处不剩**。
 
 - [ ] **Step 11: 提交**
 
