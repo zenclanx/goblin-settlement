@@ -29,7 +29,6 @@ import json
 import math
 import os
 import re
-import sys
 
 SCALE = 0.5     # the art is built on a 2x grid; see the delivery READMEs
 GROUND = 24.0   # the model-space y the renderer stands the entity's feet on
@@ -66,6 +65,43 @@ def java_name(raw):
     return cleaned
 
 
+def numbers(value, count):
+    """True if value is a list of exactly `count` numbers (a bool is not a number here)."""
+    return (isinstance(value, list) and len(value) == count
+            and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value))
+
+
+def validate(project, data):
+    """Every field the emitter indexes has the shape it expects, so a malformed crop fails with a
+    message naming the model and the part, instead of a raw KeyError/TypeError mid-emission."""
+    resolution = data.get("resolution") or {}
+    if not (isinstance(resolution.get("width"), int) and isinstance(resolution.get("height"), int)):
+        fail("%s: the crop has no integer resolution" % project)
+    if not data.get("outliner"):
+        fail("%s: the crop has no outliner" % project)
+    for group in data.get("groups", []):
+        if not group.get("uuid") or not group.get("name"):
+            fail("%s: a group is missing its name or uuid" % project)
+        if not numbers(group.get("origin"), 3):
+            fail("%s: group %s has no 3-number origin (%r)"
+                 % (project, group.get("name"), group.get("origin")))
+    for element in data.get("elements", []):
+        name = element.get("name")
+        if not element.get("uuid") or not name:
+            fail("%s: an element is missing its name or uuid" % project)
+        for key in ("from", "to", "origin"):
+            if not numbers(element.get(key), 3):
+                fail("%s: element %s has no 3-number %s (%r)"
+                     % (project, name, key, element.get(key)))
+        uv = element.get("uv_offset")
+        if not (isinstance(uv, list) and len(uv) >= 2
+                and all(isinstance(item, int) and not isinstance(item, bool) for item in uv[:2])):
+            fail("%s: element %s has no integer uv_offset (%r)" % (project, name, uv))
+        rotation = element.get("rotation")
+        if rotation is not None and not numbers(rotation, 3):
+            fail("%s: element %s has a malformed rotation (%r)" % (project, name, rotation))
+
+
 def crop(project, source):
     path = os.path.join(ART, source)
     if not os.path.isfile(path):
@@ -83,12 +119,18 @@ def crop(project, source):
             fail("%s: element %s uses per-face uv" % (project, element["name"]))
         elements.append({key: element.get(key) for key in
                          ("name", "uuid", "from", "to", "origin", "rotation", "uv_offset", "box_uv")})
+    groups = []
+    for group in raw.get("groups", []):
+        # The crop keeps only a group's name, uuid and origin, and the emitter reads none of its
+        # rotation, so a rotated group would be drawn wrong with no complaint. Refuse it instead.
+        if any(group.get("rotation") or (0, 0, 0)):
+            fail("%s: group %s carries a rotation, which is not derived" % (project, group.get("name")))
+        groups.append({"name": group["name"], "uuid": group["uuid"], "origin": group["origin"]})
     trimmed = {
         "name": raw.get("name", project),
         "resolution": raw["resolution"],
         "elements": elements,
-        "groups": [{"name": g["name"], "uuid": g["uuid"], "origin": g["origin"]}
-                   for g in raw.get("groups", [])],
+        "groups": groups,
         "outliner": raw.get("outliner", []),
     }
     os.makedirs(CROPS, exist_ok=True)
@@ -213,6 +255,7 @@ def generate(project, class_name):
     if not os.path.isfile(path):
         fail("no crop at %s -- run --crop first, on a machine that has Models/" % path)
     data = json.load(open(path, encoding="utf-8"))
+    validate(project, data)
     groups = {g["uuid"]: g for g in data["groups"]}
     elements = {e["uuid"]: e for e in data["elements"]}
     roots = [node for node in data["outliner"] if isinstance(node, dict)]

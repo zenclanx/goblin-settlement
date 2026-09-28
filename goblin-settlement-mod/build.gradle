@@ -38,6 +38,11 @@ dependencies {
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    // ArtModelCheck bakes the generated models, so the verification source set needs the mod's own
+    // client output on its compile and runtime classpaths. The client-only Minecraft jar is already
+    // there. The output file collection carries its builtBy, so clientClasses is ordered in for free.
+    testImplementation sourceSets.client.output
 }
 
 processResources {
@@ -215,9 +220,9 @@ tasks.register('bridgeMaterialsCheck', JavaExec) {
 
 tasks.register('artModelCheck', JavaExec) {
     group = 'verification'
-    description = 'Checks the committed art crops: groups, ground line, texture bounds, box uv.'
+    description = 'Checks the committed art crops and the baked meshes: groups, ground line, texture bounds, box uv.'
     dependsOn tasks.named('testClasses')
-    classpath = sourceSets.test.runtimeClasspath
+    classpath = sourceSets.test.runtimeClasspath + sourceSets.client.output
     mainClass = 'dev.local.goblinsettlement.client.ArtModelCheck'
 }
 

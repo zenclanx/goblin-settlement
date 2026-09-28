@@ -3,6 +3,8 @@ package dev.local.goblinsettlement.client;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.local.goblinsettlement.client.model.GoblinFemaleModel;
+import dev.local.goblinsettlement.client.model.GoblinMaleModel;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -11,13 +13,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
 
 /**
- * Checks the committed art crops before the client ever bakes them: the six required groups, the feet
- * on the art ground line, every cube inside the declared texture, and box uv only.
+ * Checks the art before the client ever renders it, in two halves.
  *
- * The crop is what this module's geometry is regenerated from -- the art workspace is not in version
- * control -- so this is the one place a bad model is caught before it reaches a screen.
+ * <p>The first half reads the committed crops: the six required groups, the feet on the art ground
+ * line, every cube's box-uv footprint inside the declared texture, and box uv only. The crop is what
+ * the mod's geometry is regenerated from -- the art workspace is not in version control -- so this is
+ * where a bad model is caught before it reaches a screen.
+ *
+ * <p>The second half bakes the generated meshes and looks the six names up in them. Nothing else in
+ * the build would notice a misnamed group: the mesh would compile, and the name is only ever read at
+ * render time.
  */
 public final class ArtModelCheck {
     private static final Set<String> REQUIRED = Set.of(
@@ -33,12 +42,14 @@ public final class ArtModelCheck {
         }
         require(!crops.isEmpty(), "at least one cropped model is committed");
         for (Path crop : crops) {
-            checkOne(crop);
+            checkCrop(crop);
         }
-        System.out.println("ArtModelCheck passed (" + crops.size() + " models)");
+        checkBaked("GoblinMaleModel", GoblinMaleModel.createLayer());
+        checkBaked("GoblinFemaleModel", GoblinFemaleModel.createLayer());
+        System.out.println("ArtModelCheck passed (" + crops.size() + " crops, 2 baked models)");
     }
 
-    private static void checkOne(Path path) throws IOException {
+    private static void checkCrop(Path path) throws IOException {
         JsonObject root = JsonParser.parseString(Files.readString(path, StandardCharsets.UTF_8))
                 .getAsJsonObject();
         String name = path.getFileName().toString();
@@ -87,6 +98,25 @@ public final class ArtModelCheck {
         }
         require(lowest == 0, name + ": the feet sit on the art ground line (lowest y is " + lowest + ")");
         require(highest <= 64, name + ": the model is not absurdly tall (" + highest + " art units)");
+    }
+
+    /**
+     * The design's second half: build the real mesh and look the six required names up in it. A
+     * {@link LayerDefinition} does not expose the {@link net.minecraft.client.model.geom.builders
+     * .MeshDefinition} it was made from, so the names cannot be read back before baking; after {@code
+     * bakeRoot()} they are the children map's keys, which is exactly what {@code GoblinBodyModel}
+     * looks up when it is constructed. The negative control is there so a {@code hasChild} that
+     * answered true for everything could not make the loop vacuous.
+     */
+    private static void checkBaked(String label, LayerDefinition layer) {
+        ModelPart root = layer.bakeRoot();
+        require(root != null, label + ": bakeRoot() returns a root");
+        require(!root.hasChild("no_such_part"), label + ": hasChild discriminates (negative control)");
+        for (String name : REQUIRED) {
+            require(root.hasChild(name), label + ": the baked root has a part named " + name);
+        }
+        require(root.getAllParts().stream().anyMatch(part -> !part.isEmpty()),
+                label + ": the baked mesh carries cube geometry");
     }
 
     private static void require(boolean condition, String message) {
