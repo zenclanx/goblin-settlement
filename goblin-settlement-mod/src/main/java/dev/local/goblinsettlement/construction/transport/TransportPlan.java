@@ -17,7 +17,12 @@ public record TransportPlan(
         Optional<String> workerId, Optional<BlockPos> targetFacility,
         Optional<Road> road) {
     public enum Kind {
-        ROAD, WOOD_BRIDGE
+        ROAD, WOOD_BRIDGE, STONE_BRIDGE;
+
+        /** True for every bridge kind; a new kind is taught to the whole line by this one answer. */
+        public boolean isBridge() {
+            return this == WOOD_BRIDGE || this == STONE_BRIDGE;
+        }
     }
 
     /**
@@ -109,7 +114,7 @@ public record TransportPlan(
         if (kind == Kind.ROAD && (!barrierFeet.isEmpty() || !closedFootprint.isEmpty() || open)) {
             throw new IllegalArgumentException("Roads cannot carry bridge closure state");
         }
-        if (kind == Kind.WOOD_BRIDGE && (barrierFeet.size() != 4 || closedFootprint.isEmpty())) {
+        if (kind.isBridge() && (barrierFeet.size() != 4 || closedFootprint.isEmpty())) {
             throw new IllegalArgumentException("Bridge needs four barriers and a closed footprint");
         }
         if (open && completedSteps != steps.size()) {
@@ -119,6 +124,11 @@ public record TransportPlan(
 
     private static List<BlockPos> immutablePositions(List<BlockPos> positions) {
         return positions.stream().map(pos -> Objects.requireNonNull(pos, "position").immutable()).toList();
+    }
+
+    /** True for every bridge kind; a new kind is taught to the whole line by this one answer. */
+    public boolean isBridge() {
+        return kind.isBridge();
     }
 
     /** The road's width; a plan written before the widening round is two lanes. */

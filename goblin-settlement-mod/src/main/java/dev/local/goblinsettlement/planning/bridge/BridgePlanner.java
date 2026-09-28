@@ -14,7 +14,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * Bounded, read-only survey for a straight wooden bridge. It proposes geometry
+ * Bounded, read-only survey for a straight bridge. It proposes geometry
  * and a construction order; it does not make a bridge safe to enter or place any
  * blocks. Call on the server thread and recheck the entire footprint when work
  * is scheduled and immediately before each block modification.
@@ -22,6 +22,8 @@ import net.minecraft.world.level.block.state.BlockState;
 public final class BridgePlanner {
     public static final int MIN_WOOD_SPAN = 4;
     public static final int MAX_WOOD_SPAN = 12;
+    public static final int MIN_STONE_SPAN = 13;
+    public static final int MAX_STONE_SPAN = 24;
     private static final int MAX_WATER_BASE_DEPTH = 4;
     private static final int MAX_RAVINE_BASE_DEPTH = 8;
 
@@ -112,11 +114,12 @@ public final class BridgePlanner {
      * The near-bank foot is the first of two walking lanes at ground level.
      * The direction points across the gap. The second lane is clockwise from
      * that direction. Both banks and their outward approach cells must offer
-     * two clear, same-height walking lanes; the gap occupies 4-12 columns.
+     * two clear, same-height walking lanes; the gap must occupy between
+     * {@code minSpan} and {@code maxSpan} columns, as given by the caller.
      */
-    public static Result planWoodBridge(
+    public static Result planBridge(
             ServerLevel level, String settlementId, BlockPos nearBankFoot,
-            Direction direction) {
+            Direction direction, int minSpan, int maxSpan) {
         Objects.requireNonNull(level, "level");
         Objects.requireNonNull(settlementId, "settlementId");
         Objects.requireNonNull(nearBankFoot, "nearBankFoot");
@@ -147,12 +150,12 @@ public final class BridgePlanner {
             return failure(asLandingFailure(nearApproachCheck, Status.NEAR_APPROACH_UNSAFE));
         }
 
-        List<BlockPos> deck = new ArrayList<>(MAX_WOOD_SPAN * 4);
-        List<BlockPos> rails = new ArrayList<>(MAX_WOOD_SPAN * 2);
-        List<BlockPos> bases = new ArrayList<>(MAX_WOOD_SPAN * 4);
+        List<BlockPos> deck = new ArrayList<>(maxSpan * 4);
+        List<BlockPos> rails = new ArrayList<>(maxSpan * 2);
+        List<BlockPos> bases = new ArrayList<>(maxSpan * 4);
         BridgeKind crossingKind = null;
 
-        for (int step = 1; step <= MAX_WOOD_SPAN + 1; step++) {
+        for (int step = 1; step <= maxSpan + 1; step++) {
             BlockPos lane = near.relative(direction, step);
             Status firstLanding = landing(level, settlementId, lane);
             Status secondLanding = landing(level, settlementId, lane.relative(right));
@@ -166,7 +169,7 @@ public final class BridgePlanner {
             boolean secondOnBank = secondLanding == Status.FOUND;
             if (firstOnBank && secondOnBank) {
                 int span = step - 1;
-                if (span < MIN_WOOD_SPAN) {
+                if (span < minSpan) {
                     return failure(Status.SPAN_TOO_SHORT);
                 }
                 BlockPos farApproach = lane.relative(direction);
@@ -188,7 +191,7 @@ public final class BridgePlanner {
             if (firstOnBank != secondOnBank) {
                 return failure(Status.IRREGULAR_BANK);
             }
-            if (step > MAX_WOOD_SPAN) {
+            if (step > maxSpan) {
                 return failure(Status.SPAN_TOO_LONG);
             }
 

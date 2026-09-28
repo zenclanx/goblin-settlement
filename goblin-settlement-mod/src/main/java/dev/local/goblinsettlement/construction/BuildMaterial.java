@@ -13,7 +13,8 @@ public enum BuildMaterial {
     OAK_PLANKS(Blocks.OAK_PLANKS, Items.OAK_PLANKS),
     OAK_LOG(Blocks.OAK_LOG, Items.OAK_LOG),
     OAK_FENCE(Blocks.OAK_FENCE, Items.OAK_FENCE),
-    TORCH(Blocks.TORCH, Items.TORCH);
+    TORCH(Blocks.TORCH, Items.TORCH),
+    COBBLESTONE(Blocks.COBBLESTONE, Items.COBBLESTONE);
 
     private final Block block;
     private final Item item;

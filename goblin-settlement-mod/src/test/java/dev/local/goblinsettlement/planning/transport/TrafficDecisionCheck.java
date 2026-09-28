@@ -41,7 +41,32 @@ public final class TrafficDecisionCheck {
                 "an empty sample carries no decision");
         require(decide(line("L L L"), 5).kind() == TrafficDecision.Kind.NONE,
                 "an out-of-range target index carries no decision");
+        checkSpanRungsPartitionTheWater();
         System.out.println("TrafficDecisionCheck passed");
+    }
+
+    /**
+     * The two bridge rungs must partition the water widths without overlapping: a 12-wide run is the
+     * wooden bridge's last, and a 13-wide run is the stone bridge's first.
+     */
+    private static void checkSpanRungsPartitionTheWater() {
+        require(TrafficDecision.decide(waterRun(12), 13, 4, 12).kind() == TrafficDecision.Kind.BRIDGE,
+                "twelve columns is a wooden bridge");
+        require(TrafficDecision.decide(waterRun(12), 13, 13, 24).kind() == TrafficDecision.Kind.ROAD,
+                "and not a stone one");
+        require(TrafficDecision.decide(waterRun(13), 14, 4, 12).kind() == TrafficDecision.Kind.ROAD,
+                "thirteen columns is past the wooden rung");
+        require(TrafficDecision.decide(waterRun(13), 14, 13, 24).kind() == TrafficDecision.Kind.BRIDGE,
+                "and is the stone bridge's first");
+        require(TrafficDecision.decide(waterRun(24), 25, 13, 24).kind() == TrafficDecision.Kind.BRIDGE,
+                "twenty-four columns is still a stone bridge");
+        require(TrafficDecision.decide(waterRun(25), 26, 13, 24).kind() == TrafficDecision.Kind.ROAD,
+                "twenty-five is beyond both rungs, so the corridor falls back to the road rule");
+    }
+
+    /** A straight-line sample: land, then this many water columns, then land, with the target on land. */
+    private static List<TrafficDecision.ColumnKind> waterRun(int water) {
+        return line("L " + "W ".repeat(water) + "L");
     }
 
     private static TrafficDecision.Decision decide(List<TrafficDecision.ColumnKind> columns, int targetIndex) {

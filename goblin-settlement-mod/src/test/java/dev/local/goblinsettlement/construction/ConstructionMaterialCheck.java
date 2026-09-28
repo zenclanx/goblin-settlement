@@ -39,7 +39,7 @@ public final class ConstructionMaterialCheck {
      */
     private static void checkStoredNamesAreStable() {
         List<String> names = Arrays.stream(BuildMaterial.values()).map(Enum::name).toList();
-        require(names.equals(List.of("OAK_PLANKS", "OAK_LOG", "OAK_FENCE", "TORCH")),
+        require(names.equals(List.of("OAK_PLANKS", "OAK_LOG", "OAK_FENCE", "TORCH", "COBBLESTONE")),
                 "the stored material names are the ones already in saves");
     }
 
@@ -73,6 +73,8 @@ public final class ConstructionMaterialCheck {
         require(BuildMaterial.OAK_LOG.item() == Items.OAK_LOG, "oak logs are fetched as oak logs");
         require(BuildMaterial.OAK_FENCE.item() == Items.OAK_FENCE, "oak fences are fetched as oak fences");
         require(BuildMaterial.TORCH.item() == Items.TORCH, "torches are fetched as torches");
+        require(BuildMaterial.COBBLESTONE.block() == Blocks.COBBLESTONE, "cobblestone builds cobblestone");
+        require(BuildMaterial.COBBLESTONE.item() == Items.COBBLESTONE, "cobblestone is fetched as cobblestone");
     }
 
     /**

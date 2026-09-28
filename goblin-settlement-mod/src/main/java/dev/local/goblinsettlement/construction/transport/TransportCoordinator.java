@@ -104,8 +104,9 @@ public final class TransportCoordinator {
         if (hasActivePlan(traffic)) {
             return rejected("TRAFFIC_WORK_ACTIVE");
         }
-        BridgePlanner.Result result = BridgePlanner.planWoodBridge(
-                level, settlementId, nearBankFoot, direction);
+        BridgePlanner.Result result = BridgePlanner.planBridge(
+                level, settlementId, nearBankFoot, direction,
+                BridgePlanner.MIN_WOOD_SPAN, BridgePlanner.MAX_WOOD_SPAN);
         if (result.candidate().isEmpty()) {
             return rejected(result.status().name());
         }
