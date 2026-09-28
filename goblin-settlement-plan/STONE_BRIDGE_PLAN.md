@@ -427,13 +427,13 @@ git commit -m "Add a stone bridge kind, its materials and its span rung"
 
 **Interfaces:**
 - Consumes: `TransportPlan.isBridge()`（Task 1）
-- Produces: 全仓不再有 `kind == Kind.WOOD_BRIDGE` 这类**逐枚举**判断（`TransportPlan` 自己的 `isBridgeKind` 除外）
+- Produces: 全仓不再有 `kind == Kind.WOOD_BRIDGE` 这类**逐枚举**判断（`TransportPlan` 里 `isBridge()` 自己的实现除外）
 
 - [ ] **Step 1: 先数清楚**
 
 Run: `grep -rn "WOOD_BRIDGE" src/`
 
-Expected: 逐条判断每一处该不该改。**要改成 `isBridge()` 的**：`TransportSavedData` 的 `index`/`unindex`（openBridges / closedFeet 两支）、`TransportCoordinator` 的 `tickPlan`（栅栏复查、开通分支、连通闸）与 `TransportCommands` 的桥筛选、以及任何 `kind != Kind.WOOD_BRIDGE` 形式的判断。**不要改的**：`TransportPlan` 内部那两条（枚举定义与 `isBridgeKind`）、以及测试夹具里"造一座木桥"的地方（那里就该指名 `WOOD_BRIDGE`）。
+Expected: 逐条判断每一处该不该改。**要改成 `isBridge()` 的**：`TransportSavedData` 的 `index`/`unindex`（openBridges / closedFeet 两支）、`TransportCoordinator` 的 `tickPlan`（栅栏复查、开通分支、连通闸）与 `TransportCommands` 的桥筛选、以及任何 `kind != Kind.WOOD_BRIDGE` 形式的判断。**不要改的**：`TransportPlan` 里 `isBridge()` 的实现（枚举上那条与其委托）、以及测试夹具里"造一座木桥"的地方（那里就该指名 `WOOD_BRIDGE`）。
 
 **这一步的判断依据是**：凡是"这在问'这是不是一座桥'"的地方收口；凡是"这在指明要造哪种桥"的地方保持指名。
 
@@ -691,7 +691,7 @@ Run: `git -C .. status --short`
 ```markdown
 ## 8. 落地结果（实现后补记）
 
-- **桥种**：`TransportPlan.Kind` 增 `STONE_BRIDGE`，并加 `isBridge()` 作为"这是不是一座桥"的唯一判据；全仓原先 9 处逐枚举判断全部改走它（主代码里 `WOOD_BRIDGE` 只剩枚举定义与 `isBridgeKind` 两处）。
+- **桥种**：`TransportPlan.Kind` 增 `STONE_BRIDGE`，并加 `isBridge()` 作为"这是不是一座桥"的唯一判据；全仓原先 9 处逐枚举判断全部改走它。**收口后 `src/main/java` 里 `WOOD_BRIDGE` 落在五行上**——枚举声明、`isBridge()` 的方法体、提案里的木桥档、命令的缺省值与 `wood` 词——**五处都是在「命名一个桥种」，没有一处是在「判定是不是桥」**。
 - **档位**：`BridgePlanner` 增 `MIN_STONE_SPAN = 13` / `MAX_STONE_SPAN = 24`，勘察由写死上限改为**按区间参数**（`planWoodBridge` → `planBridge(..., minSpan, maxSpan)`），木石共用一套勘察。决策是**把既有的纯判据 `TrafficDecision.decide` 按两个区间各调一次**——`TrafficDecision` 一行未改，只加了边界断言（12／13／24／25 两侧）。
 - **材料**：`BuildMaterial` 增 `COBBLESTONE`（只许新增；四个已有名字仍是存档取值）；`construction/transport/BridgeMaterials` 成为"哪个桥种用什么材料、各要多少才开工"的唯一出处（**注意它落在 construction 而不是设计稿写的 planning**——`planning.*` 不许依赖 `construction.*`）。石桥的桥面/支撑/引道用圆石，护栏与临时栅栏仍是橡木栅栏（理由见 §3）。
 - **材料门禁**：`proposeBridge` 改为遍历 `BridgeMaterials.required(kind)`，每个材料各自一个"够开工"的下限；原先四个 `BRIDGE_MIN_*` 常量随之搬进 `BridgeMaterials`（`COBBLESTONE` 的下限是**发明值**，源码注释里已标）。
@@ -709,7 +709,7 @@ Run: `git -C .. status --short`
 ## [<开始> – <结束>] 第五十八轮：石桥与更长跨度
 
 - [<时间>] 按 STONE_BRIDGE_DESIGN.md 与 STONE_BRIDGE_PLAN.md 执行：加第二种桥（石桥，圆石结构），把可跨跨度从 12 格扩到 24 格。GAME_DESIGN 第 7 节给的就是"木桥约 4～12、石桥约 12～24"。
-- [<时间>] **桥种收口**：`TransportPlan` 增 `STONE_BRIDGE` 与 `isBridge()`；全仓原先 9 处 `kind == WOOD_BRIDGE` 改走它，主代码里只剩枚举定义与 `isBridgeKind` 两处。第五十六轮的连通验收与 `Links:` 行因此自动覆盖石桥（走格几何相同，没有新增判据）。
+- [<时间>] **桥种收口**：`TransportPlan` 增 `STONE_BRIDGE` 与 `isBridge()`；全仓原先 9 处 `kind == WOOD_BRIDGE` 改走它，收口后主代码里 `WOOD_BRIDGE` 落在五行上（枚举声明、`isBridge()` 的方法体、提案里的木桥档、命令的缺省值与 `wood` 词）——**全是命名桥种，没有一处是判定桥种**。第五十六轮的连通验收与 `Links:` 行因此自动覆盖石桥（走格几何相同，没有新增判据）。
 - [<时间>] **档位**：`BridgePlanner` 增 `MIN_STONE_SPAN = 13` / `MAX_STONE_SPAN = 24`，勘察改为**按区间参数**（`planWoodBridge` → `planBridge`），木石共用一套。决策是**把既有纯判据 `TrafficDecision.decide` 按两个区间各调一次**——先 4–12 判木桥、不成再 13–24 判石桥；**纯层一行未改**，只补了 12／13／24／25 的边界断言。超过 24 格的两次都出界，按既有语义回落成"试修路 → 失败 → 目标延期"。
 - [<时间>] **材料**：`BuildMaterial` 增 `COBBLESTONE`（挖矿本就产出圆石，不需新经济）；新增 `construction/transport/BridgeMaterials` 作为"哪个桥种用什么材料、各要多少才开工"的唯一出处。**它落在 construction 而不是设计稿写的 planning**——`planning.*` 不许依赖 `construction.*`，否则成环；设计文档 §3 已按实现纠正。石桥的桥面/支撑/引道用圆石，**护栏与临时栅栏仍是橡木栅栏**：临时栅栏不是成品（开通时清掉，且清栅栏那段逻辑写死了橡木栅栏），而圆石墙护栏需要经济先能产出圆石墙——这是有意的边界，不是遗漏。
 - [<时间>] **材料门禁**：`proposeBridge` 改为遍历 `BridgeMaterials.required(kind)`，每个材料各自一个"够开工"的下限；原四个 `BRIDGE_MIN_*` 常量搬进 `BridgeMaterials`。**圆石的下限是发明值**（文档没给），源码注释已标明没有依据、需在真建过一座石桥后重定。
