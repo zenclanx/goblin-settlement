@@ -17,10 +17,12 @@ import net.minecraft.server.level.ServerLevel;
  * writes the edits back, so nothing here decides who lives where.
  */
 public final class HousingAssignmentCoordinator {
+    // Invented: nothing in the design gives a cadence for this. Re-choose it together with BUDGET once
+    // real settlements have been observed, the way TRAFFIC_PER_LANE and SAMPLE_INTERVAL_TICKS still need.
     private static final int INTERVAL_TICKS = 40;
-    // Invented, like TRAFFIC_PER_LANE and SAMPLE_INTERVAL_TICKS: the roster is at most 64 long, so a
-    // whole pass would fit in one tick. The budget exists to bound the edits per tick and to make the
-    // order they land in a decided thing rather than an accident.
+    // Invented too. The roster is at most 64 long, so a whole pass would fit in one tick; the budget
+    // exists to bound the edits per tick and to make the order they land in a decided thing rather than
+    // an accident. Re-choose alongside INTERVAL_TICKS.
     private static final int BUDGET = 8;
 
     private HousingAssignmentCoordinator() {
