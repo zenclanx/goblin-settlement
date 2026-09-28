@@ -138,7 +138,8 @@ ModelLayerLocation goblin_male#main / goblin_female#main
 ## 7. 验证
 
 - **新增第 21 项独立检查 `artModelCheck`**，两部分：
-  1. **验提交进仓的裁剪件**（不依赖任何客户端类）：逐模型断言顶层恰好是规定的六个分组名、脚底基准为 0（艺术网格）、所有立方体落在 `[0, resolution]` 内、全部为盒式 UV。
+  1. **验提交进仓的裁剪件**（不依赖任何客户端类）：逐模型断言顶层恰好是规定的六个分组名、脚底基准为 0（艺术网格）、全部为盒式 UV，以及**每个立方体的盒式 UV 展开矩形不越出贴图**（自 `uv_offset` 起算、`2*(w+d)` × `(h+d)`）。
+     **不是**拿立方体的**空间**坐标去比贴图尺寸——那在任何一个居中的模型上都恒假（设计期原文写的就是那一句，实现时由审查纠正，见 §10）。
   2. **验真实几何**：把客户端 source set 的输出并进检查任务的 classpath，调 `createLayer()`，遍历 `PartDefinition.getChildren()`（`getChildren()` 返回 `Set<Map.Entry<String, PartDefinition>>`，可按名断言）确认六个分组真的在，并核对脚底基准。`LayerDefinition.bakeRoot()` 给出烘好的 `ModelPart`，必要时用它验位置。
      **实现时确认** loom 的 `sourceSets.client` 能否直接并进 `classpath`；若不能，这一半退化为只验裁剪件，并在日志与状态文件里如实说明，不许含糊过去。
 - **生成器交叉校验**（§3.3）：`scale = 1` 下逐条重现美术候选，一次性、记入日志。
