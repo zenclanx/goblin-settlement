@@ -295,22 +295,46 @@ public final class GoblinSettlement implements ModInitializer {
 
     private static final int HOUSING_REPORT_LIMIT = 8;
 
-    /** Which unfinished homes cannot start their next step, and why. Read-only. */
+    /**
+     * Which unfinished homes cannot start their next step, and why. Read-only. A home whose bed sits in
+     * an inactive chunk is skipped and counted rather than judged from unloaded blocks; the reason
+     * itself comes only from HousingCoordinator.blockedReason, so this line restates no gate of its own.
+     */
     private static String housingReportLine(ServerLevel level, SettlementSavedData data) {
         var settlement = data.settlement();
         if (settlement.isEmpty()) {
             return "Housing work: no settlement in this dimension";
         }
         String id = settlement.get().id();
+        if (!HousingBlueprints.available()) {
+            // Every home would otherwise report this same reason, finished ones included.
+            return "Housing work: nothing can start, the blueprint data is unavailable";
+        }
+        var homes = new java.util.ArrayList<>(HousingSavedData.get(level).homes(id));
+        // Order as the scan that discovers homes walks: x, then z, then y.
+        homes.sort((left, right) -> {
+            int byX = Integer.compare(left.bed().getX(), right.bed().getX());
+            if (byX != 0) {
+                return byX;
+            }
+            int byZ = Integer.compare(left.bed().getZ(), right.bed().getZ());
+            return byZ != 0 ? byZ : Integer.compare(left.bed().getY(), right.bed().getY());
+        });
         var stalled = new java.util.ArrayList<String>();
-        for (var home : HousingSavedData.get(level).homes(id)) {
+        int notLoaded = 0;
+        for (var home : homes) {
+            if (!level.shouldTickBlocksAt(home.bed())) {
+                notLoaded++;
+                continue;
+            }
             var reason = HousingCoordinator.blockedReason(level, data, home, id);
             if (reason.isPresent()) {
                 stalled.add(home.bed().toShortString() + "(" + reason.orElseThrow() + ")");
             }
         }
+        String unloaded = notLoaded == 0 ? "" : ", " + notLoaded + " not loaded";
         if (stalled.isEmpty()) {
-            return "Housing work: every home can start its next step";
+            return "Housing work: every home can start its next step" + unloaded;
         }
         var builder = new StringBuilder("Housing work: ").append(stalled.size()).append(" stalled: ");
         for (int index = 0; index < Math.min(HOUSING_REPORT_LIMIT, stalled.size()); index++) {
@@ -322,5 +346,5 @@ public final class GoblinSettlement implements ModInitializer {
         if (stalled.size() > HOUSING_REPORT_LIMIT) {
             builder.append(", +").append(stalled.size() - HOUSING_REPORT_LIMIT).append(" more");
         }
-        return builder.toString();
+        return builder.toString() + unloaded;
     }}

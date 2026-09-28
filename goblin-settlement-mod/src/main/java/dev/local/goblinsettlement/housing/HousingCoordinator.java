@@ -125,6 +125,9 @@ public final class HousingCoordinator {
         if (blockedReason(level, data, home, id).isPresent()) {
             return false;
         }
+        // The predicate above already passed, so it has proved this site is the next step and some
+        // warehouse holds that step's item: these two branches cannot trip. They stay only to obtain
+        // the step and the warehouse, not as a second gate.
         var step = stepAt(level, home, site);
         if (step.isEmpty()) {
             return false;

@@ -147,6 +147,18 @@ public final class BedProvisioningCoordinator {
      * placed and the home would stall for good. Only homes with a spare slot can be bound to, so only
      * their blueprints are collected -- the union over every style would rule out positions that are
      * actually fine.
+     *
+     * <p>Cells come from {@link HousingCoordinator#position}, the one authority for turning a blueprint
+     * step into a world cell: the anchor bed's facing and the home's variant both enter there, and an
+     * anchor that is no longer a bed head yields no cell, so it is skipped.
+     *
+     * <p>Today this exclusion never decides anything. The pre-existing {@code nearBed} test already
+     * rejects every cell within radius 4 of any bed, and the whole blueprint box (x ±3, z ±2, y 0..4)
+     * sits inside that radius under every facing and variant -- while each reserved cell comes from a
+     * home whose anchor bed is already in that same bed list. So {@code nearBed} is true for every
+     * reserved cell and the {@code reserved.contains} clause short-circuits unevaluated. It is explicit
+     * insurance that only matters if that radius is ever narrowed, and it must stay correct in case it
+     * does.
      */
     private static Set<BlockPos> reservedCells(ServerLevel level, String id, List<BlockPos> spareAnchors) {
         if (spareAnchors.isEmpty() || !HousingBlueprints.available()) {
@@ -159,7 +171,10 @@ public final class BedProvisioningCoordinator {
             }
             for (List<HousingBlueprints.ResolvedStep> stage : HousingBlueprints.stages(home.style())) {
                 for (HousingBlueprints.ResolvedStep step : stage) {
-                    reserved.add(home.bed().offset(step.x(), step.y(), step.z()));
+                    BlockPos cell = HousingCoordinator.position(level, home.bed(), home.variant(), step);
+                    if (cell != null) {
+                        reserved.add(cell);
+                    }
                 }
             }
         }

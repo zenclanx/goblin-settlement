@@ -251,15 +251,25 @@ public final class BlueprintCheck {
     /** The rule the bed placement asks: does any stage of this style put a block on this cell? */
     private static void checkCellsUsedByABlueprint(BlueprintSet data) {
         for (int style = 0; style < data.styleCount(); style++) {
-            var first = data.stages(style).get(0).get(0);
-            require(data.reserved(style, first.x(), first.y(), first.z()),
-                    "a cell the blueprint builds on is reserved (style " + style + ")");
+            // Every chain of every style, so a regression that ignored the quality chain -- or any
+            // other single stage -- is caught, not only a change to the first capacity stage.
+            var stages = data.stages(style);
+            for (int chain = 0; chain < stages.size(); chain++) {
+                for (HousingRules.Step step : stages.get(chain)) {
+                    require(data.reserved(style, step.x(), step.y(), step.z()),
+                            "a cell a chain builds on is reserved (style " + style
+                                    + ", chain " + chain + ")");
+                }
+            }
             require(!data.reserved(style, 0, 99, 0),
                     "a cell far above the box is not reserved (style " + style + ")");
             require(!data.reserved(style, 12, 0, 12),
                     "a cell far outside the box is not reserved (style " + style + ")");
         }
-        require(data.reserved(999, 0, 0, 0) == data.reserved(0, 0, 0, 0),
+        // A cell that is reserved in style 0: the out-of-range style must still say "reserved", which
+        // pins that it degrades to the first style rather than merely not throwing.
+        HousingRules.Step probe = data.stages(0).get(0).get(0);
+        require(data.reserved(999, probe.x(), probe.y(), probe.z()),
                 "an out-of-range style degrades to the first style rather than throwing");
     }
 
