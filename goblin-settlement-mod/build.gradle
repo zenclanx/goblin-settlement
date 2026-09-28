@@ -213,6 +213,14 @@ tasks.register('bridgeMaterialsCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.construction.transport.BridgeMaterialsCheck'
 }
 
+tasks.register('housingAssignmentCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks who lives in which home, and that the rule is deterministic.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.housing.HousingAssignmentCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -233,4 +241,5 @@ tasks.named('check') {
     dependsOn tasks.named('transportConnectivityCheck')
     dependsOn tasks.named('constructionMaterialCheck')
     dependsOn tasks.named('bridgeMaterialsCheck')
+    dependsOn tasks.named('housingAssignmentCheck')
 }
