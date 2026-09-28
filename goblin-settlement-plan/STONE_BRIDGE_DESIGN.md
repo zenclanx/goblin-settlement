@@ -40,7 +40,7 @@ decide(columns, target, MIN_WOOD_SPAN, MAX_WOOD_SPAN)  → BRIDGE 则木桥
 
 - `TransportPlan.Kind` 增 `STONE_BRIDGE`。
 - `BuildMaterial` 增 **`COBBLESTONE`**（`Blocks.COBBLESTONE` / `Items.COBBLESTONE`）。**这是对存档有意的兼容变更**：新增名字不破坏任何旧档（旧档里不可能出现它），而新增的检查会把"已存在的名字"钉到五个——**改或删名字仍然是被禁止的**。
-- **按桥种的材料清单**：新增纯层 `planning/bridge/BridgeMaterials`（桥种 → 桥面/支撑/护栏/照明四种材料），成为"这座桥用什么建"的唯一出处；`startBridge` 的每一步、材料门禁与命令都问它。表：
+- **按桥种的材料清单**：新增 `construction/transport/BridgeMaterials`（桥种 → 桥面/支撑/护栏/照明四种材料），成为"这座桥用什么建"的唯一出处；`startBridge` 的每一步、材料门禁与命令都问它。**（本节原写为纯层 `planning/bridge/BridgeMaterials`，实现时纠正为 `construction/transport/BridgeMaterials`：`planning.*` 不许依赖 `construction.*`——`TransportPlan.Kind` 就在 construction 下——把这张表放在 planning 会让两个包成环。这是设计稿写错、实现纠正，详见 §8 落地结果。）** 表：
 | 用途 | 木桥 | 石桥 |
 | --- | --- | --- |
 | 桥面与引道 | `OAK_PLANKS` | `COBBLESTONE` |
@@ -81,3 +81,15 @@ decide(columns, target, MIN_WOOD_SPAN, MAX_WOOD_SPAN)  → BRIDGE 则木桥
 - **长桥更贵更慢**：24 格四列的桥面本身就要近百个圆石，加上支撑；单在途门禁与材料门禁不变，所以它会更久地占住那唯一一个交通工程名额。这是有意的取舍（GAME_DESIGN §12 的"成熟期多工程并行"是另一轮）。
 - **`BuildMaterial` 新增名字**：会同步改动"名字钉死"的那条断言。**只许新增，不许改删**——改删会让已建成的路/桥/工程变成另一种材料（甚至打不开存档）。
 - **未做游戏内验证**：与本分支既有全部工作一样，本轮只有编译与独立检查的证据。
+
+## 8. 落地结果（实现后补记）
+
+- **桥种**：`TransportPlan.Kind` 增 `STONE_BRIDGE`，并加 `isBridge()` 作为"这是不是一座桥"的唯一判据；全仓原先 9 处逐枚举判断全部改走它（主代码里 `WOOD_BRIDGE` 只剩枚举定义与 `isBridgeKind` 两处）。
+- **档位**：`BridgePlanner` 增 `MIN_STONE_SPAN = 13` / `MAX_STONE_SPAN = 24`，勘察由写死上限改为**按区间参数**（`planWoodBridge` → `planBridge(..., minSpan, maxSpan)`），木石共用一套勘察。决策是**把既有的纯判据 `TrafficDecision.decide` 按两个区间各调一次**——`TrafficDecision` 一行未改，只加了边界断言（12／13／24／25 两侧）。
+- **材料**：`BuildMaterial` 增 `COBBLESTONE`（只许新增；四个已有名字仍是存档取值）；`construction/transport/BridgeMaterials` 成为"哪个桥种用什么材料、各要多少才开工"的唯一出处（**注意它落在 construction 而不是设计稿写的 planning**——`planning.*` 不许依赖 `construction.*`（`TransportPlan.Kind` 在 construction 下），否则两包成环；§3 已按实现就地纠正）。石桥的桥面/支撑/引道用圆石，护栏与临时栅栏仍是橡木栅栏（理由见 §3）。
+- **材料门禁**：`proposeBridge` 改为遍历 `BridgeMaterials.required(kind)`，每个材料各自一个"够开工"的下限；原先四个 `BRIDGE_MIN_*` 常量随之搬进 `BridgeMaterials`（`COBBLESTONE` 的下限是**发明值**，源码注释里已标）。
+- **命令**：`traffic bridge` 增加可选的桥种词（`wood` / `stone`，缺省木桥，不认识则明确失败）。
+- **连通验收自动覆盖石桥**：本轮的收口把"这是不是一座桥"统一交给 `TransportPlan.Kind.isBridge()`，于是 **① 开通闸（`tickPlan` 里"跨不过去就不开通"的连通验收）、② `Links:` 状态行、③ 导航闭包（未开通桥的 `closedFootprint` 并进 `closedFeet`，寻路经 `isBridgeClosedAt` 查询）、④ 开通桥的巡检（`openBridges` / `inspectionCursor`）**这几处**一处判据都没新写**就同时认得了石桥——它们原先各自逐枚举地判断"是不是桥"，现在统统走那一个谓词。**木桥在同一个谓词下给出完全相同的答案**，所以这次收口对两座桥是等价的改写，第五十六轮的连通判定没有任何新增判据（石桥与木桥的走格几何相同）。
+- **检查**：新增第 19 项 `bridgeMaterialsCheck`（桥种判据、两套材料清单只差桥面/支撑、区间常量与设计一致）；`TrafficDecisionCheck` 补档位边界；`ConstructionMaterialCheck` 的名字与映射断言扩到五个。**检查总数 19**。
+- **仍未做**：圆石墙护栏（需经济先能产出）；更深的河床与峡谷（深度上限未动）；>24 格水面仍不可跨（两次判定都出界 → 试修路 → 延期）；长桥更贵更慢且仍占唯一一个交通工程名额。
+- **未做游戏内验证，且不可纯测的面比以往更长**：与本分支既有全部工作一样，本轮只有编译与代码审查（外加独立检查）的证据——**具体点名**：13–24 格的跨度**真的勘察出来并真的建起来**、石桥桥面**真的开通并可走**、`… bridge <pos> <dir> stone` **真的按石桥派工施工**、以及**按桥种的材料门禁的实际手感**（圆石下限是发明值）——这四样都只在游戏内才会真正跑到，静态证据一律不能替代。
