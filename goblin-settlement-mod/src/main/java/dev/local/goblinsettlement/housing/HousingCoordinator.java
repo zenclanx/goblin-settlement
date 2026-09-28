@@ -122,15 +122,11 @@ public final class HousingCoordinator {
         if (site == null) {
             return false;
         }
-        if (!permitted(level, id, site)) return false;
-        if (!level.getBlockState(site).isAir()) return false;
+        if (blockedReason(level, data, home, id).isPresent()) {
+            return false;
+        }
         var step = stepAt(level, home, site);
-        if (step.isEmpty()) return false;
-        var stock = PublicWarehouseInventory.snapshot(level, data);
-        int reserve = home.capacityTarget() >= 2
-                ? HousingBlueprints.reserveExpanded() : HousingBlueprints.reserveBasic();
-        if (!stock.complete()
-                || PublicWarehouseInventory.countOf(level, data, step.get().item()) <= reserve) {
+        if (step.isEmpty()) {
             return false;
         }
         var warehouse = PublicWarehouseInventory.firstHolding(level, data, step.get().item());
@@ -147,6 +143,48 @@ public final class HousingCoordinator {
             }
         }
         return false;
+    }
+
+    /**
+     * Why this home cannot start its next step right now, or empty when it can (or is already finished).
+     * One authority: dispatch and the status line both ask here, so the reason shown can never drift
+     * from the rule that actually blocks the work. Read-only -- it decides nothing and changes nothing.
+     */
+    public static Optional<String> blockedReason(ServerLevel level, SettlementSavedData data,
+                                                 HousingSavedData.Home home, String id) {
+        if (!HousingBlueprints.available()) {
+            return Optional.of("the blueprint data is unavailable");
+        }
+        BlockPos site = nextSite(level, home);
+        if (site == null) {
+            // Either everything is built, or the anchor is no longer a bed head -- and the second case
+            // is a stall nobody would otherwise see, so it must not read as "fine".
+            return isBedHead(level, id, home.bed())
+                    ? Optional.empty() : Optional.of("the anchor is no longer a bed head");
+        }
+        if (!permitted(level, id, site)) {
+            return Optional.of("land permission changed");
+        }
+        if (!level.getBlockState(site).isAir()) {
+            return Optional.of("the next cell is occupied");
+        }
+        var step = stepAt(level, home, site);
+        if (step.isEmpty()) {
+            return Optional.of("the next step is not in the blueprint");
+        }
+        var stock = PublicWarehouseInventory.snapshot(level, data);
+        int reserve = home.capacityTarget() >= 2
+                ? HousingBlueprints.reserveExpanded() : HousingBlueprints.reserveBasic();
+        if (!stock.complete()) {
+            return Optional.of("some warehouses are unavailable");
+        }
+        if (PublicWarehouseInventory.countOf(level, data, step.get().item()) <= reserve) {
+            return Optional.of("waiting for " + step.get().item());
+        }
+        if (PublicWarehouseInventory.firstHolding(level, data, step.get().item()).isEmpty()) {
+            return Optional.of("no warehouse holds " + step.get().item());
+        }
+        return Optional.empty();
     }
 
     /**

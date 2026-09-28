@@ -40,6 +40,7 @@ import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.housing.BedProvisioningCoordinator;
 import dev.local.goblinsettlement.housing.HousingBlueprints;
 import dev.local.goblinsettlement.housing.HousingCoordinator;
+import dev.local.goblinsettlement.housing.HousingSavedData;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
 import dev.local.goblinsettlement.social.GiftTradeCommands;
 import dev.local.goblinsettlement.social.WarehouseWithdrawalObserver;
@@ -116,6 +117,8 @@ public final class GoblinSettlement implements ModInitializer {
                                 int occupied = data.occupiedPopulationSlots();
                                 context.getSource().sendSuccess(() -> Component.literal("Housing: beds=" + beds
                                         + ", occupied slots=" + occupied + ", spare=" + (beds - occupied)), false);
+                                context.getSource().sendSuccess(() -> Component.literal(
+                                        housingReportLine(level, data)), false);
                                 context.getSource().sendSuccess(() -> Component.literal(
                                         TrafficProposalCoordinator.nearestUnservedFacility(
                                                 data, TransportSavedData.get(level), level.getGameTime())
@@ -288,4 +291,36 @@ public final class GoblinSettlement implements ModInitializer {
         DefenseCoordinator.tick(level);
         FamilyCoordinator.tick(level);
         ExpansionCoordinator.tick(level);
+    }
+
+    private static final int HOUSING_REPORT_LIMIT = 8;
+
+    /** Which unfinished homes cannot start their next step, and why. Read-only. */
+    private static String housingReportLine(ServerLevel level, SettlementSavedData data) {
+        var settlement = data.settlement();
+        if (settlement.isEmpty()) {
+            return "Housing work: no settlement in this dimension";
+        }
+        String id = settlement.get().id();
+        var stalled = new java.util.ArrayList<String>();
+        for (var home : HousingSavedData.get(level).homes(id)) {
+            var reason = HousingCoordinator.blockedReason(level, data, home, id);
+            if (reason.isPresent()) {
+                stalled.add(home.bed().toShortString() + "(" + reason.orElseThrow() + ")");
+            }
+        }
+        if (stalled.isEmpty()) {
+            return "Housing work: every home can start its next step";
+        }
+        var builder = new StringBuilder("Housing work: ").append(stalled.size()).append(" stalled: ");
+        for (int index = 0; index < Math.min(HOUSING_REPORT_LIMIT, stalled.size()); index++) {
+            if (index > 0) {
+                builder.append(", ");
+            }
+            builder.append(stalled.get(index));
+        }
+        if (stalled.size() > HOUSING_REPORT_LIMIT) {
+            builder.append(", +").append(stalled.size() - HOUSING_REPORT_LIMIT).append(" more");
+        }
+        return builder.toString();
     }}
