@@ -66,15 +66,16 @@ decide(columns, target, MIN_WOOD_SPAN, MAX_WOOD_SPAN)  → BRIDGE 则木桥
 
 ## 6. 验证
 
-- **可纯测的部分**（进独立检查，**分两处，不重复**）：
+- **可独立检查的部分**（进独立检查，**分两处，不重复**）：
   - **档位边界** → 加进**既有的** `trafficDecisionCheck`：12 格两次判定的取舍（木桥赢）、13 格（石桥）、24 格（石桥）、25 格（两次都出界，给 `ROAD`）；边界两侧各断言一次。
-  - **按桥种的材料清单 + `isBridge()`** → **新增第 19 项** `bridgeMaterialsCheck`（`BridgeMaterialsCheck`，纯层）：木桥与石桥各自的清单逐项钉死、两个清单**只差桥面/支撑那一项**（护栏与照明相同）、`isBridge()` 对两个桥种为真而 `ROAD` 为假。
+  - **按桥种的材料清单 + `isBridge()`** → **新增第 19 项** `bridgeMaterialsCheck`（`BridgeMaterialsCheck`，**独立检查、不是纯层**：它触碰 `BuildMaterial`，因而必须先 `Bootstrap.bootStrap()` 引导注册表，这与 `ConstructionMaterialCheck` 同因）：木桥与石桥各自的清单逐项钉死、两个清单**只差桥面/支撑那一项**（护栏与照明相同）、`isBridge()` 对两个桥种为真而 `ROAD` 为假。
   - **`BuildMaterial` 的名字**：把"已存在的名字"钉到五个（`OAK_PLANKS / OAK_LOG / OAK_FENCE / TORCH / COBBLESTONE`），并把 `COBBLESTONE` 映射到它自己的方块与物品——**改在既有的** `ConstructionMaterialCheck` 里（它的两条名字/映射断言本来就是干这个的）。
 - 完整离线构建 + 全部独立检查（届时 **19 项**）。
 - **不可纯测**（写进日志与状态文件）：石桥的勘察与施工、长跨度下的支撑与稳定性、材料门禁的实际手感、以及 24 格桥在真实地形里能不能勘察出来。
 
 ## 7. 风险与已知边界
 
+- **缺木板但富圆石的聚落在 4–12 格缺口上会「等」，不会改用石桥**：档位是**先试木桥、不成再试石桥**，而**材料不足不算立项失败**（`proposeBridge` 遇缺料直接 return，供应会追上）——所以石桥档只在 13–24 格才会被问到。一个缺木板、却囤满圆石的聚落，在 4–12 格的水面上会停在"等木板"，**不会**因为圆石充足就顺手起一座石桥。设计此前没写下这条后果；要改得先让档位按材料回退，那是另一种决策，不在本轮。
 - **石桥的护栏是木头的**：见 §3。观感上不完美，但换来的是不必给经济加圆石墙的制作路径；要改先做那条路径。
 - **>24 格的水面仍然不可跨**：两次判定都出界 → 试修路 → 失败 → 目标延期。这是现状的延续，不是本轮的退步。
 - **深度上限不变**：`MAX_WATER_BASE_DEPTH = 4` / `MAX_RAVINE_BASE_DEPTH = 8` 照旧。**跨度与深度是两个独立上限**，本轮只放宽跨度：一个 24 格宽**且**河床深于 8 格的峡谷，勘察仍会按既有的深度上限失败（走既有的 `*_BASE_TOO_DEEP` 一类状态），不会硬搭。这类地形在真实世界里的常见程度**未验证**。
@@ -84,7 +85,7 @@ decide(columns, target, MIN_WOOD_SPAN, MAX_WOOD_SPAN)  → BRIDGE 则木桥
 
 ## 8. 落地结果（实现后补记）
 
-- **桥种**：`TransportPlan.Kind` 增 `STONE_BRIDGE`，并加 `isBridge()` 作为"这是不是一座桥"的唯一判据；全仓原先 9 处逐枚举判断全部改走它（主代码里 `WOOD_BRIDGE` 只剩枚举定义与 `isBridgeKind` 两处）。
+- **桥种**：`TransportPlan.Kind` 增 `STONE_BRIDGE`，并加 `isBridge()` 作为"这是不是一座桥"的唯一判据；全仓原先 9 处逐枚举判断全部改走它。**收口后 `src/main/java` 里 `WOOD_BRIDGE` 落在五行上**——`TransportPlan` 的枚举声明与 `isBridge()` 的方法体、`TrafficProposalCoordinator` 里的木桥档、`TransportCommands` 里命令的缺省值与 `wood` 词——**五处都是在「命名一个桥种」，没有一处是在「判定是不是桥」**（判定已全部走 `isBridge()`）。**（本行原写"主代码里 `WOOD_BRIDGE` 只剩枚举定义与 `isBridgeKind` 两处"：`isBridgeKind` 这个名字从未存在过，早期计划稿提议过但落地的是 `isBridge()`；"两处"的计数也在命令与提案各加了桥种词之后过期。详见 UpdateLog 的补记。）**
 - **档位**：`BridgePlanner` 增 `MIN_STONE_SPAN = 13` / `MAX_STONE_SPAN = 24`，勘察由写死上限改为**按区间参数**（`planWoodBridge` → `planBridge(..., minSpan, maxSpan)`），木石共用一套勘察。决策是**把既有的纯判据 `TrafficDecision.decide` 按两个区间各调一次**——`TrafficDecision` 一行未改，只加了边界断言（12／13／24／25 两侧）。
 - **材料**：`BuildMaterial` 增 `COBBLESTONE`（只许新增；四个已有名字仍是存档取值）；`construction/transport/BridgeMaterials` 成为"哪个桥种用什么材料、各要多少才开工"的唯一出处（**注意它落在 construction 而不是设计稿写的 planning**——`planning.*` 不许依赖 `construction.*`（`TransportPlan.Kind` 在 construction 下），否则两包成环；§3 已按实现就地纠正）。石桥的桥面/支撑/引道用圆石，护栏与临时栅栏仍是橡木栅栏（理由见 §3）。
 - **材料门禁**：`proposeBridge` 改为遍历 `BridgeMaterials.required(kind)`，每个材料各自一个"够开工"的下限；原先四个 `BRIDGE_MIN_*` 常量随之搬进 `BridgeMaterials`（`COBBLESTONE` 的下限是**发明值**，源码注释里已标）。

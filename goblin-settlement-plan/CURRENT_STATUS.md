@@ -197,7 +197,7 @@
 
 ## 本轮接入的内容（第五十八轮：石桥与更长跨度）
 
-- **桥种与唯一判据**：`TransportPlan.Kind` 增 `STONE_BRIDGE`，并加 `isBridge()` 作为"这是不是一座桥"的唯一出处；全仓原先 9 处逐枚举判断全部改走它（主代码里 `WOOD_BRIDGE` 只剩枚举定义与 `isBridgeKind` 两处）。**因此①开通闸、②`Links:` 行、③导航闭包（未开通桥的 `closedFootprint` 并进 `closedFeet`，寻路经 `isBridgeClosedAt` 查询）、④开通桥巡检（`openBridges`）四处一处判据都没新写就自动认得了石桥**（石桥与木桥走格几何相同，没有新增任何连通判据）。
+- **桥种与唯一判据**：`TransportPlan.Kind` 增 `STONE_BRIDGE`，并加 `isBridge()` 作为"这是不是一座桥"的唯一出处；全仓原先 9 处逐枚举判断全部改走它（收口后 `src/main/java` 里 `WOOD_BRIDGE` 出现在**五行**上——枚举声明、`isBridge()` 方法体、提案的木桥档、命令的缺省值与 `wood` 词，**全是在命名桥种、没有一处是在判定桥种**；原写的 `isBridgeKind` 这个名字从未存在，实际名字是 `isBridge()`）。**因此①开通闸、②`Links:` 行、③导航闭包（未开通桥的 `closedFootprint` 并进 `closedFeet`，寻路经 `isBridgeClosedAt` 查询）、④开通桥巡检（`openBridges`）四处一处判据都没新写就自动认得了石桥**（石桥与木桥走格几何相同，没有新增任何连通判据）。
 - **档位与勘察参数化**：`BridgePlanner` 增 `MIN_STONE_SPAN = 13` / `MAX_STONE_SPAN = 24`，勘察从写死上限改为**按区间参数**（`planWoodBridge` → `planBridge(..., minSpan, maxSpan)`），木石共用一套勘察。决策是**把既有纯判据 `TrafficDecision.decide` 按两个区间各调一次**（先 4–12 判木桥、不成再 13–24 判石桥）——`TrafficDecision` **一行未改**，只补了 12／13／24／25 的边界断言。>24 格的两次都出界，按既有语义回落成"试修路 → 失败 → 目标延期"。
 - **材料与门禁**：`BuildMaterial` 增 `COBBLESTONE`（挖矿本就产出圆石，不需新经济；**只许新增**，四个已有名字仍是存档取值）。新增 `construction/transport/BridgeMaterials` 作为"哪个桥种用什么材料、各要多少才开工"的唯一出处——**落在 construction 而非设计稿写的 planning**：`planning.*` 不许依赖 `construction.*`（`TransportPlan.Kind` 在 construction 下），否则成环，设计文档 §3 已就地纠正。石桥的桥面/支撑/引道用圆石，**护栏与临时栅栏仍是橡木栅栏**（临时栅栏不是成品、清栅栏逻辑写死橡木栅栏；圆石墙护栏需经济先能产出圆石墙——有意的边界，不是遗漏）。`proposeBridge` 改遍历 `BridgeMaterials.required(kind)` 各自设下限，原四个 `BRIDGE_MIN_*` 搬进该类；**圆石下限是发明值**，注释已标明待重定。
 - **命令**：`traffic bridge` 增可选桥种词（`wood` / `stone`，缺省木桥，不认识则明确失败并列出可选值）。
