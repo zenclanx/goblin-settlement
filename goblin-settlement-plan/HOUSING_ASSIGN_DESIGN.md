@@ -200,13 +200,13 @@ conditions(level, motherId, fatherId, housing.count() >= occupied, foodForBirth)
 
 ## 10. 落地结果（实现后补记）
 
-本轮（**第六十轮：住宅住户分配**）已实现并提交到 `main`，13 个提交，从设计/计划（`70a3d31`）到本轮最后一个提交（`e6b9edc`）。§0 的四条范围全部落地，逐条对照如下；末尾列明**未做**与**顺带更正**。
+本轮（**第六十轮：住宅住户分配**）已实现并提交到 `main`，13 个提交，从设计/计划（`70a3d31`）到**本轮代码收尾提交**（`e6b9edc`；其后还有本轮文档提交，见 UpdateLog 第六十轮段）。§0 的四条范围全部落地，逐条对照如下；末尾列明**未做**与**顺带更正**。
 
 ### 10.1 逐条交付
 
 - **① 归属只存在居民侧（§2）**：`ResidentRecord` 新增 `Optional<BlockPos> home`，`BlockPos.CODEC.optionalFieldOf("home")` 读入、无默认值（旧档读作**无房**），**未升 schema 版本**。`withHome` 是无条件取值变换，`SettlementSavedData.assignHome(String, Optional<BlockPos>)` 只做"找到 id、替换、标脏"。§2.3 点名的陷阱是**真陷阱**：`ResidentRecord.java` 内 **8 处既有的 `new ResidentRecord(...)`** 全部需要串上 `home`——`advanceFamilyTime` 每 tick 都跑，漏一处就会静默清空那个居民的归属。计划 Step 6 原写"8 处居民构造"，**正确的总数是 9**（8 处既有 + 新增的 `withHome` 一处），见 §10.3。
-- **② 分配是一条纯规则（§3）**：新增 `housing/HousingAssignment`，**只吃 int 与 record、不碰 Minecraft 类型**。三趟推导出**完整目标状态**：先对每栋已判定的房子按容量保留最低 id 的住户、其余解除；再把归属指向"已消失或不可判定房子"的居民解除；最后把剩下的无房居民放进第一栋有空位的房子；输出的是**净变化**（不是三条规则的动作序列），因而幂等。新增本轮**第 20 项**独立检查 `housingAssignmentCheck`（此前 19 项），覆盖无房者入房、全满留作无房、消失解除、超容按 id 保留、确定性、输出顺序、`unjudged`、只含真变化、幂等。
-- **③ 硬约束落到户（§4、§5）**：`FamilyCoordinator` 的生育门从聚落级的 `housing.count() >= occupied` 改为先问**母亲自己那栋房**的 `roomForMother`（住户数 < 容量才放行）；该房**不可判定**（母女无归属 / 房子已消失 / 房子不可 tick）时**回落到旧的聚落级判据**，`!housing.beds().isEmpty()` 保留不动。新居民（含新生儿）与任何无房居民走同一条 §3 规则——有房有空位就进，住不下就**留作无房**，不新造需求机制，"缺房 → `HOUSING` 需求档 → 扩建"那条既有链路**一行未改**。放床逃生口原样保留。
+- **② 分配是一条纯规则（§3）**：新增 `housing/HousingAssignment`，**只吃 int 与 record、不碰 Minecraft 类型**。输入输出是四个 record——`BedKey(x, y, z)`（床位坐标）、`HomeSlot(bed, capacity)`（已判定的房子）、`ResidentSlot(id, home)`（非 `DECEASED` 的居民）、`Change(residentId, home)`（空 = 解除归属）；入口是 `plan(List<HomeSlot> homes, Set<BedKey> unjudged, List<ResidentSlot> residents) -> List<Change>`。三趟推导出**完整目标状态**：先对每栋已判定的房子按容量保留最低 id 的住户、其余解除；再把归属指向"已消失或不可判定房子"的居民解除；最后把剩下的无房居民放进第一栋有空位的房子；输出的是**净变化**（不是三条规则的动作序列），因而幂等。新增本轮**第 20 项**独立检查 `housingAssignmentCheck`（此前 19 项），覆盖无房者入房、全满留作无房、消失解除、超容按 id 保留、确定性、输出顺序、`unjudged`、只含真变化、幂等。
+- **③ 硬约束落到户（§4、§5）**：`FamilyCoordinator` 的生育门从聚落级的 `housing.count() >= occupied` 改为先问**母亲自己那栋房**的 `roomForMother`（住户数 < 容量才放行）；该房**不可判定**（母亲无归属 / 房子已消失 / 房子不可 tick）时**回落到旧的聚落级判据**，`!housing.beds().isEmpty()` 保留不动。新居民（含新生儿）与任何无房居民走同一条 §3 规则——有房有空位就进，住不下就**留作无房**，不新造需求机制，"缺房 → `HOUSING` 需求档 → 扩建"那条既有链路**一行未改**。放床逃生口原样保留。
 - **④ 显示（§7）**：`status` 的 `Housing:` 汇总行末尾追加 `homeless=K`；既有的 `Housing work:` 行改成逐栋的 `Homes:` 行，每栋给出**住几人/容量**，卡住的栋在原位带上原因——**沿用现成的 `housingReportLine` 门禁**（它本就问 `HousingCoordinator.blockedReason`），不重写、不新抄一遍。一栋 home 都没有时输出 `Homes: none`。
 - **容量的唯一算式（§8 的委派）**：`HousingCoordinator.homeCapacity` 成为"这栋房能住几人"的**唯一算式**，`shelterCapacity` 改为 `stage1Built ? homeCapacity : 0`（逐字等价的委派）。`housingRulesCheck` 按设计的理由**不新增断言**（委派等价，既有 `builtCapacity` 的两条腿断言继续覆盖它）。这一条**不是一次就做对的**，见 §10.3 第 4 条。
 
@@ -236,3 +236,5 @@ conditions(level, motherId, fatherId, housing.count() >= occupied, foodForBirth)
 ### 10.6 明确未做（承接 §0 的"明确不做"，结果未变）
 
 伴侣同住绑定、孩子随父母的房、睡觉/寻床行为、房子本身的拆除与改建、住户数预留、按距离就近入房——一条都没做。实体公告牌方块仍不在（同 §7）。§8 列出的"不可纯测"项——分配协调器读世界的整条路径（`shouldTickBlocksAt` 闸、逐房读容量）、生育门在真实家庭上的效果、`status` 那两行、以及"无房人数"在真实聚落里的走势——**本轮与整条分支一样没有做游戏内验证**，只有编译与独立检查的证据。另有一处刻意不放进纯层：`DECEASED` 的过滤落在 MC 层的名册映射里（纯规则按契约只收存活居民），由代码审查与 `ResidentWorkLookup` 的既有口径保证。
+
+**§9（风险与已知边界）逐条如实延续，未因实现而消失**：①**住户数是数出来的、从不预留**——同一拍里两个无房居民可能都看到同一个空位而超员 1，下一拍由 §3.2 第 1 条挤出（与第五十三轮避难占用同源）；②**按床位坐标序填房、不按距离**，居民可能被分到离它很远的房子（拿"确定性 + 可独立检查"换来的）；③**容量下降会"搬家"**——玩家拆掉一面墙就让某栋房容量降、住户被挤出并可能被分到别处（不为此加锁、不保留旧住户）；④**不可判定的房子让分配停摆**——它的住户原样不动、它也收不到新住户（有意的保守）；⑤**`DECEASED` 仍在名册里**，本轮只让住户数与分配**跳过**它、**不清它的 `home`**；⑥**不检查 `home` 指向的床还在不在**——玩家挖掉锚点床，房子仍在册、容量仍按几何算、归属不变；⑦**`home` 会进存档**——新字段让每个居民多一个可选坐标，仍不升 schema，旧档能读、但**新档不能被旧版本读**（既有性质，非本轮引入）。
