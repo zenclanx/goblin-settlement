@@ -55,6 +55,8 @@ MODELS = {
     "goblin_artisan_male_p06": ("goblin_professions_a/goblin_artisan_male_p06.bbmodel", "GoblinArtisanMaleModel"),
     "goblin_artisan_female_p06": ("goblin_professions_a/goblin_artisan_female_p06.bbmodel", "GoblinArtisanFemaleModel"),
     "goblin_sentry_male_p07": ("goblin_professions_a/goblin_sentry_male_p07.bbmodel", "GoblinSentryMaleModel"),
+    "goblin_child_boy_a": ("goblin_children_a/goblin_child_boy_a.bbmodel", "GoblinChildBoyModel"),
+    "goblin_child_girl_a": ("goblin_children_a/goblin_child_girl_a.bbmodel", "GoblinChildGirlModel"),
 }
 
 
@@ -76,6 +78,21 @@ def java_name(raw):
     if not cleaned or not cleaned[0].isalpha():
         cleaned = "part_" + cleaned
     return cleaned
+
+
+# The art tags a project's id with a trailing variant: goblin_male_a is the batch-A adult body,
+# goblin_farmer_male_p01 its first profession pass, goblin_child_boy_a a batch-A child. The committed
+# texture drops that tag, so goblin_male_a.json pairs with goblin_male.png. The rule below is checked
+# against all seventeen project ids; every one must reproduce a PNG already committed under
+# src/main/resources/assets/goblin_settlement/textures/entity/.
+_VARIANT_TAG = re.compile(r"_(?:p\d+|[a-z])$")
+
+
+def texture_name(project):
+    """The texture basename a project ships, from its id. Emitting it here is the whole point of the
+    TEXTURE constant: a body's row names its class and nothing else, so a wrong skin cannot be typed in
+    by hand and silently pass the build (the crops do not cover enough of each texture to catch it)."""
+    return _VARIANT_TAG.sub("", project)
 
 
 def numbers(value, count):
@@ -303,6 +320,8 @@ def generate(project, class_name):
         "public final class %s extends GoblinBodyModel {" % class_name,
         "    /** The crop this mesh was generated from. Rows in GoblinBodies name it instead of retyping it. */",
         '    public static final String CROP = "%s";' % project,
+        "    /** The texture this body samples. Rows in GoblinBodies name the class instead of retyping it. */",
+        '    public static final String TEXTURE = "%s";' % texture_name(project),
         "",
         "    public %s(ModelPart root) {" % class_name,
         "        super(root);",
@@ -321,11 +340,13 @@ def generate(project, class_name):
     lines.append("")
     lines.append("    /**")
     lines.append("     * This mesh's row in GoblinBodies. Naming the class once is what keeps the crop, the layer and the")
-    lines.append("     * model in step -- a row can no longer pair one class's crop with another's geometry.")
+    lines.append("     * model in step -- a row can no longer pair one class's crop with another's geometry. The texture")
+    lines.append("     * comes from the class's own TEXTURE constant too, so a row cannot retype a wrong skin either. The")
+    lines.append("     * two flags are the row's, not the class's: ArtModelCheck holds each one against the crop's name.")
     lines.append("     */")
-    lines.append("    public static GoblinBodies.Body body(boolean female, Optional<Profession> profession,"
-                 " String texture) {")
-    lines.append("        return new GoblinBodies.Body(female, profession, CROP, texture,")
+    lines.append("    public static GoblinBodies.Body body(boolean child, boolean female,"
+                 " Optional<Profession> profession) {")
+    lines.append("        return new GoblinBodies.Body(child, female, profession, CROP, TEXTURE,")
     lines.append("                %s::createLayer, %s::new);" % (class_name, class_name))
     lines.append("    }")
     lines.append("}")

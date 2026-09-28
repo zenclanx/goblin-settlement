@@ -18,30 +18,40 @@ import net.minecraft.client.model.geom.builders.LayerDefinition;
  * asserts each row's geometry crop and texture are actually committed. Adding a trade's outfit is one
  * row here and nothing else -- and because the check reads the same rows, a row whose art never made
  * it into the repository fails the build instead of showing up in game as a missing texture.
+ *
+ * <p>A row is keyed on {@code (child, female, profession)}. The child axis is the roster's, not the
+ * art's: a child has no trade, so its two rows leave {@code profession} empty and the renderer never
+ * consults an outfit for them.
  */
 public final class GoblinBodies {
-    /** One renderable body. {@code profession} is empty for the two undressed base bodies. */
-    public record Body(boolean female, Optional<Profession> profession, String crop, String texture,
+    /**
+     * One renderable body. {@code profession} is empty for the undressed base bodies and for both
+     * children; the two flags are what {@code GoblinRenderer} and {@code ArtModelCheck} key a row off.
+     */
+    public record Body(boolean child, boolean female, Optional<Profession> profession, String crop,
+                       String texture,
                        Supplier<LayerDefinition> layer,
                        Function<ModelPart, EntityModel<GoblinRenderState>> model) {
     }
 
     public static final List<Body> BODIES = List.of(
-            GoblinMaleModel.body(false, Optional.empty(), "goblin_male"),
-            GoblinFemaleModel.body(true, Optional.empty(), "goblin_female"),
-            GoblinFarmerMaleModel.body(false, Optional.of(Profession.FARMER), "goblin_farmer_male"),
-            GoblinFarmerFemaleModel.body(true, Optional.of(Profession.FARMER), "goblin_farmer_female"),
-            GoblinForesterMaleModel.body(false, Optional.of(Profession.FORESTER), "goblin_forester_male"),
-            GoblinForesterFemaleModel.body(true, Optional.of(Profession.FORESTER), "goblin_forester_female"),
-            GoblinMinerMaleModel.body(false, Optional.of(Profession.MINER), "goblin_miner_male"),
-            GoblinMinerFemaleModel.body(true, Optional.of(Profession.MINER), "goblin_miner_female"),
-            GoblinBuilderMaleModel.body(false, Optional.of(Profession.BUILDER), "goblin_builder_male"),
-            GoblinBuilderFemaleModel.body(true, Optional.of(Profession.BUILDER), "goblin_builder_female"),
-            GoblinHaulerMaleModel.body(false, Optional.of(Profession.HAULER), "goblin_hauler_male"),
-            GoblinHaulerFemaleModel.body(true, Optional.of(Profession.HAULER), "goblin_hauler_female"),
-            GoblinArtisanMaleModel.body(false, Optional.of(Profession.ARTISAN), "goblin_artisan_male"),
-            GoblinArtisanFemaleModel.body(true, Optional.of(Profession.ARTISAN), "goblin_artisan_female"),
-            GoblinSentryMaleModel.body(false, Optional.of(Profession.SENTRY), "goblin_sentry_male"));
+            GoblinMaleModel.body(false, false, Optional.empty()),
+            GoblinFemaleModel.body(false, true, Optional.empty()),
+            GoblinChildBoyModel.body(true, false, Optional.empty()),
+            GoblinChildGirlModel.body(true, true, Optional.empty()),
+            GoblinFarmerMaleModel.body(false, false, Optional.of(Profession.FARMER)),
+            GoblinFarmerFemaleModel.body(false, true, Optional.of(Profession.FARMER)),
+            GoblinForesterMaleModel.body(false, false, Optional.of(Profession.FORESTER)),
+            GoblinForesterFemaleModel.body(false, true, Optional.of(Profession.FORESTER)),
+            GoblinMinerMaleModel.body(false, false, Optional.of(Profession.MINER)),
+            GoblinMinerFemaleModel.body(false, true, Optional.of(Profession.MINER)),
+            GoblinBuilderMaleModel.body(false, false, Optional.of(Profession.BUILDER)),
+            GoblinBuilderFemaleModel.body(false, true, Optional.of(Profession.BUILDER)),
+            GoblinHaulerMaleModel.body(false, false, Optional.of(Profession.HAULER)),
+            GoblinHaulerFemaleModel.body(false, true, Optional.of(Profession.HAULER)),
+            GoblinArtisanMaleModel.body(false, false, Optional.of(Profession.ARTISAN)),
+            GoblinArtisanFemaleModel.body(false, true, Optional.of(Profession.ARTISAN)),
+            GoblinSentryMaleModel.body(false, false, Optional.of(Profession.SENTRY)));
 
     private GoblinBodies() {
     }

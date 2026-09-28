@@ -16,6 +16,8 @@ import net.minecraft.client.model.geom.builders.PartDefinition;
 public final class GoblinForesterFemaleModel extends GoblinBodyModel {
     /** The crop this mesh was generated from. Rows in GoblinBodies name it instead of retyping it. */
     public static final String CROP = "goblin_forester_female_p02";
+    /** The texture this body samples. Rows in GoblinBodies name the class instead of retyping it. */
+    public static final String TEXTURE = "goblin_forester_female";
 
     public GoblinForesterFemaleModel(ModelPart root) {
         super(root);
@@ -182,10 +184,12 @@ public final class GoblinForesterFemaleModel extends GoblinBodyModel {
 
     /**
      * This mesh's row in GoblinBodies. Naming the class once is what keeps the crop, the layer and the
-     * model in step -- a row can no longer pair one class's crop with another's geometry.
+     * model in step -- a row can no longer pair one class's crop with another's geometry. The texture
+     * comes from the class's own TEXTURE constant too, so a row cannot retype a wrong skin either. The
+     * two flags are the row's, not the class's: ArtModelCheck holds each one against the crop's name.
      */
-    public static GoblinBodies.Body body(boolean female, Optional<Profession> profession, String texture) {
-        return new GoblinBodies.Body(female, profession, CROP, texture,
+    public static GoblinBodies.Body body(boolean child, boolean female, Optional<Profession> profession) {
+        return new GoblinBodies.Body(child, female, profession, CROP, TEXTURE,
                 GoblinForesterFemaleModel::createLayer, GoblinForesterFemaleModel::new);
     }
 }

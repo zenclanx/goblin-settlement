@@ -68,6 +68,8 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             SynchedEntityData.defineId(GoblinCitizenEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Boolean> DATA_FEMALE =
             SynchedEntityData.defineId(GoblinCitizenEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_CHILD =
+            SynchedEntityData.defineId(GoblinCitizenEntity.class, EntityDataSerializers.BOOLEAN);
 
     private enum WorkStage { IDLE, FETCHING, DELIVERING, COMPLETE, RECOVERING, RETURNING, RECOVERED, ABORTED,
         FARM_FETCHING_SEED, FARM_PLANTING, FARM_HARVESTING, FARM_RETURNING, FARM_COMPLETE,
@@ -135,6 +137,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         super.defineSynchedData(builder);
         builder.define(DATA_PROFESSION, Profession.UNASSIGNED.name());
         builder.define(DATA_FEMALE, false);
+        builder.define(DATA_CHILD, false);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -553,9 +556,24 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         return false;
     }
 
+    /** This resident's life stage, read from the roster for the same reason the trade is. */
+    public boolean isChild() {
+        if (level() instanceof ServerLevel serverLevel) {
+            return SettlementSavedData.get(serverLevel).resident(getUUID().toString())
+                    .map(record -> record.stage() == ResidentRecord.LifeStage.CHILD)
+                    .orElse(false);
+        }
+        return false;
+    }
+
     /** The synced body, safe to call on either side. */
     public boolean femaleForRender() {
         return getEntityData().get(DATA_FEMALE);
+    }
+
+    /** The synced life stage, safe to call on either side. */
+    public boolean childForRender() {
+        return getEntityData().get(DATA_CHILD);
     }
 
     /** The synced trade, safe to call on either side. Unknown names fall back to unassigned. */
@@ -682,6 +700,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         }
         getEntityData().set(DATA_PROFESSION, profession().name());
         getEntityData().set(DATA_FEMALE, looksFemale());
+        getEntityData().set(DATA_CHILD, isChild());
         if (settlementData.isCancelledWorker(getUUID().toString())) {
             applyProjectCancellation(level);
             return;

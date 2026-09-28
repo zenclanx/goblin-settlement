@@ -268,8 +268,16 @@ public final class ArtModelCheck {
                 label + ": the baked mesh carries cube geometry");
     }
 
-    private static int readIntBigEndian(byte[] bytes, int offset) {
-        return ((bytes[offset] & 0xFF) << 24) | ((bytes[offset + 1] & 0xFF) << 16)
+    /**
+     * Whether a crop's name says female. The art spells an adult's sex with {@code male}/{@code female}
+     * and a child's with {@code boy}/{@code girl}, so both vocabularies count. The flag must still agree
+     * with the name -- only the words the art uses differ, the check itself is unchanged.
+     */
+    private static boolean namedFemale(String crop) {
+        return crop.contains("female") || crop.contains("girl");
+    }
+
+    private static int readIntBigEndian(byte[] bytes, int offset) {        return ((bytes[offset] & 0xFF) << 24) | ((bytes[offset + 1] & 0xFF) << 16)
                 | ((bytes[offset + 2] & 0xFF) << 8) | (bytes[offset + 3] & 0xFF);
     }
 
@@ -281,18 +289,27 @@ public final class ArtModelCheck {
 
     /**
      * The table itself must be sane before anything reads it: no two rows may serve the same
-     * (profession, sex), no row may claim a crop that is not committed, and a row's sex must agree with
-     * its own crop's name (every crop is called {@code goblin_..._male} or {@code goblin_..._female}, so
-     * a copy-paste slip that flips the flag but not the name is caught here rather than in game). A
-     * duplicate row would silently shadow another one, and the reader that loses would never notice.
+     * (child, sex, profession), no row may claim a crop that is not committed, a row's sex must agree with
+     * its own crop's name (the art names an adult {@code goblin_..._male}/{@code ..._female} and a child
+     * {@code goblin_child_boy_...}/{@code ..._girl_...}, so a copy-paste slip that flips the flag but not
+     * the name is caught here rather than in game), and the same for its age (every child crop is called
+     * {@code goblin_child_...}). A child row may not name a profession: the roster only ever hands a trade
+     * to an adult, so such a row is unreachable and wrong. A duplicate row would silently shadow another
+     * one, and the reader that loses would never notice.
      */
     private static void checkBodiesAgreeWithTheirCrops() throws IOException {
         Set<String> served = new HashSet<>();
         for (GoblinBodies.Body body : GoblinBodies.BODIES) {
-            String key = body.profession().map(Enum::name).orElse("BASE") + "/" + body.female();
+            String key = body.child() + "/" + body.profession().map(Enum::name).orElse("BASE") + "/"
+                    + body.female();
             require(served.add(key), "two bodies claim " + key);
-            require(body.female() == body.crop().contains("female"),
+            require(body.female() == namedFemale(body.crop()),
                     "the body " + body.crop() + " disagrees with its own name about sex");
+            require(body.child() == body.crop().contains("child"),
+                    "the body " + body.crop() + " disagrees with its own name about age");
+            require(!body.child() || body.profession().isEmpty(),
+                    "the child body " + body.crop() + " names a profession, which the roster never gives"
+                            + " a child");
             Path crop = Path.of("tools", "models", body.crop() + ".json");
             require(Files.isRegularFile(crop),
                     "the body " + body.crop() + " has a committed crop at " + crop);

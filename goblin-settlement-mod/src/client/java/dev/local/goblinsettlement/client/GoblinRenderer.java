@@ -21,8 +21,8 @@ public final class GoblinRenderer
     }
 
     /**
-     * One sex's bodies: the undressed base plus one outfit per trade that has art. A trade with no art
-     * falls back to the base, which is why every lookup takes a default rather than returning null.
+     * One sex's adult bodies: the undressed base plus one outfit per trade that has art. A trade with no
+     * art falls back to the base, which is why every lookup takes a default rather than returning null.
      */
     private record Bodies(Outfit base, Map<Profession, Outfit> outfits) {
         EntityModel<GoblinRenderState> body(Profession profession) {
@@ -40,26 +40,41 @@ public final class GoblinRenderer
 
     private final Bodies male;
     private final Bodies female;
+    /**
+     * One child body per sex, held as a bare {@link Outfit} rather than a {@link Bodies}. That is the
+     * whole guard: a child path has no outfit map and takes no profession, so a child can never resolve
+     * to a trade's outfit, and only the two branches above can reach an outfit at all.
+     */
+    private final Outfit childMale;
+    private final Outfit childFemale;
 
     public GoblinRenderer(EntityRendererProvider.Context context) {
-        this(context, bake(context, false), bake(context, true));
+        this(context, bake(context, false, false), bake(context, false, true),
+                bake(context, true, false).base(), bake(context, true, true).base());
     }
 
-    private GoblinRenderer(EntityRendererProvider.Context context, Bodies male, Bodies female) {
+    private GoblinRenderer(EntityRendererProvider.Context context, Bodies male, Bodies female,
+                           Outfit childMale, Outfit childFemale) {
         // super(...) must be the first statement, so it cannot take the field below -- this bakes the
         // male base twice and throws one tree away on the first submit. Cheap, and the alternative
         // (a shared holder) buys nothing here.
         super(context, male.base().model(), 0.3F);
         this.male = male;
         this.female = female;
+        this.childMale = childMale;
+        this.childFemale = childFemale;
     }
 
-    /** Bakes every body of one sex from the table. The base is the row whose profession is empty. */
-    private static Bodies bake(EntityRendererProvider.Context context, boolean female) {
+    /**
+     * Bakes every body of one age and sex from the table. The base is the row whose profession is empty;
+     * a child table must have exactly that one row, so a child row that names a trade fails the build
+     * here (ArtModelCheck spells the same rule out, this is the second lock on the same door).
+     */
+    private static Bodies bake(EntityRendererProvider.Context context, boolean child, boolean female) {
         Outfit base = null;
         Map<Profession, Outfit> outfits = new EnumMap<>(Profession.class);
         for (GoblinBodies.Body body : GoblinBodies.BODIES) {
-            if (body.female() != female) {
+            if (body.child() != child || body.female() != female) {
                 continue;
             }
             var model = body.model().apply(context.bakeLayer(GoblinSettlementClient.layer(body.crop())));
@@ -73,9 +88,20 @@ public final class GoblinRenderer
             }
         }
         if (base == null) {
-            throw new IllegalStateException("no base body for female=" + female + " in GoblinBodies.BODIES");
+            throw new IllegalStateException(
+                    "no " + (child ? "child" : "base") + " body for female=" + female
+                            + " in GoblinBodies.BODIES");
+        }
+        if (child && !outfits.isEmpty()) {
+            throw new IllegalStateException("a child body carries an outfit, which the roster never gives: "
+                    + outfits.keySet());
         }
         return new Bodies(base, Map.copyOf(outfits));
+    }
+
+    /** The single body a child wears. It takes no profession, so there is no outfit a child could get. */
+    private Outfit childBody(boolean female) {
+        return female ? childFemale : childMale;
     }
 
     @Override
@@ -88,6 +114,7 @@ public final class GoblinRenderer
         super.extractRenderState(entity, state, partialTick);
         state.profession = entity.professionForRender();
         state.female = entity.femaleForRender();
+        state.child = entity.childForRender();
     }
 
     /**
@@ -97,12 +124,14 @@ public final class GoblinRenderer
     @Override
     public void submit(GoblinRenderState state, PoseStack pose, SubmitNodeCollector collector,
                        CameraRenderState camera) {
-        this.model = (state.female ? female : male).body(state.profession);
+        this.model = state.child ? childBody(state.female).model()
+                : (state.female ? female : male).body(state.profession);
         super.submit(state, pose, collector, camera);
     }
 
     @Override
     public Identifier getTextureLocation(GoblinRenderState state) {
-        return (state.female ? female : male).texture(state.profession);
+        return state.child ? childBody(state.female).texture()
+                : (state.female ? female : male).texture(state.profession);
     }
 }
