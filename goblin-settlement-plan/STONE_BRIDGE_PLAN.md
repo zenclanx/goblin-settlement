@@ -642,7 +642,7 @@ git commit -m "Build whichever kind of bridge was asked for"
         }
 ```
 
-并把 `TransportCoordinator.startWoodBridge(...)` 改为 `TransportCoordinator.startBridge(..., kind)`；桥失败回退修路那一段**不动**。原来那四个 `BRIDGE_MIN_*` 常量若因此没有别的使用者，**删掉**（项目不留没有调用者的常量）。
+并把调用点从木桥写死改为按 `kind`：`TransportCoordinator.startBridge(..., kind)`（Task 3 已经把 `startWoodBridge` 泛化掉了，这里只是把 `kind` 传进去）；桥失败回退修路那一段**不动**。原来那四个 `BRIDGE_MIN_*` 常量若因此没有别的使用者，**删掉**（项目不留没有调用者的常量）。
 
 - [ ] **Step 3: 跑完整构建**
 
