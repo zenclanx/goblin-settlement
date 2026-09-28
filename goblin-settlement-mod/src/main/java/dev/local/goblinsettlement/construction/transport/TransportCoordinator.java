@@ -347,9 +347,9 @@ public final class TransportCoordinator {
             if (worker.isPresent()) {
                 GoblinCitizenEntity goblin = worker.orElseThrow();
                 TransportPlan assigned = plan.withWorker(Optional.of(goblin.getUUID().toString()));
-                if (traffic.replace(assigned) && !goblin.assignTransport(plan.settlementId(),
-                        plan.id(), plan.completedSteps(), warehouse, step.site())) {
-                    traffic.replace(plan);
+                if (traffic.replace(assigned)) {
+                    goblin.beginTransport(plan.settlementId(),
+                            plan.id(), plan.completedSteps(), warehouse, step.site());
                 }
             }
             return;

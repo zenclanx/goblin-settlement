@@ -763,6 +763,29 @@
 - [2026-09-29 01:00:00 +08:00] **处置**：F002、F003 **通过并登记**——源文件、验证文件与 `REVIEW.md`（任务编号与规格版本、提交修订号、验收时间、验证命令与结果、已知限制、接入路径待填）复制到 `function-bank/accepted/F00{2,3}/r1/`；`function-bank/README.md` 登记表与 `accepted/README.md` 同步更新。**F004、F005 经用户决定不再采用**：如实记下"验收未通过 + 失败原因 + 决定不采用"，**提交目录原样保留作历史、未删除**。**四份均未接入运行时**（F002/F003 接入时填运行时路径）。
 - [2026-09-29 01:02:00 +08:00] 验证：本次验收的产物是**文件与文档**，无构建产物。已推送；工作树干净。**记录提交 `55ffe49`**。**未完成**：F002/F003 的实现**只是纯函数被验收，游戏集成与调用仍未做**——按函数库规矩，纯函数验收**不等于**游戏可用。
 
+## [2026-09-29 01:15:00 +08:00 – 2026-09-29 01:46:00 +08:00] 第六十七轮：统一验证第 0 组（抓到并修复一个静态检查看不见的 P0）
+
+- [2026-09-29 01:15:00 +08:00] **这是本分支建立以来第一次真的进游戏**（照 `TEST_CHECKLIST.md` 第 0 组"基线复验"执行）。授权范围：用户指定"你先跑服务端逻辑"，并明确**这个实例的存档可以随便用**（该实例本为开发专用）；发现阻断问题后授权 **"修吧，修完复测第 0 组，再记日志"**。
+- [2026-09-29 01:16:00 +08:00] **跑道确认**：`JAVA_HOME` 已指向 Java 21（`AppData\Local\Programs\Java\jdk-21.0.12.1+1`）；**PATH 里的 `java` 是 17，是干扰项**，`./gradlew` 走 JAVA_HOME。**起点**：`./gradlew build --offline --no-daemon` → BUILD SUCCESSFUL（49 秒），21 项独立检查全绿。新建专用世界 `goblin-verify`；`run/server.properties` 开 RCON（`enable-rcon=true`、端口 25575、`pause-when-empty-seconds=-1` 让无玩家时照常 tick）；写 `run/rcon.py` 作命令通道（**`run/` 已在 `.gitignore` 内，不进版本控制**）。
+- [2026-09-29 01:18:00 +08:00] **测试场可纯用管理员命令搭起来，不需要玩家在线**：`CampGenerationCoordinator.findSite` 要玩家当锚点，但管理员 `found` 不走那条路（`goblinsettlement found` 配 `/execute positioned` 即可控制锚点）；`warehouse` 注册容器、`plan` 记两格工程、`/summon goblin_settlement:goblin` 的居民**10 tick 内自动进名册**（`customServerAiStep` 的 `REGISTRATION_INTERVAL_TICKS`）。用 17×17 空中草平台 + 8×8 起始地块（`x 8–15 × z 8–15`，由 `check` 探测确定）搭出可控测试场。
+- [2026-09-29 01:20:00 +08:00] **抓到 P0：自主施工完全不工作。** 两居民、箱内 32 块木板、工地合法（空气 + 坚固地基、权限 ALLOWED），**工程永远停在 `0/2`、`worker=none`，每 20 tick 重试一次**。逐项排除场景问题：工人可用（管理员 `assign` 能对同一名工人成功开工）、材料在（`containers=1`）、site 合法、地块已 claim。
+- [2026-09-29 01:26:00 +08:00] **根因坐实（临时诊断实测，不是推理）**：在 `ConstructionCoordinator` 加 `println` 后重启实测，连续打出 `assignWorker=true assignConstruction=false`。链条是——① `data.assignWorker(plan.start(), workerId)` 先把 workerId 写进 plan；② 紧接着 `goblin.assignConstruction(...)` 内部调 `isAvailableForConstruction()`，而它有一条"该工人已被某个 plan 占用即返回 false"；②读到的**正是①刚写进去的自己** → 必然 false → ③ `releaseWorker` 回滚 → 下一 tick 重来。**先登记再自问，自己把自己判为占用。** 诊断代码随即 `git checkout` 还原，工作树干净。
+- [2026-09-29 01:28:00 +08:00] **同一模式共 4 处**（逐处读代码核对，非推测）：`ConstructionCoordinator` 正常路径、同文件 recovery（掉落物回收）路径、`TransportCoordinator`（`plan.withWorker` → `assignTransport` → 失败 `traffic.replace(plan)` 回滚，逐字同构）、**以及 `HousingCoordinator`**（`withWorker` → `assignHousing` → 失败 `replace(home)`）。**不受影响**：`MiningCoordinator` 与 `PatrolCoordinator` 不写计划（`assignMining` 的注释亦写明"不保留持久预占"）。
+- [2026-09-29 01:29:00 +08:00] **修法：恢复"先检查、后设置"的次序**。新增 `beginConstruction` / `beginTransport` / `beginHousing` / `beginRecovery` 四个**不重复检查**的入口（纯状态设置），由**已经用 `isAvailableForConstruction` 筛过工人**的协调器调用；原 `assignXxx` 保留检查不动（管理员 `assign` 命令仍需它）。4 个调用点改为**"登记成功才开工"**，删掉原先的失败回滚分支——登记是唯一可能失败的一步，失败就不开工，不留中间态。**净效果是修复而非放宽**：挑人时的过滤与 `assignWorker` 的唯一性检查共同保证不会重复派工。
+- [2026-09-29 01:30:00 +08:00] 验证：`./gradlew build --offline --no-daemon` → **BUILD SUCCESSFUL**（1 分 10 秒），**21 项**独立检查全部 `*Check passed`，无编译警告。**`assignTransport`/`assignHousing`/`assignRecovery` 修后已无调用者**（`assignConstruction` 仍被 `GoblinSettlement` 的 `assign` 命令使用）；作为与后者对称的公开入口**保留未删**，去留待定。
+- [2026-09-29 01:32:00 +08:00] **复测第 0 组，五条全部通过**（同一存档重启带修复的构建）：
+  - **① 真实箱子取料 → 走到工地 → 放方块**：两个工程各推进到 `2/2`，箱内木板 **24 → 20**（两工地各 2 块），`execute if block … oak_planks` 确认方块真的落地；轮询亲眼看到 `DELIVERING, carrying=1` → 行走 → `COMPLETE` 的完整链路。
+  - **② 工人死亡**：在 `DELIVERING, carrying=1` 时击杀 → 计划**不卡死**（`worker=none`、推进到 `1/2`）、掉落物被 **`dropped material=tracked`** 接住；新居民回收后归档（**16 → 17**）并接续施工把工程建到 `2/2`。**材料全程没有凭空消失**。
+  - **③ 工人取消**：`cancel` 后计划移除（`No construction project`），被占用的工人**回到 `MINER IDLE`**——没有"永久占用工人"。
+  - **④ 停服重启（比区块卸载更强的等价物）**：停服前 = `0/2`、库存 15、工人携 1；重启后 = `1/2`、库存 14、工人仍 `DELIVERING, carrying=1`。**账目 14 + 工地 1 + 工人手上 1 = 16，与施工前完全平衡**——不重复扣料、不重复发料，在途携带状态正确恢复。
+  - **⑤ 一格小麦**：播种（种子 16 → 15）→ 生长（age 递增）→ 收获（箱内出现 `wheat × 1`、种子回 16）→ **补种**（方块变回 wheat、种子 16 → 15）。**补种归仓闭环完整**。
+- [2026-09-29 01:40:00 +08:00] **附带发现（本轮未修，如实记录）**：
+  - **`goblinsettlement assign` 管理员命令已失效**：第五十七轮材料泛化后，工人靠 `materialFor(workerId)`（从 `plan.workerId` 反查）才知道该取什么料，而这条命令**只设实体状态、不写 plan**，于是工人卡在 `FETCHING (no project for this worker)`。它也正是本轮用来做二分测试的手段（**能成功开工**，因为不调 `assignWorker`）——**两种失败模式恰好互为对照，是定位根因的关键证据**。
+  - **单居民时巡逻会独占劳动力**：`PatrolCoordinator` 选中一名居民后，该居民长期停在 `PATROL_WALKING`（观察 25 秒以上未结束），此时施工/农业无人可用而**被饿死**；补到 3 名居民后立即恢复。第四十九轮的设计本就是"任何可用居民都能被选中巡逻"，**人多时不明显，人少时是拐点**——不是本轮修的 bug，但值得记一笔。
+  - **农业派工有两道环境门禁**：`mob_griefing` 必须为 true（**注意 1.21.11 的 gamerule 名已改成 snake_case，写 `mobGriefing` 会报参数错误**）；作物生长需光照 ≥ 9，**平台在夜间不长**（曾一度误以为卡住）。
+  - **测试操作自身造成的假象**：为加速生长把 `random_tick_speed` 设到 100 后，收获空档期里**无水耕地退化成泥土**，`FarmDiscoveryCoordinator` 随即正确注销该格——**这是正确行为、不是缺陷**；恢复默认速度并重铺耕地后补种正常。
+- [2026-09-29 01:46:00 +08:00] 未完成/边界：**本轮只跑了第 0 组（基线复验），第 1–9 组一条未测**（渲染、命令与显示、住宅、交通、职业与哨卫、生产链、家族人口、异常边界、待实测重定的发明常量）。**本轮不构成玩法验收**——修复的验证同样只是"运行时行为符合预期"这一层，不含观感与平衡判断。**服务端仍在运行**（世界 `goblin-verify`、端口 25595），`run/` 下的一切不进版本控制。**代码改动未提交**（4 个文件在工作树中，待用户决定提交方式）。
+
 
 
 

@@ -171,17 +171,33 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         if (!isAvailableForConstruction()) {
             return false;
         }
+        beginConstruction(id, supply, site);
+        return true;
+    }
+
+    /**
+     * Starts a construction step without re-asking whether this resident is free. Callers pick the
+     * worker through isAvailableForConstruction and then register it in their own plan, so asking
+     * again here would count that registration the caller just wrote as an occupation and reject
+     * every assignment. Use this only after vetting the worker.
+     */
+    public void beginConstruction(String id, BlockPos supply, BlockPos site) {
         settlementId = id;
         supplyPos = supply.immutable();
         buildPos = site.immutable();
         workStage = WorkStage.FETCHING;
         waitReason = "";
-        return true;
     }
 
     public boolean assignTransport(String id, String planId, int stepIndex,
                                    BlockPos supply, BlockPos site) {
         if (!isAvailableForConstruction()) return false;
+        beginTransport(id, planId, stepIndex, supply, site);
+        return true;
+    }
+
+    /** The already-vetted counterpart of {@link #assignTransport}. See {@link #beginConstruction}. */
+    public void beginTransport(String id, String planId, int stepIndex, BlockPos supply, BlockPos site) {
         settlementId = id;
         transportPlanId = planId;
         transportStepIndex = stepIndex;
@@ -189,18 +205,22 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         buildPos = site.immutable();
         workStage = WorkStage.TRANSPORT_FETCHING;
         waitReason = "";
-        return true;
     }
 
     public boolean assignHousing(String id, BlockPos bed, BlockPos supply, BlockPos site) {
         if (!isAvailableForConstruction()) return false;
+        beginHousing(id, bed, supply, site);
+        return true;
+    }
+
+    /** The already-vetted counterpart of {@link #assignHousing}. See {@link #beginConstruction}. */
+    public void beginHousing(String id, BlockPos bed, BlockPos supply, BlockPos site) {
         settlementId = id;
         housingBed = bed.immutable();
         supplyPos = supply.immutable();
         buildPos = site.immutable();
         workStage = WorkStage.HOUSING_FETCHING;
         waitReason = "";
-        return true;
     }
 
     /** True while this resident still legitimately holds the given transport step. */
@@ -360,13 +380,18 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         if (!isAvailableForConstruction()) {
             return false;
         }
+        beginRecovery(id, warehouse, entityId, itemPos);
+        return true;
+    }
+
+    /** The already-vetted counterpart of {@link #assignRecovery}. See {@link #beginConstruction}. */
+    public void beginRecovery(String id, BlockPos warehouse, String entityId, BlockPos itemPos) {
         settlementId = id;
         supplyPos = warehouse.immutable();
         buildPos = itemPos.immutable();
         pickupItemId = entityId;
         workStage = WorkStage.RECOVERING;
         waitReason = "";
-        return true;
     }
 
     public boolean assignFarmPlanting(String id, BlockPos warehouse, BlockPos crop) {

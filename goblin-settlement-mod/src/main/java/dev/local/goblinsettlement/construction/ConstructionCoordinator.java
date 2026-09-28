@@ -97,10 +97,9 @@ public final class ConstructionCoordinator {
             if (resident.isPresent()) {
                 var goblin = resident.get();
                 String workerId = goblin.getUUID().toString();
-                if (data.assignWorker(plan.start(), workerId)
-                        && !goblin.assignRecovery(settlementId, warehouse.get(),
-                        drop.entityId(), item.blockPosition())) {
-                    data.releaseWorker(workerId);
+                if (data.assignWorker(plan.start(), workerId)) {
+                    goblin.beginRecovery(settlementId, warehouse.get(),
+                            drop.entityId(), item.blockPosition());
                 }
             }
             return;
@@ -129,9 +128,8 @@ public final class ConstructionCoordinator {
         if (resident.isPresent()) {
             var goblin = resident.get();
             String workerId = goblin.getUUID().toString();
-            if (data.assignWorker(plan.start(), workerId)
-                    && !goblin.assignConstruction(settlementId, supply.get(), site)) {
-                data.releaseWorker(workerId);
+            if (data.assignWorker(plan.start(), workerId)) {
+                goblin.beginConstruction(settlementId, supply.get(), site);
             }
         }
     }

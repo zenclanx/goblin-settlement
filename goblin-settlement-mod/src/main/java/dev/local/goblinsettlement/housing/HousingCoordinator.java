@@ -139,9 +139,7 @@ public final class HousingCoordinator {
             if (worker.isPresent()) {
                 GoblinCitizenEntity goblin = worker.orElseThrow();
                 housing.replace(home.withWorker(Optional.of(goblin.getUUID().toString())));
-                if (!goblin.assignHousing(id, home.bed(), warehouse.orElseThrow(), site)) {
-                    housing.replace(home);
-                }
+                goblin.beginHousing(id, home.bed(), warehouse.orElseThrow(), site);
                 return true;
             }
         }
