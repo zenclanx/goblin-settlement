@@ -12,6 +12,9 @@ import net.minecraft.client.model.geom.builders.PartDefinition;
  * re-run the generator instead. See ART_INTEGRATION_DESIGN.md section 3.
  */
 public final class GoblinFarmerMaleModel extends GoblinBodyModel {
+    /** The crop this mesh was generated from. Rows in GoblinBodies name it instead of retyping it. */
+    public static final String CROP = "goblin_farmer_male_p01";
+
     public GoblinFarmerMaleModel(ModelPart root) {
         super(root);
     }

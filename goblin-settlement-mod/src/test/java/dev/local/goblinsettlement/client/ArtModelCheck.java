@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.local.goblinsettlement.client.model.GoblinBodies;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import javax.imageio.ImageIO;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
@@ -24,10 +26,11 @@ import net.minecraft.client.model.geom.builders.LayerDefinition;
  * Checks the art before the client ever renders it, in two halves that both walk the same crop list.
  *
  * <p>The first half reads the committed crops: the six required groups, the feet on the art ground
- * line, every cube's box-uv footprint inside the declared texture, box uv only, no rotated group, and
- * a texture whose pixels are exactly twice the crop's logical resolution. The crop is what the mod's
- * geometry is regenerated from -- the art workspace is not in version control -- so this is where a
- * bad model is caught before it reaches a screen.
+ * line, every cube's box-uv footprint inside the declared texture, box uv only, no rotated group, a
+ * texture whose pixels are exactly twice the crop's logical resolution, and a texture whose painted
+ * area covers every cube's uv rectangle. The crop is what the mod's geometry is regenerated from -- the
+ * art workspace is not in version control -- so this is where a bad model is caught before it reaches a
+ * screen.
  *
  * <p>The second half bakes the generated mesh each crop maps to and checks the baked parts against
  * that same crop: each of the six names exists, and its {@code PartPose} position is exactly what the
@@ -96,43 +99,55 @@ public final class ArtModelCheck {
 
         JsonArray elements = root.getAsJsonArray("elements");
         require(elements.size() > 0, name + ": has elements");
-        int lowest = Integer.MAX_VALUE;
-        int highest = Integer.MIN_VALUE;
+        double lowest = Double.MAX_VALUE;
+        double highest = -Double.MAX_VALUE;
         for (var entry : elements) {
             JsonObject element = entry.getAsJsonObject();
             require(element.get("box_uv").getAsBoolean(), name + ": every element uses box uv");
             var from = element.getAsJsonArray("from");
             var to = element.getAsJsonArray("to");
+            // The art is not confined to the unit grid: the farmer's skull runs -3.975 .. 3.975 and its
+            // hat crown tops out at 52.5. Reading these as ints would truncate them and fail a correct
+            // crop, so they are doubles and the comparisons carry the check's tolerance.
             for (int axis = 0; axis < 3; axis++) {
-                require(from.get(axis).getAsInt() <= to.get(axis).getAsInt(),
+                require(from.get(axis).getAsDouble() <= to.get(axis).getAsDouble() + TOLERANCE,
                         name + ": a cube has an inverted extent on axis " + axis);
             }
             // A box-uv cube unwraps into a 2*(w+d) by (h+d) rectangle anchored at its uv offset;
             // that rectangle -- not the cube's place in space -- is what has to fit in the texture.
-            int width = to.get(0).getAsInt() - from.get(0).getAsInt();
-            int height = to.get(1).getAsInt() - from.get(1).getAsInt();
-            int depth = to.get(2).getAsInt() - from.get(2).getAsInt();
+            double width = to.get(0).getAsDouble() - from.get(0).getAsDouble();
+            double height = to.get(1).getAsDouble() - from.get(1).getAsDouble();
+            double depth = to.get(2).getAsDouble() - from.get(2).getAsDouble();
             var uv = element.getAsJsonArray("uv_offset");
             int u0 = uv.get(0).getAsInt();
             int v0 = uv.get(1).getAsInt();
-            require(u0 >= 0 && u0 + 2 * (width + depth) <= u,
+            require(u0 >= 0 && u0 + 2 * (width + depth) <= u + TOLERANCE,
                     name + ": a cube's uv runs off the texture in u (offset " + u0
                             + ", needs " + 2 * (width + depth) + ")");
-            require(v0 >= 0 && v0 + (height + depth) <= v,
+            require(v0 >= 0 && v0 + (height + depth) <= v + TOLERANCE,
                     name + ": a cube's uv runs off the texture in v (offset " + v0
                             + ", needs " + (height + depth) + ")");
-            lowest = Math.min(lowest, from.get(1).getAsInt());
-            highest = Math.max(highest, to.get(1).getAsInt());
+            lowest = Math.min(lowest, from.get(1).getAsDouble());
+            highest = Math.max(highest, to.get(1).getAsDouble());
         }
-        require(lowest == 0, name + ": the feet sit on the art ground line (lowest y is " + lowest + ")");
-        require(highest <= 64, name + ": the model is not absurdly tall (" + highest + " art units)");
+        require(Math.abs(lowest) <= TOLERANCE,
+                name + ": the feet sit on the art ground line (lowest y is " + lowest + ")");
+        require(highest <= 64 + TOLERANCE,
+                name + ": the model is not absurdly tall (" + highest + " art units)");
         return root;
     }
 
     /**
-     * The models declare 256 logical uv and ship a 512x512 bitmap. Read the PNG header and require
-     * exactly twice the crop's resolution, so the "512 texture against 256 logical uv" pairing cannot
-     * be wrong without a running game to show it.
+     * The models declare 256 logical uv and ship a 512x512 bitmap (the professions declare 512 and ship
+     * 1024). Read the PNG header and require exactly twice the crop's resolution, so the "512 texture
+     * against 256 logical uv" pairing cannot be wrong without a running game to show it.
+     *
+     * <p>Then decode the bitmap and require every cube's referenced uv rectangle to land inside the
+     * painted (non-transparent) area. The size check alone is blind to a texture of the right size that
+     * is shifted -- this round's top risk -- and a shift moves the painted blob out from under some
+     * rectangle, which this catches. The rectangle is the same box-uv footprint the crop half checks
+     * against the declared resolution, scaled to the bitmap (x2); its far edge is floored so a
+     * fractional element extent may overhang the last painted texel by less than one pixel.
      */
     private static void checkTexture(String name, JsonObject root, String texture) throws IOException {
         JsonObject resolution = root.getAsJsonObject("resolution");
@@ -151,6 +166,67 @@ public final class ArtModelCheck {
         require(width == 2 * u && height == 2 * v,
                 name + ": the texture is " + width + "x" + height + ", expected twice the crop's "
                         + u + "x" + v + " logical uv");
+
+        BufferedImage image = ImageIO.read(path.toFile());
+        require(image != null && image.getWidth() == width && image.getHeight() == height,
+                name + ": the texture " + path + " decodes to a " + width + "x" + height + " image");
+        int[] painted = paintedBounds(image);
+        require(painted != null, name + ": the texture " + path + " paints at least one pixel");
+        for (var entry : root.getAsJsonArray("elements")) {
+            JsonObject element = entry.getAsJsonObject();
+            var from = element.getAsJsonArray("from");
+            var to = element.getAsJsonArray("to");
+            double cubeWidth = to.get(0).getAsDouble() - from.get(0).getAsDouble();
+            double cubeHeight = to.get(1).getAsDouble() - from.get(1).getAsDouble();
+            double cubeDepth = to.get(2).getAsDouble() - from.get(2).getAsDouble();
+            var uv = element.getAsJsonArray("uv_offset");
+            int u0 = uv.get(0).getAsInt();
+            int v0 = uv.get(1).getAsInt();
+            // Logical uv -> bitmap pixels is exactly x2 (the resolution check above), and a rectangle's
+            // bound is floored to the last whole texel it reaches.
+            int left = (int) Math.floor(2.0 * u0);
+            int top = (int) Math.floor(2.0 * v0);
+            int right = (int) Math.floor(2.0 * (u0 + 2 * (cubeWidth + cubeDepth)));
+            int bottom = (int) Math.floor(2.0 * (v0 + (cubeHeight + cubeDepth)));
+            require(left >= painted[0] && top >= painted[1]
+                            && right <= painted[2] + 1 && bottom <= painted[3] + 1,
+                    name + ": the uv rectangle of element " + element.get("name").getAsString()
+                            + " (" + left + ", " + top + ")..(" + right + ", " + bottom
+                            + ") leaves the painted area ("
+                            + painted[0] + ", " + painted[1] + ")..(" + (painted[2] + 1) + ", "
+                            + (painted[3] + 1) + ")");
+        }
+    }
+
+    /**
+     * The inclusive pixel bounds {@code (minX, minY, maxX, maxY)} of the image's non-transparent
+     * pixels, or null if every pixel is transparent. A uv rectangle lies in the painted area when its
+     * bounds fall inside {@code [minX, maxX + 1) x [minY, maxY + 1)}.
+     */
+    private static int[] paintedBounds(BufferedImage image) {
+        int minX = image.getWidth();
+        int minY = image.getHeight();
+        int maxX = -1;
+        int maxY = -1;
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                if ((image.getRGB(x, y) >>> 24) != 0) {
+                    if (x < minX) {
+                        minX = x;
+                    }
+                    if (x > maxX) {
+                        maxX = x;
+                    }
+                    if (y < minY) {
+                        minY = y;
+                    }
+                    if (y > maxY) {
+                        maxY = y;
+                    }
+                }
+            }
+        }
+        return maxX < 0 ? null : new int[] {minX, minY, maxX, maxY};
     }
 
     /**

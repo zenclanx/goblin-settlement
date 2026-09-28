@@ -27,13 +27,13 @@ public final class GoblinBodies {
     }
 
     public static final List<Body> BODIES = List.of(
-            new Body(false, Optional.empty(), "goblin_male_a", "goblin_male",
+            new Body(false, Optional.empty(), GoblinMaleModel.CROP, "goblin_male",
                     GoblinMaleModel::createLayer, GoblinMaleModel::new),
-            new Body(true, Optional.empty(), "goblin_female_a", "goblin_female",
+            new Body(true, Optional.empty(), GoblinFemaleModel.CROP, "goblin_female",
                     GoblinFemaleModel::createLayer, GoblinFemaleModel::new),
-            new Body(false, Optional.of(Profession.FARMER), "goblin_farmer_male_p01", "goblin_farmer_male",
+            new Body(false, Optional.of(Profession.FARMER), GoblinFarmerMaleModel.CROP, "goblin_farmer_male",
                     GoblinFarmerMaleModel::createLayer, GoblinFarmerMaleModel::new),
-            new Body(true, Optional.of(Profession.FARMER), "goblin_farmer_female_p01", "goblin_farmer_female",
+            new Body(true, Optional.of(Profession.FARMER), GoblinFarmerFemaleModel.CROP, "goblin_farmer_female",
                     GoblinFarmerFemaleModel::createLayer, GoblinFarmerFemaleModel::new));
 
     private GoblinBodies() {

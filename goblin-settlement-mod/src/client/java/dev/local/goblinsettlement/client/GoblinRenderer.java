@@ -1,6 +1,7 @@
 package dev.local.goblinsettlement.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import dev.local.goblinsettlement.GoblinSettlement;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.client.model.GoblinBodies;
 import dev.local.goblinsettlement.colony.Profession;
@@ -15,20 +16,26 @@ import net.minecraft.resources.Identifier;
 
 public final class GoblinRenderer
         extends MobRenderer<GoblinCitizenEntity, GoblinRenderState, EntityModel<GoblinRenderState>> {
+    /** One trade's body: the mesh and the texture it samples, paired so the two cannot drift apart. */
+    private record Outfit(EntityModel<GoblinRenderState> model, Identifier texture) {
+    }
+
     /**
      * One sex's bodies: the undressed base plus one outfit per trade that has art. A trade with no art
      * falls back to the base, which is why every lookup takes a default rather than returning null --
      * six of the seven trades are still undressed.
      */
-    private record Bodies(EntityModel<GoblinRenderState> base, Identifier baseTexture,
-                          Map<Profession, EntityModel<GoblinRenderState>> outfits,
-                          Map<Profession, Identifier> textures) {
+    private record Bodies(Outfit base, Map<Profession, Outfit> outfits) {
         EntityModel<GoblinRenderState> body(Profession profession) {
-            return outfits.getOrDefault(profession, base);
+            return outfit(profession).model();
         }
 
         Identifier texture(Profession profession) {
-            return textures.getOrDefault(profession, baseTexture);
+            return outfit(profession).texture();
+        }
+
+        private Outfit outfit(Profession profession) {
+            return outfits.getOrDefault(profession, base);
         }
     }
 
@@ -43,36 +50,33 @@ public final class GoblinRenderer
         // super(...) must be the first statement, so it cannot take the field below -- this bakes the
         // male base twice and throws one tree away on the first submit. Cheap, and the alternative
         // (a shared holder) buys nothing here.
-        super(context, male.base(), 0.3F);
+        super(context, male.base().model(), 0.3F);
         this.male = male;
         this.female = female;
     }
 
     /** Bakes every body of one sex from the table. The base is the row whose profession is empty. */
     private static Bodies bake(EntityRendererProvider.Context context, boolean female) {
-        EntityModel<GoblinRenderState> base = null;
-        Identifier baseTexture = null;
-        Map<Profession, EntityModel<GoblinRenderState>> outfits = new EnumMap<>(Profession.class);
-        Map<Profession, Identifier> textures = new EnumMap<>(Profession.class);
+        Outfit base = null;
+        Map<Profession, Outfit> outfits = new EnumMap<>(Profession.class);
         for (GoblinBodies.Body body : GoblinBodies.BODIES) {
             if (body.female() != female) {
                 continue;
             }
             var model = body.model().apply(context.bakeLayer(GoblinSettlementClient.layer(body.crop())));
-            var texture = Identifier.fromNamespaceAndPath("goblin_settlement",
+            var texture = Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID,
                     "textures/entity/" + body.texture() + ".png");
+            var outfit = new Outfit(model, texture);
             if (body.profession().isEmpty()) {
-                base = model;
-                baseTexture = texture;
+                base = outfit;
             } else {
-                outfits.put(body.profession().orElseThrow(), model);
-                textures.put(body.profession().orElseThrow(), texture);
+                outfits.put(body.profession().orElseThrow(), outfit);
             }
         }
         if (base == null) {
             throw new IllegalStateException("no base body for female=" + female + " in GoblinBodies.BODIES");
         }
-        return new Bodies(base, baseTexture, Map.copyOf(outfits), Map.copyOf(textures));
+        return new Bodies(base, Map.copyOf(outfits));
     }
 
     @Override
