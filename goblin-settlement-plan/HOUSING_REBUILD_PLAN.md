@@ -233,7 +233,7 @@ git commit -m "Keep new beds off the cells the blueprints will need"
 
 **Interfaces:**
 - Consumes: `HousingCoordinator.nextSite` / `stepAt` / `permitted`（既有私有）、`HousingBlueprints`、`PublicWarehouseInventory`（既有）
-- Produces: `HousingCoordinator.blockedReason(ServerLevel level, SettlementSavedData data, HousingSavedData.Home home, String id) -> Optional<String>`
+- Produces: `HousingCoordinator.blockedReason(...) -> Optional<String>`（**必须 `public`**：调用方 `GoblinSettlement` 在另一个包里）
 
 - [ ] **Step 1: 把门禁提成一个判据**
 
@@ -245,8 +245,8 @@ git commit -m "Keep new beds off the cells the blueprints will need"
      * One authority: dispatch and the status line both ask here, so the reason shown can never drift
      * from the rule that actually blocks the work. Read-only -- it decides nothing and changes nothing.
      */
-    static Optional<String> blockedReason(ServerLevel level, SettlementSavedData data,
-                                         HousingSavedData.Home home, String id) {
+    public static Optional<String> blockedReason(ServerLevel level, SettlementSavedData data,
+                                                HousingSavedData.Home home, String id) {
         if (!HousingBlueprints.available()) {
             return Optional.of("the blueprint data is unavailable");
         }
