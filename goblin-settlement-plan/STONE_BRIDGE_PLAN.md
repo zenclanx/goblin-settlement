@@ -449,9 +449,13 @@ Expected: `BUILD SUCCESSFUL`，19 项全部 `*Check passed`。
 
 - [ ] **Step 4: 核对收口**
 
-Run: `grep -rn "WOOD_BRIDGE" src/main/java/`
+Run: `grep -rn "kind() [!=]= Kind\.\(WOOD\|STONE\)_BRIDGE\|kind [!=]= Kind\.\(WOOD\|STONE\)_BRIDGE" src/main/java/`
 
-Expected: 剩下的**必须是"指名某种桥"**，而不是"判断这是不是桥"。允许剩下的三类：`TransportPlan` 的枚举定义与 `isBridgeKind`（两处）、`BridgeMaterials` 的选料与区间（它**本来就是**桥种的对照表）、`TrafficProposalCoordinator` 里"默认造木桥"的那一处（Task 3 Step 3 写下的，Task 4 会按档位替换）。**任何形如 `kind == Kind.WOOD_BRIDGE` / `!=` 的判断都应已消失**——逐条看过去，遇到这种就说明漏了一处。
+Expected: **一条都没有**——"这是不是一座桥"已全部走 `isBridge()`。
+
+再 Run: `grep -rn "WOOD_BRIDGE" src/main/java/`
+
+Expected: 剩下的**都是"指名某种桥"**：`TransportPlan` 的枚举定义与 `isBridge()` 权威、以及 `startWoodBridge` 里构造计划时写下的那一个（它就是在指明自己造的是木桥，Task 3 会把它换成 `kind`）。`BridgeMaterials` 里没有这个字面量是对的——它用"不是石桥就是木桥"的回落写法。
 
 - [ ] **Step 5: 提交**
 
