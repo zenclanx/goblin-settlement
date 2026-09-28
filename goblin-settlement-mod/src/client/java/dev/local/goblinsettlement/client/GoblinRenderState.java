@@ -5,4 +5,5 @@ import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 
 public final class GoblinRenderState extends LivingEntityRenderState {
     public Profession profession = Profession.UNASSIGNED;
+    public boolean female;
 }

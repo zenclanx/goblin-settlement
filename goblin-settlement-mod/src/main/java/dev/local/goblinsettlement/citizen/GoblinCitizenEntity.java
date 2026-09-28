@@ -66,6 +66,8 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private static final int REGISTRATION_INTERVAL_TICKS = 10;
     private static final EntityDataAccessor<String> DATA_PROFESSION =
             SynchedEntityData.defineId(GoblinCitizenEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> DATA_FEMALE =
+            SynchedEntityData.defineId(GoblinCitizenEntity.class, EntityDataSerializers.BOOLEAN);
 
     private enum WorkStage { IDLE, FETCHING, DELIVERING, COMPLETE, RECOVERING, RETURNING, RECOVERED, ABORTED,
         FARM_FETCHING_SEED, FARM_PLANTING, FARM_HARVESTING, FARM_RETURNING, FARM_COMPLETE,
@@ -132,6 +134,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(DATA_PROFESSION, Profession.UNASSIGNED.name());
+        builder.define(DATA_FEMALE, false);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -540,6 +543,21 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         return Profession.UNASSIGNED;
     }
 
+    /** This resident's body, read from the roster for the same reason the trade is. */
+    public boolean looksFemale() {
+        if (level() instanceof ServerLevel serverLevel) {
+            return SettlementSavedData.get(serverLevel).resident(getUUID().toString())
+                    .map(ResidentRecord::looksFemale)
+                    .orElse(false);
+        }
+        return false;
+    }
+
+    /** The synced body, safe to call on either side. */
+    public boolean femaleForRender() {
+        return getEntityData().get(DATA_FEMALE);
+    }
+
     /** The synced trade, safe to call on either side. Unknown names fall back to unassigned. */
     public Profession professionForRender() {
         try {
@@ -663,6 +681,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             settlementData.registerAdult(getUUID().toString());
         }
         getEntityData().set(DATA_PROFESSION, profession().name());
+        getEntityData().set(DATA_FEMALE, looksFemale());
         if (settlementData.isCancelledWorker(getUUID().toString())) {
             applyProjectCancellation(level);
             return;

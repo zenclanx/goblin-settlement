@@ -45,6 +45,7 @@ public final class SettlementSavedDataCheck {
         require(data.assignHome("resident-adult", java.util.Optional.of(new BlockPos(12, 64, 12))),
                 "and set again");
         checkHomeSurvivesEveryRosterEdit();
+        checkAppearanceSex();
         var homeJson = SettlementSavedData.CODEC.encodeStart(JsonOps.INSTANCE, data).getOrThrow();
         var homeLoaded = SettlementSavedData.CODEC.parse(JsonOps.INSTANCE, homeJson).getOrThrow();
         require(homeLoaded.resident("resident-adult").orElseThrow().home()
@@ -214,6 +215,31 @@ public final class SettlementSavedDataCheck {
         require(ResidentRecord.adult("fresh-1").profession() == Profession.UNASSIGNED,
                 "a freshly registered adult starts with no trade");
         System.out.println("SettlementSavedDataCheck passed");
+    }
+
+    /**
+     * Appearance sex is borrowed from the reproductive role rather than stored again: the roster has no
+     * separate sex field, and every resident -- legacy saves included -- already has a stable role.
+     */
+    private static void checkAppearanceSex() {
+        var mother = new ResidentRecord("m1", ResidentRecord.LifeStage.ADULT,
+                java.util.Optional.empty(), java.util.Optional.empty(),
+                ResidentRecord.ReproductiveRole.MOTHER, Profession.UNASSIGNED, 0, 0,
+                java.util.Optional.empty());
+        require(mother.looksFemale(), "a mother looks female");
+        var father = new ResidentRecord("f1", ResidentRecord.LifeStage.ADULT,
+                java.util.Optional.empty(), java.util.Optional.empty(),
+                ResidentRecord.ReproductiveRole.FATHER, Profession.UNASSIGNED, 0, 0,
+                java.util.Optional.empty());
+        require(!father.looksFemale(), "a father does not look female");
+        var unset = new ResidentRecord("u1", ResidentRecord.LifeStage.ADULT,
+                java.util.Optional.empty(), java.util.Optional.empty(),
+                ResidentRecord.ReproductiveRole.UNSPECIFIED, Profession.UNASSIGNED, 0, 0,
+                java.util.Optional.empty());
+        require(unset.looksFemale() == unset.looksFemale(), "an unset role answers the same way twice");
+        require(unset.looksFemale()
+                        == unset.effectiveReproductiveRole().equals(ResidentRecord.ReproductiveRole.MOTHER),
+                "an unset role follows the same stable fallback the rest of the code uses");
     }
 
     private static void require(boolean condition, String message) {

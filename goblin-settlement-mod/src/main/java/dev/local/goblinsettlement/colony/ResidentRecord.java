@@ -96,6 +96,16 @@ public record ResidentRecord(String id, LifeStage stage, Optional<String> mother
                 ? ReproductiveRole.MOTHER : ReproductiveRole.FATHER;
     }
 
+    /**
+     * Which body this resident wears. Borrowed from the reproductive role rather than stored on its own:
+     * the roster has no separate sex field, and the role -- with its stable fallback for old saves -- is
+     * already a fact every resident carries. Do not read this as biology; it is the one stable bit the
+     * save holds that the renderer can key off.
+     */
+    public boolean looksFemale() {
+        return effectiveReproductiveRole() == ReproductiveRole.MOTHER;
+    }
+
     public ResidentRecord withReproductiveRole(ReproductiveRole role) {
         if (role == null || role == ReproductiveRole.UNSPECIFIED || stage == LifeStage.DECEASED
                 || reproductiveRole != ReproductiveRole.UNSPECIFIED) {
