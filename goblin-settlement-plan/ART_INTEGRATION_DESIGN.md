@@ -119,7 +119,7 @@ ModelLayerLocation goblin_male#main / goblin_female#main
 ### 4.2 切换挂点
 
 - 两个 `ModelLayerLocation`：`goblin_settlement:goblin_male#main`、`goblin_settlement:goblin_female#main`，各自 `createLayer`。
-- `GoblinRenderer` 持有两份烘好的模型，**按渲染状态里同步过来的性别，把选中的那一份赋给受保护的 `model` 字段**（§1 事实 2：提交路径 `submit(...)` 读字段而不是读 `getModel()`）。覆写 `submit(...)` 只为赋值（选择完再交给 `super`）；`getModel()` 一并覆写以保持一致——它是 `RenderLayerParent` 要求的公开读取口，外部代码会用它。
+- `GoblinRenderer` 持有两份烘好的模型，**按渲染状态里同步过来的性别，把选中的那一份赋给受保护的 `model` 字段**（§1 事实 2：提交路径 `submit(...)` 读字段而不是读 `getModel()`）。覆写 `submit(...)` 只为赋值（选择完再交给 `super`）。**不覆写 `getModel()`**：继承的 `LivingEntityRenderer.getModel()` 本来就 `return model`，覆写与它逐字等价；它虽是 `RenderLayerParent` 要求的公开读取口，但继承的那个已经满足这个要求。（修复波删去了最初那次多余的覆写，见 §10.12。）
 - 贴图随性别走：`textures/entity/goblin_male.png` / `goblin_female.png`。
 - **渲染状态要带着性别**：`GoblinRenderState` 现在只有一个 `profession` 字段，需要再加一个。它是渲染状态的天然归属（与 `profession` 同源）。
 
@@ -203,7 +203,7 @@ ModelLayerLocation goblin_male#main / goblin_female#main
 
 ### 10.5 渲染器切换的最终签名
 
-- `GoblinRenderer` 持有两份烘好的模型；`submit(...)` 在**调 `super.submit(...)` 之前**把选中的那一份赋给受保护的 `model` 字段（`this.model = state.female ? female : male;`）——因为这个版本的提交路径**直接读 `model` 字段、不走 `getModel()`**；`getModel()` 一并覆写以返回 `model`（它是 `RenderLayerParent` 要求的公开读取口）。**与设计 §4.2 一致，无偏离。**
+- `GoblinRenderer` 持有两份烘好的模型；`submit(...)` 在**调 `super.submit(...)` 之前**把选中的那一份赋给受保护的 `model` 字段（`this.model = state.female ? female : male;`）——因为这个版本的提交路径**直接读 `model` 字段、不走 `getModel()`**。最初一并覆写了 `getModel()` 以"保持一致"，修复波核对发现**它与继承实现逐字等价**（继承的 `LivingEntityRenderer.getModel()` 本就 `return model`），已删除（见 §4.2、§10.12）。除此之外**与设计 §4.2 一致**。
 - 贴图随性别走：`goblin_male.png` / `goblin_female.png`，均 512×512，模型 `LayerDefinition.create(mesh, 256, 256)`。
 
 ### 10.6 实现期与设计/计划不符之处
