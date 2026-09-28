@@ -3,19 +3,19 @@ package dev.local.goblinsettlement.client;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import dev.local.goblinsettlement.client.model.GoblinFemaleModel;
-import dev.local.goblinsettlement.client.model.GoblinMaleModel;
+import dev.local.goblinsettlement.client.model.GoblinBodies;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
@@ -45,16 +45,9 @@ public final class ArtModelCheck {
     private static final double GROUND = 24.0;
     private static final float TOLERANCE = 1e-3F;
 
-    /**
-     * Crop file name (without {@code .json}) -> the generated model class and its committed texture.
-     * The crop format keeps no texture name of its own, so this mapping declares one. A crop with no
-     * entry here fails loudly rather than being checked by the crop half alone and silently skipped by
-     * the baked half -- which is exactly what a third crop (the coming professions and children) would
-     * otherwise do.
-     */
-    private static final Map<String, Baked> BAKED = Map.of(
-            "goblin_male_a", new Baked(GoblinMaleModel::createLayer, "goblin_male"),
-            "goblin_female_a", new Baked(GoblinFemaleModel::createLayer, "goblin_female"));
+    /** The bodies the client can render, keyed by the crop the check validates them from. */
+    private static final Map<String, GoblinBodies.Body> BODIES = GoblinBodies.BODIES.stream()
+            .collect(Collectors.toUnmodifiableMap(GoblinBodies.Body::crop, body -> body));
 
     public static void main(String[] args) throws IOException {
         Path dir = Path.of("tools", "models");
@@ -65,14 +58,15 @@ public final class ArtModelCheck {
                     .forEach(crops::add);
         }
         require(!crops.isEmpty(), "at least one cropped model is committed");
+        checkBodiesAgreeWithTheirCrops();
         for (Path crop : crops) {
             JsonObject root = checkCrop(crop);
             String name = crop.getFileName().toString().replaceFirst("\\.json$", "");
-            Baked baked = BAKED.get(name);
-            require(baked != null, name + ": no generated model is mapped to this crop -- add it to"
-                    + " ArtModelCheck.BAKED so the baked half checks it too");
-            checkTexture(name, root, baked.texture());
-            checkBaked(name, baked.layer().get(), root);
+            GoblinBodies.Body body = BODIES.get(name);
+            require(body != null, name + ": no renderable body is mapped to this crop -- add it to"
+                    + " GoblinBodies.BODIES so the baked half checks it too");
+            checkTexture(name, root, body.texture());
+            checkBaked(name, body.layer().get(), root);
         }
         System.out.println("ArtModelCheck passed (" + crops.size() + " crops, "
                 + crops.size() + " baked models)");
@@ -209,6 +203,19 @@ public final class ArtModelCheck {
         }
     }
 
-    private record Baked(Supplier<LayerDefinition> layer, String texture) {
+    /**
+     * The table itself must be sane before anything reads it: no two rows may serve the same
+     * (profession, sex), and no row may claim a crop that is not committed. A duplicate row would
+     * silently shadow another one, and the reader that loses would never notice.
+     */
+    private static void checkBodiesAgreeWithTheirCrops() throws IOException {
+        Set<String> served = new HashSet<>();
+        for (GoblinBodies.Body body : GoblinBodies.BODIES) {
+            String key = body.profession().map(Enum::name).orElse("BASE") + "/" + body.female();
+            require(served.add(key), "two bodies claim " + key);
+            Path crop = Path.of("tools", "models", body.crop() + ".json");
+            require(Files.isRegularFile(crop),
+                    "the body " + body.crop() + " has a committed crop at " + crop);
+        }
     }
 }

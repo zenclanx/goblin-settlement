@@ -42,6 +42,8 @@ OUT = os.path.join(MOD, "src", "client", "java", "dev", "local", "goblinsettleme
 MODELS = {
     "goblin_male_a": ("goblin_male_a_final/goblin_male_a_final.bbmodel", "GoblinMaleModel"),
     "goblin_female_a": ("goblin_female_a/goblin_female_a.bbmodel", "GoblinFemaleModel"),
+    "goblin_farmer_male_p01": ("goblin_professions_a/goblin_farmer_male_p01.bbmodel", "GoblinFarmerMaleModel"),
+    "goblin_farmer_female_p01": ("goblin_professions_a/goblin_farmer_female_p01.bbmodel", "GoblinFarmerFemaleModel"),
 }
 
 
