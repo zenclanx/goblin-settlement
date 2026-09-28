@@ -1,0 +1,4183 @@
+{
+ "elements": [
+  {
+   "box_uv": true,
+   "from": [
+    -5,
+    63,
+    -4
+   ],
+   "name": "neck_bearing",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    5,
+    68,
+    5
+   ],
+   "uuid": "b247fe0a-a235-568a-8146-8ff9fdbf9990",
+   "uv_offset": [
+    0,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -8,
+    67,
+    -7
+   ],
+   "name": "helmet_shell",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    8,
+    79,
+    8
+   ],
+   "uuid": "d6cdbe40-83a2-5513-bcab-0f4c6f1e7da5",
+   "uv_offset": [
+    39,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -7,
+    78,
+    -6
+   ],
+   "name": "helmet_crown",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    7,
+    81,
+    7
+   ],
+   "uuid": "e24b5171-f83a-5c57-af44-1955260fd466",
+   "uv_offset": [
+    102,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -2,
+    76,
+    -8
+   ],
+   "name": "crown_center_plate",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    2,
+    81,
+    -6
+   ],
+   "uuid": "785ea5f5-d4ac-50bd-8518-fd7094a52d29",
+   "uv_offset": [
+    157,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -7,
+    72,
+    -8
+   ],
+   "name": "eye_socket_band",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    7,
+    76,
+    -7
+   ],
+   "uuid": "1161cb7c-7235-589a-8379-a679de7534c7",
+   "uv_offset": [
+    170,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -5.7,
+    73,
+    -8.3
+   ],
+   "name": "left_eye",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -2.3,
+    74.5,
+    -8
+   ],
+   "uuid": "2a8a1ef3-89ed-56fc-af95-1759b55b3b2a",
+   "uv_offset": [
+    201,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -6.5,
+    75.5,
+    -9.5
+   ],
+   "name": "left_brow_guard",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -1.5,
+    78.5,
+    -7.5
+   ],
+   "uuid": "a1260609-2bf5-52e8-a9fb-848693ed92ac",
+   "uv_offset": [
+    208,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -6.5,
+    67,
+    -9.3
+   ],
+   "name": "left_cheek_guard",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -1.5,
+    72,
+    -7
+   ],
+   "uuid": "cbc8b127-5bc2-58d5-916b-e83f6fc10c9a",
+   "uv_offset": [
+    223,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -14,
+    72,
+    -3
+   ],
+   "name": "left_horn_root",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -8,
+    77,
+    5
+   ],
+   "uuid": "94718167-b08a-58c8-8c2d-0d18db0b1b9d",
+   "uv_offset": [
+    238,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -13.5,
+    76,
+    -2
+   ],
+   "name": "left_horn_shaft",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -8.5,
+    83,
+    4
+   ],
+   "uuid": "d3458647-811b-5862-b033-2bbbddea5f0c",
+   "uv_offset": [
+    267,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -13,
+    82,
+    -1.5
+   ],
+   "name": "left_horn_tip",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -9,
+    86,
+    3.5
+   ],
+   "uuid": "6a166d2e-083c-5b49-b5c1-48e574c37df4",
+   "uv_offset": [
+    290,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    2.3,
+    73,
+    -8.3
+   ],
+   "name": "right_eye",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    5.7,
+    74.5,
+    -8
+   ],
+   "uuid": "eecefe3f-3eab-513f-a2f6-cc3e4fb39c88",
+   "uv_offset": [
+    309,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    1.5,
+    75.5,
+    -9.5
+   ],
+   "name": "right_brow_guard",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    6.5,
+    78.5,
+    -7.5
+   ],
+   "uuid": "ac8275b9-c224-514c-a61a-c9b05105b7f2",
+   "uv_offset": [
+    316,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    1.5,
+    67,
+    -9.3
+   ],
+   "name": "right_cheek_guard",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    6.5,
+    72,
+    -7
+   ],
+   "uuid": "1edc581d-c83c-54bc-8c6c-59e7f15003ff",
+   "uv_offset": [
+    331,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    8,
+    72,
+    -3
+   ],
+   "name": "right_horn_root",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    14,
+    77,
+    5
+   ],
+   "uuid": "bc2dd094-626d-50fb-a6ae-06614d36b3ca",
+   "uv_offset": [
+    346,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    8.5,
+    76,
+    -2
+   ],
+   "name": "right_horn_shaft",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    13.5,
+    83,
+    4
+   ],
+   "uuid": "62d862f1-3df0-56bf-8565-951f9987a5d5",
+   "uv_offset": [
+    375,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    9,
+    82,
+    -1.5
+   ],
+   "name": "right_horn_tip",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    13,
+    86,
+    3.5
+   ],
+   "uuid": "834a4f2d-5d19-5a09-9bb0-e35ece3be339",
+   "uv_offset": [
+    398,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -1.8,
+    67,
+    -10
+   ],
+   "name": "nose_guard",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    1.8,
+    74,
+    -8
+   ],
+   "uuid": "82d28b72-5573-5d51-bb50-8756ed4582ef",
+   "uv_offset": [
+    417,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -7,
+    66,
+    -9.8
+   ],
+   "name": "chin_bar",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    7,
+    68,
+    -7.2
+   ],
+   "uuid": "8ccbece0-ad99-5a55-8e1d-3e4d582d0fd2",
+   "uv_offset": [
+    430,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -2,
+    68,
+    8
+   ],
+   "name": "rear_helmet_ridge",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    2,
+    79,
+    10
+   ],
+   "uuid": "7e51e256-a20c-5924-a137-6effb2034a97",
+   "uv_offset": [
+    465,
+    0
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -8.3,
+    67,
+    8.2
+   ],
+   "name": "rear_helmet_band",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    8.3,
+    70,
+    10.2
+   ],
+   "uuid": "924a0101-643f-5bc1-b14d-47f6b4d74046",
+   "uv_offset": [
+    0,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -14,
+    39,
+    -6
+   ],
+   "name": "internal_chassis",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    14,
+    64,
+    7
+   ],
+   "uuid": "0bc8ec5f-8910-529b-93e7-6b44e793a7cc",
+   "uv_offset": [
+    39,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -18,
+    40,
+    -10
+   ],
+   "name": "left_chest_mass",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -8.2,
+    64,
+    9
+   ],
+   "uuid": "4512f43a-9f35-5510-98e1-c534cddb2e60",
+   "uv_offset": [
+    122,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    8.2,
+    40,
+    -10
+   ],
+   "name": "right_chest_mass",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    18,
+    64,
+    9
+   ],
+   "uuid": "8a295f1c-af32-5e0e-acdb-5236c0e1ad0b",
+   "uv_offset": [
+    181,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -18.8,
+    60,
+    -11
+   ],
+   "name": "chest_upper_bridge",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    18.8,
+    65,
+    -6
+   ],
+   "uuid": "53c2e159-c5c0-5956-bb13-cd2c005efed4",
+   "uv_offset": [
+    240,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -17,
+    38,
+    -10.5
+   ],
+   "name": "chest_lower_bridge",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    17,
+    44,
+    -6
+   ],
+   "uuid": "3a403e73-c29b-51f2-baa5-d114d782f4e1",
+   "uv_offset": [
+    327,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -8,
+    44,
+    -9
+   ],
+   "name": "core_socket",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    8,
+    60,
+    -6
+   ],
+   "uuid": "47ba715a-b74f-56d9-96bc-efcab669f339",
+   "uv_offset": [
+    404,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -6,
+    46,
+    -9.4
+   ],
+   "name": "core_blue_outer",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    6,
+    58,
+    -9
+   ],
+   "uuid": "18353829-1e1d-58d3-a75e-f34f8c33b1fa",
+   "uv_offset": [
+    443,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -4,
+    48,
+    -9.8
+   ],
+   "name": "core_blue_middle",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    4,
+    56,
+    -9.4
+   ],
+   "uuid": "b8f35dcb-c37d-5589-bb4a-2260b0dd72a9",
+   "uv_offset": [
+    468,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -2,
+    50,
+    -10.2
+   ],
+   "name": "core_blue_heart",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    2,
+    54,
+    -9.8
+   ],
+   "uuid": "1736550d-88ff-50b6-bc84-c767a6eb3f69",
+   "uv_offset": [
+    485,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -11.0,
+    43,
+    -12
+   ],
+   "name": "left_core_rail",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -8.0,
+    61,
+    -9
+   ],
+   "uuid": "99bc50c1-6fe8-5cd5-a335-5f7f64ba08af",
+   "uv_offset": [
+    494,
+    28
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    8.0,
+    43,
+    -12
+   ],
+   "name": "right_core_rail",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    11.0,
+    61,
+    -9
+   ],
+   "uuid": "785e0ed0-a797-5988-b6ea-21e887f8cb6f",
+   "uv_offset": [
+    0,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -10.8,
+    59,
+    -12.2
+   ],
+   "name": "core_top_bar",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    10.8,
+    62,
+    -8.8
+   ],
+   "uuid": "d7a7158d-605b-557e-882f-f8b6abb056e8",
+   "uv_offset": [
+    13,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -10.8,
+    42,
+    -12.2
+   ],
+   "name": "core_bottom_bar",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    10.8,
+    46,
+    -8.8
+   ],
+   "uuid": "75fe8b3a-871e-5057-b3e3-98894b8e5d88",
+   "uv_offset": [
+    64,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -17.5,
+    52,
+    -13
+   ],
+   "name": "left_harness",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -12.5,
+    66,
+    -10.5
+   ],
+   "uuid": "fa889696-a57d-5658-864b-66c2c6c57b91",
+   "uv_offset": [
+    115,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -18.5,
+    57,
+    -14.5
+   ],
+   "name": "left_harness_upper_tab",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -11.5,
+    62,
+    -11.5
+   ],
+   "uuid": "8283002a-3f73-586d-b4f1-a8ad060b27a2",
+   "uv_offset": [
+    130,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -18,
+    40,
+    -13.5
+   ],
+   "name": "left_harness_lower_tab",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -12,
+    45,
+    -10.5
+   ],
+   "uuid": "4247264c-3a18-5391-a1a6-2286a5b625c7",
+   "uv_offset": [
+    151,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -16,
+    58.5,
+    -15.1
+   ],
+   "name": "left_upper_bolt",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -14,
+    60.5,
+    -14.5
+   ],
+   "uuid": "6e7344bb-e431-5297-b4f7-2005569ae3ff",
+   "uv_offset": [
+    170,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -16,
+    41.5,
+    -14.1
+   ],
+   "name": "left_lower_bolt",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -14,
+    43.5,
+    -13.5
+   ],
+   "uuid": "7fcc26c7-8e43-5428-acf1-5427f4f6c387",
+   "uv_offset": [
+    177,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    12.5,
+    52,
+    -13
+   ],
+   "name": "right_harness",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    17.5,
+    66,
+    -10.5
+   ],
+   "uuid": "e44f8c49-8818-5220-9ebc-e27a118b65aa",
+   "uv_offset": [
+    184,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    11.5,
+    57,
+    -14.5
+   ],
+   "name": "right_harness_upper_tab",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    18.5,
+    62,
+    -11.5
+   ],
+   "uuid": "35e1f552-9ec6-5c2e-80cd-d8b669cac3d7",
+   "uv_offset": [
+    199,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    12,
+    40,
+    -13.5
+   ],
+   "name": "right_harness_lower_tab",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    18,
+    45,
+    -10.5
+   ],
+   "uuid": "2885cdfb-85cf-5d24-a266-9b9cf730cf8d",
+   "uv_offset": [
+    220,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    14,
+    58.5,
+    -15.1
+   ],
+   "name": "right_upper_bolt",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    60.5,
+    -14.5
+   ],
+   "uuid": "2d1a440d-2b6d-5a28-aa57-5e320a3d7d22",
+   "uv_offset": [
+    239,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    14,
+    41.5,
+    -14.1
+   ],
+   "name": "right_lower_bolt",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    43.5,
+    -13.5
+   ],
+   "uuid": "522b61c4-1404-54d8-9860-c6c126770a53",
+   "uv_offset": [
+    246,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -11,
+    33,
+    -5
+   ],
+   "name": "waist_joint",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    11,
+    39,
+    6
+   ],
+   "uuid": "f73e8180-97b5-5876-8ccc-c6df6b5667a4",
+   "uv_offset": [
+    253,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -15,
+    34,
+    -8
+   ],
+   "name": "waist_heavy_band",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    15,
+    38,
+    9.2
+   ],
+   "uuid": "ee3e0eae-a477-5eff-b43d-1968a248056a",
+   "uv_offset": [
+    320,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -6,
+    28,
+    -9
+   ],
+   "name": "pelvis_plate",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    6,
+    35,
+    -6
+   ],
+   "uuid": "ebda8242-d9d7-57ae-b563-0acb17972fb5",
+   "uv_offset": [
+    415,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -2,
+    27,
+    -11
+   ],
+   "name": "pelvis_center_guard",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    2,
+    35,
+    -9
+   ],
+   "uuid": "f147599a-326d-59c8-9fd3-ed2b5ab6505e",
+   "uv_offset": [
+    446,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -1,
+    31,
+    -11.6
+   ],
+   "name": "pelvis_bolt",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    1,
+    33,
+    -11
+   ],
+   "uuid": "51098d67-1516-5901-8919-ceb04b6a2fb4",
+   "uv_offset": [
+    459,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -17,
+    41,
+    8
+   ],
+   "name": "rear_left_panel",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -2,
+    64,
+    12
+   ],
+   "uuid": "18f284b3-7407-5d4a-bf66-a2f17f22f2d3",
+   "uv_offset": [
+    466,
+    72
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    2,
+    41,
+    8
+   ],
+   "name": "rear_right_panel",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    17,
+    64,
+    12
+   ],
+   "uuid": "c714c71d-5069-58b2-923f-4923acc1ef12",
+   "uv_offset": [
+    0,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -2.5,
+    40,
+    12.2
+   ],
+   "name": "rear_spine",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    2.5,
+    65,
+    15
+   ],
+   "uuid": "cb746050-c118-5676-a03f-4693cd247c50",
+   "uv_offset": [
+    39,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -16,
+    42,
+    15.2
+   ],
+   "name": "rear_crossbar_42",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    45,
+    17
+   ],
+   "uuid": "b713a897-8541-5135-b3dd-13a14e997dfd",
+   "uv_offset": [
+    56,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -12,
+    42.5,
+    16.4
+   ],
+   "name": "rear_bolt_42_-11",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -10,
+    44.5,
+    17
+   ],
+   "uuid": "c77b6999-f5ef-5be5-9fcb-692f5ab0fb67",
+   "uv_offset": [
+    125,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -1,
+    42.5,
+    16.4
+   ],
+   "name": "rear_bolt_42_0",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    1,
+    44.5,
+    17
+   ],
+   "uuid": "cff8052a-0375-54c0-acc0-906a36be1b95",
+   "uv_offset": [
+    132,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    10,
+    42.5,
+    16.4
+   ],
+   "name": "rear_bolt_42_11",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    12,
+    44.5,
+    17
+   ],
+   "uuid": "8dbd448c-1b03-51ac-a502-f6353d64e820",
+   "uv_offset": [
+    139,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -16,
+    57,
+    15.2
+   ],
+   "name": "rear_crossbar_57",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    60,
+    17
+   ],
+   "uuid": "0fe9a48d-f8cd-5f15-83e4-8b1078b61649",
+   "uv_offset": [
+    146,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -12,
+    57.5,
+    16.4
+   ],
+   "name": "rear_bolt_57_-11",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -10,
+    59.5,
+    17
+   ],
+   "uuid": "0d516c6d-d0a9-5cfc-b2a3-cb197577b4d6",
+   "uv_offset": [
+    215,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -1,
+    57.5,
+    16.4
+   ],
+   "name": "rear_bolt_57_0",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    1,
+    59.5,
+    17
+   ],
+   "uuid": "1f7d67d0-636b-59ab-b4df-a136aa975375",
+   "uv_offset": [
+    222,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    10,
+    57.5,
+    16.4
+   ],
+   "name": "rear_bolt_57_11",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    12,
+    59.5,
+    17
+   ],
+   "uuid": "bc392e37-e952-5614-85d3-4e5135a7f511",
+   "uv_offset": [
+    229,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -32,
+    52,
+    -4
+   ],
+   "name": "left_shoulder_bearing",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -24,
+    63,
+    6
+   ],
+   "uuid": "77207fcd-d95c-53c9-855b-9decaaafc74d",
+   "uv_offset": [
+    236,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -34,
+    45.2,
+    -8
+   ],
+   "name": "left_upper_arm_mass",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -22,
+    65,
+    10
+   ],
+   "uuid": "6f1b9ade-3332-5039-b4f7-4120fbb32a78",
+   "uv_offset": [
+    273,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -35,
+    55,
+    -9
+   ],
+   "name": "left_pauldron_middle",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -21,
+    65,
+    11
+   ],
+   "uuid": "0c0f4d2a-d464-5476-a075-797a1a264cc4",
+   "uv_offset": [
+    334,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -33.5,
+    64,
+    -7
+   ],
+   "name": "left_pauldron_top",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -22.5,
+    68,
+    9
+   ],
+   "uuid": "9d5ba4d2-ebbd-54e5-9928-1cb4e84c7418",
+   "uv_offset": [
+    403,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -35.4,
+    49,
+    -6
+   ],
+   "name": "left_pauldron_outer_ridge",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -32.6,
+    62,
+    8
+   ],
+   "uuid": "e2a97b6f-a4b8-5894-8f45-d392e8e3c756",
+   "uv_offset": [
+    458,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -30,
+    67,
+    3
+   ],
+   "name": "left_shoulder_back_spur",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -26,
+    71,
+    7
+   ],
+   "uuid": "f16f1c93-5778-509d-9c06-b2c5a574aa4e",
+   "uv_offset": [
+    493,
+    100
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -33,
+    49,
+    -11
+   ],
+   "name": "left_pauldron_front_slab",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -23,
+    63,
+    -9
+   ],
+   "uuid": "eedbf9b3-334c-5241-a5c8-19b17935bc6f",
+   "uv_offset": [
+    0,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -35,
+    44,
+    -10
+   ],
+   "name": "left_arm_lower_band",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -21,
+    48,
+    12
+   ],
+   "uuid": "df6025ab-dc25-5ed6-8654-ad0aadd8daec",
+   "uv_offset": [
+    25,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -30.5,
+    44.5,
+    -12
+   ],
+   "name": "left_arm_band_clasp",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -25.5,
+    48.5,
+    -10
+   ],
+   "uuid": "5ab32576-a236-50ec-bbcf-c5ab38a1a897",
+   "uv_offset": [
+    98,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -29,
+    45.5,
+    -12.6
+   ],
+   "name": "left_arm_band_bolt",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -27,
+    47.5,
+    -12
+   ],
+   "uuid": "2b3ca58b-a701-5de2-86e0-d3045b53b8e7",
+   "uv_offset": [
+    113,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -31,
+    37,
+    -4
+   ],
+   "name": "left_elbow_piston",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -25,
+    45,
+    6
+   ],
+   "uuid": "ca0e6b83-5a08-5889-9434-54d5322b7159",
+   "uv_offset": [
+    120,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -29.5,
+    37,
+    -6
+   ],
+   "name": "left_elbow_front_link",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -26.5,
+    44,
+    -4
+   ],
+   "uuid": "50aa5726-9ee9-5ac6-8820-2cd5aac00a7d",
+   "uv_offset": [
+    153,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -35,
+    18.2,
+    -7
+   ],
+   "name": "left_forearm_mass",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -23,
+    38,
+    10
+   ],
+   "uuid": "1bb13de6-1bed-5c04-82ae-efc418aaa66f",
+   "uv_offset": [
+    164,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -34,
+    22,
+    -10
+   ],
+   "name": "left_forearm_front_slab",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -24,
+    36,
+    -7
+   ],
+   "uuid": "acf10394-a266-5c7d-9045-09a1a58777cd",
+   "uv_offset": [
+    223,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -35.5,
+    23,
+    -6
+   ],
+   "name": "left_forearm_outer_ridge",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -32.5,
+    35,
+    8
+   ],
+   "uuid": "6175293f-ff52-536d-a58e-bdbf510633ae",
+   "uv_offset": [
+    250,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -36,
+    36,
+    -11
+   ],
+   "name": "left_forearm_upper_band",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -22,
+    40,
+    11
+   ],
+   "uuid": "6d0339da-2e3a-56f9-bdae-5c5373165234",
+   "uv_offset": [
+    285,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -31,
+    35.7,
+    -13
+   ],
+   "name": "left_forearm_upper_clasp",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -27,
+    40.3,
+    -10
+   ],
+   "uuid": "4c4565f2-1581-5e5b-ba58-91fc585e3e61",
+   "uv_offset": [
+    358,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -30,
+    37.0,
+    -13.6
+   ],
+   "name": "left_forearm_upper_bolt",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -28,
+    39.0,
+    -13
+   ],
+   "uuid": "40ed5823-2962-55d9-9e4f-7ca10328fa3f",
+   "uv_offset": [
+    373,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -36,
+    18,
+    -11
+   ],
+   "name": "left_forearm_lower_band",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -22,
+    22,
+    11
+   ],
+   "uuid": "5f6f6371-590a-57a6-8be6-b349ffc433c7",
+   "uv_offset": [
+    380,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -31,
+    17.7,
+    -13
+   ],
+   "name": "left_forearm_lower_clasp",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -27,
+    22.3,
+    -10
+   ],
+   "uuid": "10eed54c-9b2f-5e61-9aa0-ae363b992659",
+   "uv_offset": [
+    453,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -30,
+    19.0,
+    -13.6
+   ],
+   "name": "left_forearm_lower_bolt",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -28,
+    21.0,
+    -13
+   ],
+   "uuid": "b6dc745a-1cc8-5474-84c6-526b1c58e086",
+   "uv_offset": [
+    468,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -32,
+    15,
+    -4
+   ],
+   "name": "left_wrist",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -26,
+    19,
+    6
+   ],
+   "uuid": "27cfe10f-d77f-5de4-8640-e0d71ca4e390",
+   "uv_offset": [
+    475,
+    139
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -34,
+    8,
+    -7
+   ],
+   "name": "left_fist",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -24,
+    16,
+    7
+   ],
+   "uuid": "0a8f56cb-2ec0-5be1-9a55-dbb78881e833",
+   "uv_offset": [
+    0,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -33.5,
+    6,
+    -8
+   ],
+   "name": "left_finger_0",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -31.0,
+    11,
+    -6
+   ],
+   "uuid": "6a0e91f0-bcf3-5e5a-b35b-f2d76ac94458",
+   "uv_offset": [
+    49,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -30.3,
+    6,
+    -8
+   ],
+   "name": "left_finger_1",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -27.8,
+    11,
+    -6
+   ],
+   "uuid": "04bb1539-3a84-59f5-b8e4-f8ae19db108e",
+   "uv_offset": [
+    58,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -27.1,
+    6,
+    -8
+   ],
+   "name": "left_finger_2",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -24.6,
+    11,
+    -6
+   ],
+   "uuid": "389d0b2e-bd02-57fe-ad52-73a4ab05cd42",
+   "uv_offset": [
+    67,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -14.8,
+    29,
+    -4
+   ],
+   "name": "left_hip_joint",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -9.2,
+    37,
+    6
+   ],
+   "uuid": "9222d4d5-8103-5081-a341-676f814a017b",
+   "uv_offset": [
+    76,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -18,
+    18.2,
+    -7
+   ],
+   "name": "left_thigh",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -6,
+    35,
+    9
+   ],
+   "uuid": "bf9e39ef-afd2-539e-b298-7c21de1ce4db",
+   "uv_offset": [
+    109,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -17,
+    22,
+    -9
+   ],
+   "name": "left_thigh_front_slab",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -7,
+    33,
+    -7
+   ],
+   "uuid": "4a8718b3-ee31-5edc-9629-8381162fd2e0",
+   "uv_offset": [
+    166,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -19,
+    17,
+    -10
+   ],
+   "name": "left_knee_band",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -5,
+    21,
+    10
+   ],
+   "uuid": "b6f278a1-de3c-5dbd-bbf7-2bc143377cf5",
+   "uv_offset": [
+    191,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -14.5,
+    16,
+    -12
+   ],
+   "name": "left_knee_clasp",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -9.5,
+    22,
+    -9
+   ],
+   "uuid": "a6fbd215-7195-5341-98c7-2d8fd7b4899f",
+   "uv_offset": [
+    260,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -13,
+    18,
+    -12.6
+   ],
+   "name": "left_knee_bolt",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -11,
+    20,
+    -12
+   ],
+   "uuid": "90536edc-a5ba-50e1-b5f6-680c045fbb89",
+   "uv_offset": [
+    277,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -17,
+    5.2,
+    -6
+   ],
+   "name": "left_shin",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -7,
+    18,
+    8
+   ],
+   "uuid": "09563d40-348d-55e0-8bc4-e6087c5f379b",
+   "uv_offset": [
+    284,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -14.5,
+    7,
+    -8
+   ],
+   "name": "left_shin_front_ridge",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -9.5,
+    16,
+    -6
+   ],
+   "uuid": "50d5234f-9801-5048-b464-31fc3741815d",
+   "uv_offset": [
+    333,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -18,
+    5,
+    -9
+   ],
+   "name": "left_ankle_band",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -6,
+    8,
+    9
+   ],
+   "uuid": "d42047ce-c7ae-5341-88b6-6ceaf5e33055",
+   "uv_offset": [
+    348,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -19,
+    0,
+    -13
+   ],
+   "name": "left_foot_sole",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -5,
+    3,
+    11
+   ],
+   "uuid": "5b92d119-99ed-5bfa-961e-11d42526769d",
+   "uv_offset": [
+    409,
+    177
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -18.5,
+    3,
+    -12
+   ],
+   "name": "left_foot_upper",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -5.5,
+    5,
+    10
+   ],
+   "uuid": "420e1ad4-9b99-55da-87bd-b3bb6d92ff45",
+   "uv_offset": [
+    0,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    -15,
+    1,
+    -14
+   ],
+   "name": "left_toe_guard",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    -9,
+    4,
+    -12
+   ],
+   "uuid": "bdaf5c2d-9e1d-5e3f-9a71-9747ac626e4c",
+   "uv_offset": [
+    71,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    24,
+    52,
+    -4
+   ],
+   "name": "right_shoulder_bearing",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    32,
+    63,
+    6
+   ],
+   "uuid": "84c815bd-6d22-5fd9-8f45-4e849ce2a898",
+   "uv_offset": [
+    88,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    22,
+    45.2,
+    -8
+   ],
+   "name": "right_upper_arm_mass",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    34,
+    65,
+    10
+   ],
+   "uuid": "ddfb3301-326b-51b8-81bd-423b60759936",
+   "uv_offset": [
+    125,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    21,
+    55,
+    -9
+   ],
+   "name": "right_pauldron_middle",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    35,
+    65,
+    11
+   ],
+   "uuid": "1d1e5d84-1206-5a0a-908d-9bb615fb6996",
+   "uv_offset": [
+    186,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    22.5,
+    64,
+    -7
+   ],
+   "name": "right_pauldron_top",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    33.5,
+    68,
+    9
+   ],
+   "uuid": "efc5233e-ddb2-5ed4-b326-5d481a7ca681",
+   "uv_offset": [
+    255,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    32.6,
+    49,
+    -6
+   ],
+   "name": "right_pauldron_outer_ridge",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    35.4,
+    62,
+    8
+   ],
+   "uuid": "1ffbb01f-cc68-5654-aa29-5f7962d222a0",
+   "uv_offset": [
+    310,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    26,
+    67,
+    3
+   ],
+   "name": "right_shoulder_back_spur",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    30,
+    71,
+    7
+   ],
+   "uuid": "c749bd57-5bfe-5437-8e71-4afb78e17bef",
+   "uv_offset": [
+    345,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    23,
+    49,
+    -11
+   ],
+   "name": "right_pauldron_front_slab",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    33,
+    63,
+    -9
+   ],
+   "uuid": "47bef2ab-77ab-55be-88ae-016e404a236f",
+   "uv_offset": [
+    362,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    21,
+    44,
+    -10
+   ],
+   "name": "right_arm_lower_band",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    35,
+    48,
+    12
+   ],
+   "uuid": "9a8b99b5-2014-55f1-9fb2-e8f9e75ae80d",
+   "uv_offset": [
+    387,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    25.5,
+    44.5,
+    -12
+   ],
+   "name": "right_arm_band_clasp",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    30.5,
+    48.5,
+    -10
+   ],
+   "uuid": "16443593-7087-59e9-9424-7e45d0824c43",
+   "uv_offset": [
+    460,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    27,
+    45.5,
+    -12.6
+   ],
+   "name": "right_arm_band_bolt",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    29,
+    47.5,
+    -12
+   ],
+   "uuid": "2a705dc7-2403-5761-a3e8-2f4fa2d51546",
+   "uv_offset": [
+    475,
+    211
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    25,
+    37,
+    -4
+   ],
+   "name": "right_elbow_piston",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    31,
+    45,
+    6
+   ],
+   "uuid": "91cc6a9a-b0ba-5fc4-8f27-40f6ce14e08c",
+   "uv_offset": [
+    0,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    26.5,
+    37,
+    -6
+   ],
+   "name": "right_elbow_front_link",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    29.5,
+    44,
+    -4
+   ],
+   "uuid": "bf87d63c-d562-5499-939c-55aa3280de36",
+   "uv_offset": [
+    33,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    23,
+    18.2,
+    -7
+   ],
+   "name": "right_forearm_mass",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    35,
+    38,
+    10
+   ],
+   "uuid": "1439ce83-d73b-5751-b0be-32d152aed762",
+   "uv_offset": [
+    44,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    24,
+    22,
+    -10
+   ],
+   "name": "right_forearm_front_slab",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    34,
+    36,
+    -7
+   ],
+   "uuid": "3a19ec22-1445-50b5-bb36-4315af4e0460",
+   "uv_offset": [
+    103,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    32.5,
+    23,
+    -6
+   ],
+   "name": "right_forearm_outer_ridge",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    35.5,
+    35,
+    8
+   ],
+   "uuid": "90c19750-529a-5ee1-9bc9-2a6724084a1f",
+   "uv_offset": [
+    130,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    22,
+    36,
+    -11
+   ],
+   "name": "right_forearm_upper_band",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    36,
+    40,
+    11
+   ],
+   "uuid": "6b1b9baf-f338-507a-9db4-4e64a104b809",
+   "uv_offset": [
+    165,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    27,
+    35.7,
+    -13
+   ],
+   "name": "right_forearm_upper_clasp",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    31,
+    40.3,
+    -10
+   ],
+   "uuid": "c0c1b938-dab3-5881-aab6-f7ce8dd63e6a",
+   "uv_offset": [
+    238,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    28,
+    37.0,
+    -13.6
+   ],
+   "name": "right_forearm_upper_bolt",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    30,
+    39.0,
+    -13
+   ],
+   "uuid": "bd079f76-aa6d-57c9-a4e5-80e73c0113f8",
+   "uv_offset": [
+    253,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    22,
+    18,
+    -11
+   ],
+   "name": "right_forearm_lower_band",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    36,
+    22,
+    11
+   ],
+   "uuid": "f99f5e68-92a9-5962-842f-2e65525a0a46",
+   "uv_offset": [
+    260,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    27,
+    17.7,
+    -13
+   ],
+   "name": "right_forearm_lower_clasp",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    31,
+    22.3,
+    -10
+   ],
+   "uuid": "91ab5ce7-bb0b-5c40-b986-9182d3fbbec9",
+   "uv_offset": [
+    333,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    28,
+    19.0,
+    -13.6
+   ],
+   "name": "right_forearm_lower_bolt",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    30,
+    21.0,
+    -13
+   ],
+   "uuid": "f19633cd-3239-5687-a0f9-7114375f8c6c",
+   "uv_offset": [
+    348,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    26,
+    15,
+    -4
+   ],
+   "name": "right_wrist",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    32,
+    19,
+    6
+   ],
+   "uuid": "376abd1f-1b8b-5149-89be-40fb3309f4b8",
+   "uv_offset": [
+    355,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    24,
+    8,
+    -7
+   ],
+   "name": "right_fist",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    34,
+    16,
+    7
+   ],
+   "uuid": "404d71fa-33f7-5d90-ad0b-a21e535ac52c",
+   "uv_offset": [
+    388,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    24.5,
+    6,
+    -8
+   ],
+   "name": "right_finger_0",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    27.0,
+    11,
+    -6
+   ],
+   "uuid": "1b8c5637-707a-50e0-a11c-de86c377d833",
+   "uv_offset": [
+    437,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    27.7,
+    6,
+    -8
+   ],
+   "name": "right_finger_1",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    30.2,
+    11,
+    -6
+   ],
+   "uuid": "2811c199-b892-502d-a94e-bd8d166b11dd",
+   "uv_offset": [
+    446,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    30.9,
+    6,
+    -8
+   ],
+   "name": "right_finger_2",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    33.4,
+    11,
+    -6
+   ],
+   "uuid": "09087206-4ae0-5862-a64c-dfcfed620d78",
+   "uv_offset": [
+    455,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    9.2,
+    29,
+    -4
+   ],
+   "name": "right_hip_joint",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    14.8,
+    37,
+    6
+   ],
+   "uuid": "4cd1577d-2d74-5b67-8502-427b463586af",
+   "uv_offset": [
+    464,
+    250
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    6,
+    18.2,
+    -7
+   ],
+   "name": "right_thigh",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    18,
+    35,
+    9
+   ],
+   "uuid": "add408ac-1885-594a-995a-b3f74405b95c",
+   "uv_offset": [
+    0,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    7,
+    22,
+    -9
+   ],
+   "name": "right_thigh_front_slab",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    17,
+    33,
+    -7
+   ],
+   "uuid": "3f9241cb-dbb1-5537-8c82-259b386f0692",
+   "uv_offset": [
+    57,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    5,
+    17,
+    -10
+   ],
+   "name": "right_knee_band",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    19,
+    21,
+    10
+   ],
+   "uuid": "531ec4e3-bce7-534e-b5a2-61385fdfdb74",
+   "uv_offset": [
+    82,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    9.5,
+    16,
+    -12
+   ],
+   "name": "right_knee_clasp",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    14.5,
+    22,
+    -9
+   ],
+   "uuid": "7f654ac7-800c-543b-9393-bbe8cbf37e57",
+   "uv_offset": [
+    151,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    11,
+    18,
+    -12.6
+   ],
+   "name": "right_knee_bolt",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    13,
+    20,
+    -12
+   ],
+   "uuid": "46f2632e-2be0-5ace-be69-dfef8a872582",
+   "uv_offset": [
+    168,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    7,
+    5.2,
+    -6
+   ],
+   "name": "right_shin",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    17,
+    18,
+    8
+   ],
+   "uuid": "2241147f-b5c7-56d6-9b64-91c69d5cfbc7",
+   "uv_offset": [
+    175,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    9.5,
+    7,
+    -8
+   ],
+   "name": "right_shin_front_ridge",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    14.5,
+    16,
+    -6
+   ],
+   "uuid": "094e1b1d-8d30-56be-bcfd-5fb6fd4b861a",
+   "uv_offset": [
+    224,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    6,
+    5,
+    -9
+   ],
+   "name": "right_ankle_band",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    18,
+    8,
+    9
+   ],
+   "uuid": "d251188a-a137-52b2-94d0-bcd734ba9054",
+   "uv_offset": [
+    239,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    5,
+    0,
+    -13
+   ],
+   "name": "right_foot_sole",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    19,
+    3,
+    11
+   ],
+   "uuid": "c9e442d4-7fb4-5a0f-a6af-08e4bb87b335",
+   "uv_offset": [
+    300,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    5.5,
+    3,
+    -12
+   ],
+   "name": "right_foot_upper",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    18.5,
+    5,
+    10
+   ],
+   "uuid": "a2313a19-c09f-54f6-8814-1af38364ad6d",
+   "uv_offset": [
+    377,
+    288
+   ]
+  },
+  {
+   "box_uv": true,
+   "from": [
+    9,
+    1,
+    -14
+   ],
+   "name": "right_toe_guard",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "rotation": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    15,
+    4,
+    -12
+   ],
+   "uuid": "3b05e088-78e3-59cc-b9ca-0c24d15c8122",
+   "uv_offset": [
+    448,
+    288
+   ]
+  }
+ ],
+ "groups": [
+  {
+   "name": "head",
+   "origin": [
+    0,
+    66,
+    0
+   ],
+   "uuid": "118a5e97-011c-5caa-8e88-973b984c7df6"
+  },
+  {
+   "name": "body",
+   "origin": [
+    0,
+    39,
+    0
+   ],
+   "uuid": "3c53271a-3359-5f02-b2e0-97c1dbe4366d"
+  },
+  {
+   "name": "left_arm",
+   "origin": [
+    -27,
+    60,
+    0
+   ],
+   "uuid": "fab6d5bd-0bee-5189-ae53-bcba6100dfb0"
+  },
+  {
+   "name": "right_arm",
+   "origin": [
+    27,
+    60,
+    0
+   ],
+   "uuid": "f4ec7828-fac6-5785-ac3e-487fe0bde63a"
+  },
+  {
+   "name": "left_leg",
+   "origin": [
+    -12,
+    35,
+    0
+   ],
+   "uuid": "1075678d-6f33-53f9-a14e-0295ed3643a2"
+  },
+  {
+   "name": "right_leg",
+   "origin": [
+    12,
+    35,
+    0
+   ],
+   "uuid": "2e0edfcf-81fb-5a25-bc4c-4c3847bf417c"
+  }
+ ],
+ "name": "obsidian_golem_f05",
+ "outliner": [
+  {
+   "children": [
+    "d6cdbe40-83a2-5513-bcab-0f4c6f1e7da5",
+    "e24b5171-f83a-5c57-af44-1955260fd466",
+    "785ea5f5-d4ac-50bd-8518-fd7094a52d29",
+    "1161cb7c-7235-589a-8379-a679de7534c7",
+    "2a8a1ef3-89ed-56fc-af95-1759b55b3b2a",
+    "a1260609-2bf5-52e8-a9fb-848693ed92ac",
+    "cbc8b127-5bc2-58d5-916b-e83f6fc10c9a",
+    "94718167-b08a-58c8-8c2d-0d18db0b1b9d",
+    "d3458647-811b-5862-b033-2bbbddea5f0c",
+    "6a166d2e-083c-5b49-b5c1-48e574c37df4",
+    "eecefe3f-3eab-513f-a2f6-cc3e4fb39c88",
+    "ac8275b9-c224-514c-a61a-c9b05105b7f2",
+    "1edc581d-c83c-54bc-8c6c-59e7f15003ff",
+    "bc2dd094-626d-50fb-a6ae-06614d36b3ca",
+    "62d862f1-3df0-56bf-8565-951f9987a5d5",
+    "834a4f2d-5d19-5a09-9bb0-e35ece3be339",
+    "82d28b72-5573-5d51-bb50-8756ed4582ef",
+    "8ccbece0-ad99-5a55-8e1d-3e4d582d0fd2",
+    "7e51e256-a20c-5924-a137-6effb2034a97",
+    "924a0101-643f-5bc1-b14d-47f6b4d74046"
+   ],
+   "isOpen": false,
+   "uuid": "118a5e97-011c-5caa-8e88-973b984c7df6"
+  },
+  {
+   "children": [
+    "b247fe0a-a235-568a-8146-8ff9fdbf9990",
+    "0bc8ec5f-8910-529b-93e7-6b44e793a7cc",
+    "4512f43a-9f35-5510-98e1-c534cddb2e60",
+    "8a295f1c-af32-5e0e-acdb-5236c0e1ad0b",
+    "53c2e159-c5c0-5956-bb13-cd2c005efed4",
+    "3a403e73-c29b-51f2-baa5-d114d782f4e1",
+    "47ba715a-b74f-56d9-96bc-efcab669f339",
+    "18353829-1e1d-58d3-a75e-f34f8c33b1fa",
+    "b8f35dcb-c37d-5589-bb4a-2260b0dd72a9",
+    "1736550d-88ff-50b6-bc84-c767a6eb3f69",
+    "99bc50c1-6fe8-5cd5-a335-5f7f64ba08af",
+    "785e0ed0-a797-5988-b6ea-21e887f8cb6f",
+    "d7a7158d-605b-557e-882f-f8b6abb056e8",
+    "75fe8b3a-871e-5057-b3e3-98894b8e5d88",
+    "fa889696-a57d-5658-864b-66c2c6c57b91",
+    "8283002a-3f73-586d-b4f1-a8ad060b27a2",
+    "4247264c-3a18-5391-a1a6-2286a5b625c7",
+    "6e7344bb-e431-5297-b4f7-2005569ae3ff",
+    "7fcc26c7-8e43-5428-acf1-5427f4f6c387",
+    "e44f8c49-8818-5220-9ebc-e27a118b65aa",
+    "35e1f552-9ec6-5c2e-80cd-d8b669cac3d7",
+    "2885cdfb-85cf-5d24-a266-9b9cf730cf8d",
+    "2d1a440d-2b6d-5a28-aa57-5e320a3d7d22",
+    "522b61c4-1404-54d8-9860-c6c126770a53",
+    "f73e8180-97b5-5876-8ccc-c6df6b5667a4",
+    "ee3e0eae-a477-5eff-b43d-1968a248056a",
+    "ebda8242-d9d7-57ae-b563-0acb17972fb5",
+    "f147599a-326d-59c8-9fd3-ed2b5ab6505e",
+    "51098d67-1516-5901-8919-ceb04b6a2fb4",
+    "18f284b3-7407-5d4a-bf66-a2f17f22f2d3",
+    "c714c71d-5069-58b2-923f-4923acc1ef12",
+    "cb746050-c118-5676-a03f-4693cd247c50",
+    "b713a897-8541-5135-b3dd-13a14e997dfd",
+    "c77b6999-f5ef-5be5-9fcb-692f5ab0fb67",
+    "cff8052a-0375-54c0-acc0-906a36be1b95",
+    "8dbd448c-1b03-51ac-a502-f6353d64e820",
+    "0fe9a48d-f8cd-5f15-83e4-8b1078b61649",
+    "0d516c6d-d0a9-5cfc-b2a3-cb197577b4d6",
+    "1f7d67d0-636b-59ab-b4df-a136aa975375",
+    "bc392e37-e952-5614-85d3-4e5135a7f511"
+   ],
+   "isOpen": false,
+   "uuid": "3c53271a-3359-5f02-b2e0-97c1dbe4366d"
+  },
+  {
+   "children": [
+    "77207fcd-d95c-53c9-855b-9decaaafc74d",
+    "6f1b9ade-3332-5039-b4f7-4120fbb32a78",
+    "0c0f4d2a-d464-5476-a075-797a1a264cc4",
+    "9d5ba4d2-ebbd-54e5-9928-1cb4e84c7418",
+    "e2a97b6f-a4b8-5894-8f45-d392e8e3c756",
+    "f16f1c93-5778-509d-9c06-b2c5a574aa4e",
+    "eedbf9b3-334c-5241-a5c8-19b17935bc6f",
+    "df6025ab-dc25-5ed6-8654-ad0aadd8daec",
+    "5ab32576-a236-50ec-bbcf-c5ab38a1a897",
+    "2b3ca58b-a701-5de2-86e0-d3045b53b8e7",
+    "ca0e6b83-5a08-5889-9434-54d5322b7159",
+    "50aa5726-9ee9-5ac6-8820-2cd5aac00a7d",
+    "1bb13de6-1bed-5c04-82ae-efc418aaa66f",
+    "acf10394-a266-5c7d-9045-09a1a58777cd",
+    "6175293f-ff52-536d-a58e-bdbf510633ae",
+    "6d0339da-2e3a-56f9-bdae-5c5373165234",
+    "4c4565f2-1581-5e5b-ba58-91fc585e3e61",
+    "40ed5823-2962-55d9-9e4f-7ca10328fa3f",
+    "5f6f6371-590a-57a6-8be6-b349ffc433c7",
+    "10eed54c-9b2f-5e61-9aa0-ae363b992659",
+    "b6dc745a-1cc8-5474-84c6-526b1c58e086",
+    "27cfe10f-d77f-5de4-8640-e0d71ca4e390",
+    "0a8f56cb-2ec0-5be1-9a55-dbb78881e833",
+    "6a0e91f0-bcf3-5e5a-b35b-f2d76ac94458",
+    "04bb1539-3a84-59f5-b8e4-f8ae19db108e",
+    "389d0b2e-bd02-57fe-ad52-73a4ab05cd42"
+   ],
+   "isOpen": false,
+   "uuid": "fab6d5bd-0bee-5189-ae53-bcba6100dfb0"
+  },
+  {
+   "children": [
+    "84c815bd-6d22-5fd9-8f45-4e849ce2a898",
+    "ddfb3301-326b-51b8-81bd-423b60759936",
+    "1d1e5d84-1206-5a0a-908d-9bb615fb6996",
+    "efc5233e-ddb2-5ed4-b326-5d481a7ca681",
+    "1ffbb01f-cc68-5654-aa29-5f7962d222a0",
+    "c749bd57-5bfe-5437-8e71-4afb78e17bef",
+    "47bef2ab-77ab-55be-88ae-016e404a236f",
+    "9a8b99b5-2014-55f1-9fb2-e8f9e75ae80d",
+    "16443593-7087-59e9-9424-7e45d0824c43",
+    "2a705dc7-2403-5761-a3e8-2f4fa2d51546",
+    "91cc6a9a-b0ba-5fc4-8f27-40f6ce14e08c",
+    "bf87d63c-d562-5499-939c-55aa3280de36",
+    "1439ce83-d73b-5751-b0be-32d152aed762",
+    "3a19ec22-1445-50b5-bb36-4315af4e0460",
+    "90c19750-529a-5ee1-9bc9-2a6724084a1f",
+    "6b1b9baf-f338-507a-9db4-4e64a104b809",
+    "c0c1b938-dab3-5881-aab6-f7ce8dd63e6a",
+    "bd079f76-aa6d-57c9-a4e5-80e73c0113f8",
+    "f99f5e68-92a9-5962-842f-2e65525a0a46",
+    "91ab5ce7-bb0b-5c40-b986-9182d3fbbec9",
+    "f19633cd-3239-5687-a0f9-7114375f8c6c",
+    "376abd1f-1b8b-5149-89be-40fb3309f4b8",
+    "404d71fa-33f7-5d90-ad0b-a21e535ac52c",
+    "1b8c5637-707a-50e0-a11c-de86c377d833",
+    "2811c199-b892-502d-a94e-bd8d166b11dd",
+    "09087206-4ae0-5862-a64c-dfcfed620d78"
+   ],
+   "isOpen": false,
+   "uuid": "f4ec7828-fac6-5785-ac3e-487fe0bde63a"
+  },
+  {
+   "children": [
+    "9222d4d5-8103-5081-a341-676f814a017b",
+    "bf9e39ef-afd2-539e-b298-7c21de1ce4db",
+    "4a8718b3-ee31-5edc-9629-8381162fd2e0",
+    "b6f278a1-de3c-5dbd-bbf7-2bc143377cf5",
+    "a6fbd215-7195-5341-98c7-2d8fd7b4899f",
+    "90536edc-a5ba-50e1-b5f6-680c045fbb89",
+    "09563d40-348d-55e0-8bc4-e6087c5f379b",
+    "50d5234f-9801-5048-b464-31fc3741815d",
+    "d42047ce-c7ae-5341-88b6-6ceaf5e33055",
+    "5b92d119-99ed-5bfa-961e-11d42526769d",
+    "420e1ad4-9b99-55da-87bd-b3bb6d92ff45",
+    "bdaf5c2d-9e1d-5e3f-9a71-9747ac626e4c"
+   ],
+   "isOpen": false,
+   "uuid": "1075678d-6f33-53f9-a14e-0295ed3643a2"
+  },
+  {
+   "children": [
+    "4cd1577d-2d74-5b67-8502-427b463586af",
+    "add408ac-1885-594a-995a-b3f74405b95c",
+    "3f9241cb-dbb1-5537-8c82-259b386f0692",
+    "531ec4e3-bce7-534e-b5a2-61385fdfdb74",
+    "7f654ac7-800c-543b-9393-bbe8cbf37e57",
+    "46f2632e-2be0-5ace-be69-dfef8a872582",
+    "2241147f-b5c7-56d6-9b64-91c69d5cfbc7",
+    "094e1b1d-8d30-56be-bcfd-5fb6fd4b861a",
+    "d251188a-a137-52b2-94d0-bcd734ba9054",
+    "c9e442d4-7fb4-5a0f-a6af-08e4bb87b335",
+    "a2313a19-c09f-54f6-8814-1af38364ad6d",
+    "3b05e088-78e3-59cc-b9ca-0c24d15c8122"
+   ],
+   "isOpen": false,
+   "uuid": "2e0edfcf-81fb-5a25-bc4c-4c3847bf417c"
+  }
+ ],
+ "resolution": {
+  "height": 512,
+  "width": 512
+ }
+}

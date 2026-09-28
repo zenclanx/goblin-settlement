@@ -6,6 +6,11 @@ Two deliberately separate steps:
     python tools/generate_models.py --crop    Models/<project>.bbmodel -> tools/models/<name>.json
     python tools/generate_models.py           tools/models/<name>.json -> the Java model class
 
+Goblin bodies and the five custom golems run through the same two steps. They keep their crops in
+two directories -- tools/models/ for the seventeen goblin bodies, tools/models_golem/ for the five
+golems -- because ArtModelCheck walks a directory and requires every crop it finds to be a row in
+one table, and a golem is not a goblin body. Everything else about the transform is shared.
+
 They are separate because Models/ is the art team's live workspace and is NOT in version control
 (the repository root .gitignore allows only .gitignore, README.md, goblin-settlement-mod/ and
 goblin-settlement-plan/). The committed crop is what this module's geometry is regenerated from.
@@ -37,6 +42,10 @@ REQUIRED_GROUPS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_l
 MOD = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = os.path.join(os.path.dirname(MOD), "Models")
 CROPS = os.path.join(MOD, "tools", "models")
+# The golems keep their crops apart from the goblin bodies: ArtModelCheck walks a crop directory and
+# requires every crop in it to be a row of one table, and one directory cannot hold two tables. This
+# is the only structural difference between the two pipelines; the transform below is shared.
+CROPS_GOLEM = os.path.join(MOD, "tools", "models_golem")
 OUT = os.path.join(MOD, "src", "client", "java", "dev", "local", "goblinsettlement", "client", "model")
 
 MODELS = {
@@ -57,6 +66,18 @@ MODELS = {
     "goblin_sentry_male_p07": ("goblin_professions_a/goblin_sentry_male_p07.bbmodel", "GoblinSentryMaleModel"),
     "goblin_child_boy_a": ("goblin_children_a/goblin_child_boy_a.bbmodel", "GoblinChildBoyModel"),
     "goblin_child_girl_a": ("goblin_children_a/goblin_child_girl_a.bbmodel", "GoblinChildGirlModel"),
+}
+
+# The five custom golems, keyed like MODELS but carrying a third field: the tier whose art this is.
+# The tier is emitted as the class's own TIER constant, so a row can name only its class and can no
+# longer claim another tier's name or crop. Iron is absent on purpose -- iron is vanilla's own entity,
+# handled by defense/VanillaIronGolemBridge, and never reaches GoblinGolemEntity's renderer.
+GOLEM_MODELS = {
+    "wood_golem_f01": ("golems_f/wood_golem_f01.bbmodel", "WoodGolemModel", "WOOD"),
+    "stone_golem_f02": ("golems_f/stone_golem_f02.bbmodel", "StoneGolemModel", "STONE"),
+    "gold_golem_f03": ("golems_f/gold_golem_f03.bbmodel", "GoldGolemModel", "GOLD"),
+    "diamond_golem_f04": ("golems_f/diamond_golem_f04.bbmodel", "DiamondGolemModel", "DIAMOND"),
+    "obsidian_golem_f05": ("golems_f/obsidian_golem_f05.bbmodel", "ObsidianGolemModel", "OBSIDIAN"),
 }
 
 
@@ -81,11 +102,12 @@ def java_name(raw):
 
 
 # The art tags a project's id with a trailing variant: goblin_male_a is the batch-A adult body,
-# goblin_farmer_male_p01 its first profession pass, goblin_child_boy_a a batch-A child. The committed
-# texture drops that tag, so goblin_male_a.json pairs with goblin_male.png. The rule below is checked
-# against all seventeen project ids; every one must reproduce a PNG already committed under
-# src/main/resources/assets/goblin_settlement/textures/entity/.
-_VARIANT_TAG = re.compile(r"_(?:p\d+|[a-z])$")
+# goblin_farmer_male_p01 its first profession pass, goblin_child_boy_a a batch-A child, and
+# wood_golem_f01 the golem batch's first form. The committed texture drops that tag, so
+# goblin_male_a.json pairs with goblin_male.png and wood_golem_f01.json with wood_golem.png. The
+# rule below is checked against all twenty-two project ids; every one must reproduce a PNG already
+# committed under src/main/resources/assets/goblin_settlement/textures/entity/.
+_VARIANT_TAG = re.compile(r"_(?:p\d+|f\d+|[a-z])$")
 
 
 def texture_name(project):
@@ -93,6 +115,13 @@ def texture_name(project):
     TEXTURE constant: a body's row names its class and nothing else, so a wrong skin cannot be typed in
     by hand and silently pass the build (the crops do not cover enough of each texture to catch it)."""
     return _VARIANT_TAG.sub("", project)
+
+
+def emissive_name(project):
+    """The transparent emissive mask a golem ships beside its main texture. Only the golems have one --
+    it is the additive overlay a render layer draws full-bright over the base skin, and it is emitted
+    as its own constant for the same reason TEXTURE is: the row must not be able to retype it."""
+    return texture_name(project) + "_emissive_mask"
 
 
 def numbers(value, count):
@@ -132,7 +161,7 @@ def validate(project, data):
             fail("%s: element %s has a malformed rotation (%r)" % (project, name, rotation))
 
 
-def crop(project, source):
+def crop(project, source, directory=CROPS):
     path = os.path.join(ART, source)
     if not os.path.isfile(path):
         fail("no such project: " + path)
@@ -168,8 +197,8 @@ def crop(project, source):
         "groups": groups,
         "outliner": raw.get("outliner", []),
     }
-    os.makedirs(CROPS, exist_ok=True)
-    target = os.path.join(CROPS, project + ".json")
+    os.makedirs(directory, exist_ok=True)
+    target = os.path.join(directory, project + ".json")
     with open(target, "w", encoding="utf-8", newline="\n") as handle:
         json.dump(trimmed, handle, ensure_ascii=False, indent=1, sort_keys=True)
         handle.write("\n")
@@ -288,8 +317,11 @@ class Emitter:
             self.walk(child, variable, anchor, indent + "    ")
 
 
-def generate(project, class_name):
-    path = os.path.join(CROPS, project + ".json")
+def read_crop(project, directory):
+    """A crop, validated and indexed. Both generators start here, so a golem crop clears exactly the
+    structural gauntlet a goblin crop does -- and refusing a bad crop is the whole reason Models/ is
+    not what gets committed."""
+    path = os.path.join(directory, project + ".json")
     if not os.path.isfile(path):
         fail("no crop at %s -- run --crop first, on a machine that has Models/" % path)
     data = json.load(open(path, encoding="utf-8"))
@@ -300,43 +332,90 @@ def generate(project, class_name):
     names = sorted(groups[node["uuid"]]["name"] for node in roots if node.get("uuid") in groups)
     if names != sorted(REQUIRED_GROUPS):
         fail("%s: top-level groups are %s, expected %s" % (project, names, REQUIRED_GROUPS))
+    return path, data, groups, elements, roots
 
+
+def class_head(project, class_name, crop_dir, imports, constants):
+    """A generated class's package, imports, javadoc, declaration, own constants and constructor. The
+    goblin and the golem forms differ only in which imports and constants go in, so the two generators
+    cannot drift in anything else."""
     lines = [
         "package dev.local.goblinsettlement.client.model;",
         "",
-        "import dev.local.goblinsettlement.colony.Profession;",
-        "import java.util.Optional;",
-        "import net.minecraft.client.model.geom.ModelPart;",
-        "import net.minecraft.client.model.geom.PartPose;",
-        "import net.minecraft.client.model.geom.builders.CubeListBuilder;",
-        "import net.minecraft.client.model.geom.builders.LayerDefinition;",
-        "import net.minecraft.client.model.geom.builders.MeshDefinition;",
-        "import net.minecraft.client.model.geom.builders.PartDefinition;",
+    ]
+    lines.extend(imports)
+    lines.extend([
         "",
         "/**",
-        " * Generated by tools/generate_models.py from tools/models/%s.json -- do not hand-edit;" % project,
+        " * Generated by tools/generate_models.py from %s/%s.json -- do not hand-edit;"
+        % (crop_dir, project),
         " * re-run the generator instead. See ART_INTEGRATION_DESIGN.md section 3.",
         " */",
         "public final class %s extends GoblinBodyModel {" % class_name,
-        "    /** The crop this mesh was generated from. Rows in GoblinBodies name it instead of retyping it. */",
-        '    public static final String CROP = "%s";' % project,
-        "    /** The texture this body samples. Rows in GoblinBodies name the class instead of retyping it. */",
-        '    public static final String TEXTURE = "%s";' % texture_name(project),
+    ])
+    lines.extend(constants)
+    lines.extend([
         "",
         "    public %s(ModelPart root) {" % class_name,
         "        super(root);",
         "    }",
         "",
-        "    public static LayerDefinition createLayer() {",
-        "        MeshDefinition mesh = new MeshDefinition();",
-        "        PartDefinition root = mesh.getRoot();",
-    ]
+    ])
+    return lines
+
+
+def emit_mesh(lines, data, groups, elements, roots):
+    """The mesh itself. A golem's six groups are the same six a goblin has, so this is shared."""
+    lines.append("    public static LayerDefinition createLayer() {")
+    lines.append("        MeshDefinition mesh = new MeshDefinition();")
+    lines.append("        PartDefinition root = mesh.getRoot();")
     emitter = Emitter(lines, groups, elements)
     for node in roots:
         emitter.walk(node, "root", (0, 0, 0), "        ")
     lines.append("        return LayerDefinition.create(mesh, %d, %d);"
                  % (data["resolution"]["width"], data["resolution"]["height"]))
     lines.append("    }")
+
+
+def write_class(source, class_name, lines):
+    os.makedirs(OUT, exist_ok=True)
+    target = os.path.join(OUT, class_name + ".java")
+    with open(target, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write("\n".join(lines) + "\n")
+    print("generated %s -> %s" % (source, target))
+
+
+GOBLIN_IMPORTS = [
+    "import dev.local.goblinsettlement.colony.Profession;",
+    "import java.util.Optional;",
+    "import net.minecraft.client.model.geom.ModelPart;",
+    "import net.minecraft.client.model.geom.PartPose;",
+    "import net.minecraft.client.model.geom.builders.CubeListBuilder;",
+    "import net.minecraft.client.model.geom.builders.LayerDefinition;",
+    "import net.minecraft.client.model.geom.builders.MeshDefinition;",
+    "import net.minecraft.client.model.geom.builders.PartDefinition;",
+]
+
+GOLEM_IMPORTS = [
+    "import dev.local.goblinsettlement.defense.GolemTier;",
+    "import net.minecraft.client.model.geom.ModelPart;",
+    "import net.minecraft.client.model.geom.PartPose;",
+    "import net.minecraft.client.model.geom.builders.CubeListBuilder;",
+    "import net.minecraft.client.model.geom.builders.LayerDefinition;",
+    "import net.minecraft.client.model.geom.builders.MeshDefinition;",
+    "import net.minecraft.client.model.geom.builders.PartDefinition;",
+]
+
+
+def generate(project, class_name):
+    path, data, groups, elements, roots = read_crop(project, CROPS)
+    lines = class_head(project, class_name, "tools/models", GOBLIN_IMPORTS, [
+        "    /** The crop this mesh was generated from. Rows in GoblinBodies name it instead of retyping it. */",
+        '    public static final String CROP = "%s";' % project,
+        "    /** The texture this body samples. Rows in GoblinBodies name the class instead of retyping it. */",
+        '    public static final String TEXTURE = "%s";' % texture_name(project),
+    ])
+    emit_mesh(lines, data, groups, elements, roots)
     lines.append("")
     lines.append("    /**")
     lines.append("     * This mesh's row in GoblinBodies. Naming the class once is what keeps the crop, the layer and the")
@@ -350,24 +429,54 @@ def generate(project, class_name):
     lines.append("                %s::createLayer, %s::new);" % (class_name, class_name))
     lines.append("    }")
     lines.append("}")
+    write_class(path, class_name, lines)
 
-    os.makedirs(OUT, exist_ok=True)
-    target = os.path.join(OUT, class_name + ".java")
-    with open(target, "w", encoding="utf-8", newline="\n") as handle:
-        handle.write("\n".join(lines) + "\n")
-    print("generated %s -> %s" % (path, target))
+
+def generate_golem(project, class_name, tier):
+    """A golem's class is a goblin body's with three more constants: the emissive mask, the tier, and
+    no child/sex/profession arguments -- a golem has exactly one look per tier."""
+    path, data, groups, elements, roots = read_crop(project, CROPS_GOLEM)
+    lines = class_head(project, class_name, "tools/models_golem", GOLEM_IMPORTS, [
+        "    /** The crop this mesh was generated from. Rows in GolemBodies name it instead of retyping it. */",
+        '    public static final String CROP = "%s";' % project,
+        "    /** The texture this golem samples. Rows in GolemBodies name the class instead of retyping it. */",
+        '    public static final String TEXTURE = "%s";' % texture_name(project),
+        "    /** The emissive mask drawn over the texture. Rows in GolemBodies name the class, not this. */",
+        '    public static final String EMISSIVE = "%s";' % emissive_name(project),
+        "    /** The tier this mesh is the art for. Rows in GolemBodies name the class instead of retyping it. */",
+        "    public static final GolemTier TIER = GolemTier.%s;" % tier,
+    ])
+    emit_mesh(lines, data, groups, elements, roots)
+    lines.append("")
+    lines.append("    /**")
+    lines.append("     * This mesh's row in GolemBodies. Naming the class once is what keeps the crop, the layer and the")
+    lines.append("     * model in step, and the tier the row is keyed on comes from the class's own TIER constant -- so a")
+    lines.append("     * row can no longer pair one tier's name with another tier's geometry, skin or glow mask.")
+    lines.append("     * ArtModelCheck holds all four together against the crop's own name.")
+    lines.append("     */")
+    lines.append("    public static GolemBodies.Body body() {")
+    lines.append("        return new GolemBodies.Body(TIER, CROP, TEXTURE, EMISSIVE,")
+    lines.append("                %s::createLayer, %s::new);" % (class_name, class_name))
+    lines.append("    }")
+    lines.append("}")
+    write_class(path, class_name, lines)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--crop", action="store_true",
-                        help="read the art workspace and refresh tools/models/ (needs Models/)")
+                        help="read the art workspace and refresh the crop directories (needs Models/)")
     args = parser.parse_args()
     for project, (source, class_name) in sorted(MODELS.items()):
         if args.crop:
             crop(project, source)
         else:
             generate(project, class_name)
+    for project, (source, class_name, tier) in sorted(GOLEM_MODELS.items()):
+        if args.crop:
+            crop(project, source, CROPS_GOLEM)
+        else:
+            generate_golem(project, class_name, tier)
 
 
 if __name__ == "__main__":

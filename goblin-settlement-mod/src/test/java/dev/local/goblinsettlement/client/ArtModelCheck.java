@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.local.goblinsettlement.client.model.GoblinBodies;
+import dev.local.goblinsettlement.client.model.GolemBodies;
+import dev.local.goblinsettlement.defense.GolemTier;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -13,23 +15,33 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.server.Bootstrap;
 
 /**
- * Checks the art before the client ever renders it, in two halves that both walk the same crop list.
+ * Checks the art before the client ever renders it, in two halves that both walk the same crop lists:
+ * one list per table, the seventeen goblin bodies under {@code tools/models/} and the five custom
+ * golems under {@code tools/models_golem/}, each crop held against the table that renders it. The two
+ * lists are separate directories because a crop directory is read as "every crop here is a row of one
+ * table", and a golem is not a goblin body; everything the two passes assert is the same.
  *
  * <p>The first half reads the committed crops: the six required groups, the feet on the art ground
  * line, every cube's box-uv footprint inside the declared texture, box uv only, no rotated group, a
  * texture whose pixels are exactly twice the crop's logical resolution, and a texture whose painted
- * area covers every cube's uv rectangle. The crop is what the mod's geometry is regenerated from -- the
- * art workspace is not in version control -- so this is where a bad model is caught before it reaches a
+ * area covers every cube's uv rectangle. A golem ships one more file -- a transparent mask of just its
+ * glowing core -- and the same half requires that mask committed, the same size, actually lit, and lit
+ * only where some cube samples. The crop is what the mod's geometry is regenerated from -- the art
+ * workspace is not in version control -- so this is where a bad model is caught before it reaches a
  * screen.
  *
  * <p>The second half bakes the generated mesh each crop maps to and checks the baked parts against
@@ -47,35 +59,74 @@ public final class ArtModelCheck {
     private static final double SCALE = 0.5;
     private static final double GROUND = 24.0;
     private static final float TOLERANCE = 1e-3F;
-
-    /** The bodies the client can render, keyed by the crop the check validates them from. */
-    private static final Map<String, GoblinBodies.Body> BODIES = GoblinBodies.BODIES.stream()
-            .collect(Collectors.toUnmodifiableMap(GoblinBodies.Body::crop, body -> body));
+    /** One crop directory per table: the goblin bodies in the first, the custom golems in the second. */
+    private static final Path CROP_DIR = Path.of("tools", "models");
+    private static final Path GOLEM_CROP_DIR = Path.of("tools", "models_golem");
+    // "Absurdly tall" is per table, because the golems are built on a bigger grid than the goblins: the
+    // tallest goblin crop tops out at 52 art units, the tallest golem at 86. Both bounds exist to catch a
+    // crop that is not a character at all, not to pin a height the art is free to change.
+    private static final double MAX_GOBLIN_ART_HEIGHT = 64;
+    private static final double MAX_GOLEM_ART_HEIGHT = 128;
 
     public static void main(String[] args) throws IOException {
-        Path dir = Path.of("tools", "models");
+        // Both tables are read here rather than into fields, because a field's initializer runs before
+        // this method could boot anything -- and the golem table is keyed on GolemTier, whose constants
+        // carry item costs, so reading it needs vanilla's registries up. The same two lines the material
+        // checks use.
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        Map<String, GoblinBodies.Body> bodies = byCrop(GoblinBodies.BODIES, GoblinBodies.Body::crop);
+        Map<String, GolemBodies.Body> golemBodies = byCrop(GolemBodies.BODIES, GolemBodies.Body::crop);
+        List<Path> crops = cropsIn(CROP_DIR);
+        List<Path> golemCrops = cropsIn(GOLEM_CROP_DIR);
+        checkBodiesAgreeWithTheirCrops();
+        checkGolemBodiesAgreeWithTheirCrops();
+        for (Path crop : crops) {
+            JsonObject root = checkCrop(crop, MAX_GOBLIN_ART_HEIGHT);
+            String name = cropName(crop);
+            GoblinBodies.Body body = bodies.get(name);
+            require(body != null, name + ": no renderable body is mapped to this crop -- add it to"
+                    + " GoblinBodies.BODIES so the baked half checks it too");
+            checkTexture(name, root, body.texture());
+            checkBaked(name, body.layer().get(), root);
+        }
+        for (Path crop : golemCrops) {
+            JsonObject root = checkCrop(crop, MAX_GOLEM_ART_HEIGHT);
+            String name = cropName(crop);
+            GolemBodies.Body body = golemBodies.get(name);
+            require(body != null, name + ": no renderable golem is mapped to this crop -- add it to"
+                    + " GolemBodies.BODIES so the baked half checks it too");
+            checkTexture(name, root, body.texture());
+            checkEmissive(name, root, body.emissive());
+            checkBaked(name, body.layer().get(), root);
+        }
+        System.out.println("ArtModelCheck passed (" + crops.size() + " goblin crops, "
+                + golemCrops.size() + " golem crops, " + (crops.size() + golemCrops.size())
+                + " baked models)");
+    }
+
+    /** One table's rows, keyed by the crop the check validates them from. */
+    private static <T> Map<String, T> byCrop(List<T> bodies, Function<T, String> crop) {
+        return bodies.stream().collect(Collectors.toUnmodifiableMap(crop, body -> body));
+    }
+
+    /** The committed crops of one pipeline, sorted. An absent or empty directory fails the build. */
+    private static List<Path> cropsIn(Path dir) throws IOException {
         require(Files.isDirectory(dir), "the crop directory exists: " + dir.toAbsolutePath());
         List<Path> crops = new ArrayList<>();
         try (var stream = Files.list(dir)) {
             stream.filter(path -> path.getFileName().toString().endsWith(".json")).sorted()
                     .forEach(crops::add);
         }
-        require(!crops.isEmpty(), "at least one cropped model is committed");
-        checkBodiesAgreeWithTheirCrops();
-        for (Path crop : crops) {
-            JsonObject root = checkCrop(crop);
-            String name = crop.getFileName().toString().replaceFirst("\\.json$", "");
-            GoblinBodies.Body body = BODIES.get(name);
-            require(body != null, name + ": no renderable body is mapped to this crop -- add it to"
-                    + " GoblinBodies.BODIES so the baked half checks it too");
-            checkTexture(name, root, body.texture());
-            checkBaked(name, body.layer().get(), root);
-        }
-        System.out.println("ArtModelCheck passed (" + crops.size() + " crops, "
-                + crops.size() + " baked models)");
+        require(!crops.isEmpty(), "at least one cropped model is committed under " + dir);
+        return crops;
     }
 
-    private static JsonObject checkCrop(Path path) throws IOException {
+    private static String cropName(Path crop) {
+        return crop.getFileName().toString().replaceFirst("\\.json$", "");
+    }
+
+    private static JsonObject checkCrop(Path path, double maxArtHeight) throws IOException {
         JsonObject root = JsonParser.parseString(Files.readString(path, StandardCharsets.UTF_8))
                 .getAsJsonObject();
         String name = path.getFileName().toString();
@@ -132,8 +183,9 @@ public final class ArtModelCheck {
         }
         require(Math.abs(lowest) <= TOLERANCE,
                 name + ": the feet sit on the art ground line (lowest y is " + lowest + ")");
-        require(highest <= 64 + TOLERANCE,
-                name + ": the model is not absurdly tall (" + highest + " art units)");
+        require(highest <= maxArtHeight + TOLERANCE,
+                name + ": the model is not absurdly tall (" + highest + " art units, bound "
+                        + maxArtHeight + ")");
         return root;
     }
 
@@ -153,16 +205,11 @@ public final class ArtModelCheck {
         JsonObject resolution = root.getAsJsonObject("resolution");
         int u = resolution.get("width").getAsInt();
         int v = resolution.get("height").getAsInt();
-        Path path = Path.of("src", "main", "resources", "assets", "goblin_settlement",
-                "textures", "entity", texture + ".png");
+        Path path = texturePath(texture);
         require(Files.isRegularFile(path), name + ": the texture " + path.toAbsolutePath() + " exists");
-        byte[] header = new byte[24];
-        try (var in = Files.newInputStream(path)) {
-            require(in.readNBytes(header, 0, header.length) == header.length,
-                    name + ": the texture " + path + " has a complete png header");
-        }
-        int width = readIntBigEndian(header, 16);
-        int height = readIntBigEndian(header, 20);
+        int[] size = readPngSize(path);
+        int width = size[0];
+        int height = size[1];
         require(width == 2 * u && height == 2 * v,
                 name + ": the texture is " + width + "x" + height + ", expected twice the crop's "
                         + u + "x" + v + " logical uv");
@@ -227,6 +274,98 @@ public final class ArtModelCheck {
             }
         }
         return maxX < 0 ? null : new int[] {minX, minY, maxX, maxY};
+    }
+
+    /** Where the entity texture of this basename lives. The skins and the golem masks share a folder. */
+    private static Path texturePath(String name) {
+        return Path.of("src", "main", "resources", "assets", "goblin_settlement",
+                "textures", "entity", name + ".png");
+    }
+
+    /** The pixel size a png declares in the IHDR chunk it starts with, read without decoding it. */
+    private static int[] readPngSize(Path path) throws IOException {
+        byte[] header = new byte[24];
+        try (var in = Files.newInputStream(path)) {
+            require(in.readNBytes(header, 0, header.length) == header.length,
+                    "the png " + path + " has a complete header");
+        }
+        return new int[] {readIntBigEndian(header, 16), readIntBigEndian(header, 20)};
+    }
+
+    /**
+     * A golem's second texture: a transparent-background mask of just the glowing core and the eyes,
+     * which the render layer draws full-bright over the skin. It has to be committed, the same size and
+     * the same uv layout as the skin, actually lit, and lit only where some cube samples.
+     *
+     * <p>Each of the two ends of that is a real failure the size check alone would not see. An
+     * all-transparent mask renders nothing, so the golem quietly loses its glow; a mask shifted off its
+     * rectangles glows beside the model instead of on it, and a whole-image mask makes the whole golem
+     * glow. The last one is not caught here -- a mask that lights every texel some cube samples is a
+     * legible drawing decision -- but the first two are, and both would otherwise reach a screen.
+     */
+    private static void checkEmissive(String name, JsonObject root, String emissive) throws IOException {
+        JsonObject resolution = root.getAsJsonObject("resolution");
+        int u = resolution.get("width").getAsInt();
+        int v = resolution.get("height").getAsInt();
+        Path path = texturePath(emissive);
+        require(Files.isRegularFile(path),
+                name + ": the emissive mask " + path.toAbsolutePath() + " exists");
+        int[] size = readPngSize(path);
+        int width = size[0];
+        int height = size[1];
+        require(width == 2 * u && height == 2 * v,
+                name + ": the emissive mask is " + width + "x" + height + ", expected twice the crop's "
+                        + u + "x" + v + " logical uv");
+        BufferedImage image = ImageIO.read(path.toFile());
+        require(image != null && image.getWidth() == width && image.getHeight() == height,
+                name + ": the emissive mask " + path + " decodes to a " + width + "x" + height
+                        + " image");
+
+        List<double[]> rectangles = new ArrayList<>();
+        for (var entry : root.getAsJsonArray("elements")) {
+            JsonObject element = entry.getAsJsonObject();
+            var from = element.getAsJsonArray("from");
+            var to = element.getAsJsonArray("to");
+            double cubeWidth = to.get(0).getAsDouble() - from.get(0).getAsDouble();
+            double cubeHeight = to.get(1).getAsDouble() - from.get(1).getAsDouble();
+            double cubeDepth = to.get(2).getAsDouble() - from.get(2).getAsDouble();
+            var uv = element.getAsJsonArray("uv_offset");
+            int u0 = uv.get(0).getAsInt();
+            int v0 = uv.get(1).getAsInt();
+            // The box-uv footprint of checkTexture, in bitmap pixels: logical uv -> pixels is x2. The ends
+            // stay unfloored here, so a texel a fractional far edge only just reaches counts as sampled --
+            // the same leniency checkTexture grants that edge, and the fraction of a texel a cube's face
+            // overhangs its last whole texel is not a drawing mistake.
+            rectangles.add(new double[] {2.0 * u0, 2.0 * v0,
+                    2.0 * (u0 + 2 * (cubeWidth + cubeDepth)),
+                    2.0 * (v0 + (cubeHeight + cubeDepth))});
+        }
+        int lit = 0;
+        int stray = 0;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if ((image.getRGB(x, y) >>> 24) == 0) {
+                    continue;
+                }
+                lit++;
+                if (!sampled(rectangles, x, y)) {
+                    stray++;
+                }
+            }
+        }
+        require(lit > 0, name + ": the emissive mask " + path + " lights at least one pixel");
+        require(stray == 0, name + ": the emissive mask " + path + " lights " + stray
+                + " pixel(s) that no cube samples, so the glow would show beside the model");
+    }
+
+    /** Whether any of the cube uv rectangles contains this texel's index. */
+    private static boolean sampled(List<double[]> rectangles, int x, int y) {
+        for (double[] rectangle : rectangles) {
+            if (x >= rectangle[0] && x < rectangle[2] && y >= rectangle[1] && y < rectangle[3]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -313,6 +452,37 @@ public final class ArtModelCheck {
             Path crop = Path.of("tools", "models", body.crop() + ".json");
             require(Files.isRegularFile(crop),
                     "the body " + body.crop() + " has a committed crop at " + crop);
+        }
+    }
+
+    /**
+     * The golem table's own sanity pass, the twin of the one above. A row is built by its class's
+     * {@code body()} and takes every field from that class's constants, so the ways a row can point at
+     * the wrong art are narrow and each is named here: two rows claiming one tier (which would silently
+     * shadow a mesh), a row claiming iron (the vanilla entity, which this renderer must never draw), and
+     * a row whose crop name disagrees with its own tier. That last one is the goblin rule -- "a row names
+     * its class once" -- applied to the axis a golem is keyed on instead of sex and trade: a row cannot
+     * pair one tier's name with another tier's crop. Every other tier must be covered, so a golem cannot
+     * reach a tier whose art nobody ever added.
+     */
+    private static void checkGolemBodiesAgreeWithTheirCrops() {
+        Set<GolemTier> served = new HashSet<>();
+        for (GolemBodies.Body body : GolemBodies.BODIES) {
+            require(served.add(body.tier()), "two golem bodies claim the " + body.tier() + " tier");
+            require(body.tier() != GolemTier.IRON,
+                    "the golem body " + body.crop() + " claims the iron tier, which is vanilla's entity");
+            require(body.crop().contains(body.tier().name().toLowerCase(Locale.ROOT)),
+                    "the golem body " + body.crop() + " disagrees with its own tier " + body.tier());
+            Path crop = Path.of("tools", "models_golem", body.crop() + ".json");
+            require(Files.isRegularFile(crop),
+                    "the golem " + body.crop() + " has a committed crop at " + crop);
+        }
+        for (GolemTier tier : GolemTier.values()) {
+            if (tier == GolemTier.IRON) {
+                continue;
+            }
+            require(served.contains(tier),
+                    "no golem body has art for the " + tier + " tier, which the entity can reach");
         }
     }
 }

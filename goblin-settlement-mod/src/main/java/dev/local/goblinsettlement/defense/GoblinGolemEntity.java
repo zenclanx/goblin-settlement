@@ -4,6 +4,9 @@ import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -28,7 +31,15 @@ import net.minecraft.world.level.storage.ValueOutput;
 public final class GoblinGolemEntity extends PathfinderMob {
     public static final double DEFENSE_RADIUS = 24.0;
     static final int ALERT_TICKS = 20 * 15;
+    /**
+     * The tier, mirrored to the client so it can draw the tier's art. A string, like the citizen's
+     * synced trade: the enum is ours, so its name is the wire format. Iron is a value of the enum but
+     * never one this entity is meant to draw -- see {@link #tierForRender()}.
+     */
+    private static final EntityDataAccessor<String> DATA_TIER =
+            SynchedEntityData.defineId(GoblinGolemEntity.class, EntityDataSerializers.STRING);
 
+    /** The tier the server owns. Its mirror on the wire is DATA_TIER, and setTier is the only writer. */
     private GolemTier tier = GolemTier.WOOD;
     private String settlementId = "";
     private BlockPos home = BlockPos.ZERO;
@@ -36,6 +47,12 @@ public final class GoblinGolemEntity extends PathfinderMob {
 
     public GoblinGolemEntity(EntityType<? extends GoblinGolemEntity> type, Level level) {
         super(type, level);
+    }
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_TIER, GolemTier.WOOD.name());
     }
 
     public static AttributeSupplier.Builder createAttributes() {
@@ -54,6 +71,30 @@ public final class GoblinGolemEntity extends PathfinderMob {
 
     public GolemTier tier() {
         return tier;
+    }
+
+    /**
+     * The synced tier, safe to call on either side. A name this build cannot draw -- a legacy save's
+     * {@code IRON}, which the entity is migrated off before it is ever meant to be rendered, or a
+     * corrupt one -- reads as wood, the tier the entity's own attributes start at, rather than throwing
+     * at a player. The renderer's loud failure is for the other direction: a table with no art for a
+     * tier it was handed.
+     */
+    public GolemTier tierForRender() {
+        try {
+            return GolemTier.valueOf(getEntityData().get(DATA_TIER));
+        } catch (IllegalArgumentException exception) {
+            return GolemTier.WOOD;
+        }
+    }
+
+    /**
+     * The tier's only writer. A paid upgrade and loading a save are the two ways the tier can change,
+     * and both go through here, so the synced copy the client renders from cannot be left behind.
+     */
+    private void setTier(GolemTier next) {
+        tier = next;
+        getEntityData().set(DATA_TIER, next.name());
     }
 
     public String settlementId() {
@@ -186,7 +227,7 @@ public final class GoblinGolemEntity extends PathfinderMob {
             throw new IllegalArgumentException("Golem upgrades must advance one tier");
         }
         float missingHealth = getMaxHealth() - getHealth();
-        tier = next;
+        setTier(next);
         applyTierAttributes();
         setHealth(Math.max(1.0F, getMaxHealth() - missingHealth));
     }
@@ -222,11 +263,13 @@ public final class GoblinGolemEntity extends PathfinderMob {
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
+        GolemTier loaded;
         try {
-            tier = GolemTier.valueOf(input.getStringOr("GoblinGolemTier", "WOOD"));
+            loaded = GolemTier.valueOf(input.getStringOr("GoblinGolemTier", "WOOD"));
         } catch (IllegalArgumentException exception) {
-            tier = GolemTier.WOOD;
+            loaded = GolemTier.WOOD;
         }
+        setTier(loaded);
         settlementId = input.getStringOr("GoblinGolemSettlement", "");
         home = input.read("GoblinGolemHome", BlockPos.CODEC).orElse(blockPosition()).immutable();
         alertTicks = 0;

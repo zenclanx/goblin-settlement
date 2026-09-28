@@ -6,8 +6,9 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.util.Mth;
 
 /**
- * The six-part goblin body every art variant shares. The generated meshes differ only in geometry, so
- * the walk and look animation lives here exactly once.
+ * The six-part humanoid body every generated art variant shares -- the goblin bodies and the custom
+ * golems alike. The generated meshes differ only in geometry, so the walk and look animation lives
+ * here exactly once.
  */
 public abstract class GoblinBodyModel extends EntityModel<GoblinRenderState> {
     private final ModelPart head;

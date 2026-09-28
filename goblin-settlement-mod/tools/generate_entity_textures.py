@@ -1,7 +1,8 @@
-"""Generate the mod's original 64x64 entity textures with only the Python stdlib.
+"""Generate the mod's original 64x64 placeholder entity textures with only the Python stdlib.
 
-The rectangles follow the UV layout in GoblinModel.createLayer(). Run this
-script after changing that layout so the checked-in PNGs stay reproducible.
+Kept for the record: the real art is delivered from Models/ and installed through
+generate_models.py, and the rectangles here follow the old placeholder's UV layout rather than any
+of the delivered art. This is not wired into the build.
 """
 
 from pathlib import Path
@@ -68,25 +69,6 @@ def goblin(accents=()):
     return image
 
 
-def golem():
-    image = Canvas()
-    stone, light, shadow = (107, 112, 104), (145, 151, 137), (73, 79, 75)
-    image.box(0, 0, 8, 8, 8, light, stone, shadow)
-    image.rect(9, 10, 3, 2, (37, 46, 42))
-    image.rect(13, 10, 3, 2, (37, 46, 42))
-    image.rect(10, 10, 1, 1, (226, 157, 69))
-    image.rect(14, 10, 1, 1, (226, 157, 69))
-    image.rect(10, 15, 6, 1, (55, 60, 57))
-    image.box(16, 16, 6, 8, 4, light, stone, shadow)
-    image.rect(22, 24, 2, 5, (144, 92, 52))
-    image.rect(20, 28, 6, 1, (54, 63, 61))
-    image.box(40, 16, 3, 8, 3, light, stone, shadow)
-    image.rect(43, 27, 3, 2, (71, 79, 76))
-    image.box(0, 16, 3, 8, 3, light, stone, shadow)
-    image.rect(3, 27, 3, 3, (69, 73, 68))
-    return image
-
-
 def straw_hat(image):
     brim, crown = (214, 187, 108), (190, 158, 82)
     image.rect(8, 0, 8, 8, crown)
@@ -146,4 +128,3 @@ if __name__ == "__main__":
     goblin((backpack,)).save(ROOT / "goblin_hauler.png")
     goblin((apron_and_goggles,)).save(ROOT / "goblin_artisan.png")
     goblin((helmet,)).save(ROOT / "goblin_sentry.png")
-    golem().save(ROOT / "goblin_golem.png")
