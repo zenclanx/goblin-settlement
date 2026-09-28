@@ -1,22 +1,30 @@
 package dev.local.goblinsettlement.client;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
+import dev.local.goblinsettlement.client.model.GoblinFemaleModel;
+import dev.local.goblinsettlement.client.model.GoblinMaleModel;
+import net.minecraft.client.model.EntityModel;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;
+import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.resources.Identifier;
 
-public final class GoblinRenderer extends MobRenderer<GoblinCitizenEntity, GoblinRenderState, GoblinModel> {
-    private static final Identifier DEFAULT_TEXTURE = texture("goblin");
-    private static final Identifier TEXTURE_FARMER = texture("goblin_farmer");
-    private static final Identifier TEXTURE_FORESTER = texture("goblin_forester");
-    private static final Identifier TEXTURE_MINER = texture("goblin_miner");
-    private static final Identifier TEXTURE_BUILDER = texture("goblin_builder");
-    private static final Identifier TEXTURE_HAULER = texture("goblin_hauler");
-    private static final Identifier TEXTURE_ARTISAN = texture("goblin_artisan");
-    private static final Identifier TEXTURE_SENTRY = texture("goblin_sentry");
+public final class GoblinRenderer
+        extends MobRenderer<GoblinCitizenEntity, GoblinRenderState, EntityModel<GoblinRenderState>> {
+    private static final Identifier TEXTURE_MALE = texture("goblin_male");
+    private static final Identifier TEXTURE_FEMALE = texture("goblin_female");
+
+    private final EntityModel<GoblinRenderState> male;
+    private final EntityModel<GoblinRenderState> female;
 
     public GoblinRenderer(EntityRendererProvider.Context context) {
-        super(context, new GoblinModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_LAYER)), 0.3F);
+        // super(...) needs a model; the two below are the ones we actually swap between. They wrap the
+        // same baked ModelPart the layer registry produced, so this costs a shell, not a second bake.
+        super(context, new GoblinMaleModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_MALE_LAYER)), 0.3F);
+        male = new GoblinMaleModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_MALE_LAYER));
+        female = new GoblinFemaleModel(context.bakeLayer(GoblinSettlementClient.GOBLIN_FEMALE_LAYER));
     }
 
     private static Identifier texture(String name) {
@@ -32,19 +40,27 @@ public final class GoblinRenderer extends MobRenderer<GoblinCitizenEntity, Gobli
     public void extractRenderState(GoblinCitizenEntity entity, GoblinRenderState state, float partialTick) {
         super.extractRenderState(entity, state, partialTick);
         state.profession = entity.professionForRender();
+        state.female = entity.femaleForRender();
+    }
+
+    /**
+     * The submit path reads the {@code model} field rather than calling {@code getModel()}, so choosing
+     * a body means assigning that field before the superclass submits.
+     */
+    @Override
+    public void submit(GoblinRenderState state, PoseStack pose, SubmitNodeCollector collector,
+                       CameraRenderState camera) {
+        this.model = state.female ? female : male;
+        super.submit(state, pose, collector, camera);
+    }
+
+    @Override
+    public EntityModel<GoblinRenderState> getModel() {
+        return model;
     }
 
     @Override
     public Identifier getTextureLocation(GoblinRenderState state) {
-        return switch (state.profession) {
-            case FARMER -> TEXTURE_FARMER;
-            case FORESTER -> TEXTURE_FORESTER;
-            case MINER -> TEXTURE_MINER;
-            case BUILDER -> TEXTURE_BUILDER;
-            case HAULER -> TEXTURE_HAULER;
-            case ARTISAN -> TEXTURE_ARTISAN;
-            case SENTRY -> TEXTURE_SENTRY;
-            case UNASSIGNED -> DEFAULT_TEXTURE;
-        };
+        return state.female ? TEXTURE_FEMALE : TEXTURE_MALE;
     }
 }
