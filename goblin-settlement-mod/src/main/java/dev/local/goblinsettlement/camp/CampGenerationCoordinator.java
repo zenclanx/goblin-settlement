@@ -5,6 +5,8 @@ import dev.local.goblinsettlement.citizen.ModEntities;
 import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
+import dev.local.goblinsettlement.noticeboard.ModBlocks;
+import dev.local.goblinsettlement.noticeboard.NoticeboardBlock;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -65,6 +67,7 @@ public final class CampGenerationCoordinator {
                 && level.getBlockEntity(chestPos) instanceof Container chest) {
             camp.markStarterGrantStarted();
             grantSupplies(chest);
+            placeNoticeboard(level, id, corner);
         }
         if (level.getBlockState(chestPos).is(Blocks.CHEST)
                 && level.getBlockEntity(chestPos) instanceof Container
@@ -233,6 +236,26 @@ public final class CampGenerationCoordinator {
             if (chest.getItem(slot).isEmpty()) chest.setItem(slot, supplies.get(slot));
         }
         chest.setChanged();
+    }
+
+    /**
+     * One board, beside the camp's north-west corner post and clear of the walking lanes. The lanes
+     * are the two middle rows z=3 and z=4, where the chest, the campfire and all eight residents sit;
+     * the board is three sixteenths thick but not empty, so vanilla pathfinding treats its cell as
+     * blocked and the project's own connectivity test calls a non-air cell unwalkable -- standing it
+     * in a lane would cut the camp in two. (1, 0) is empty (z=0 holds fence posts only at its corners),
+     * is none of the eight spawn cells, and closes only the dead-end nook behind the north beds, so it
+     * cannot separate anything. Placed with the starter grant rather than with the layout, because
+     * layoutComplete is a strict all-or-nothing gate that guards the eight residents -- a board counted
+     * into it would wedge the camp at zero population if a player block ever took its spot.
+     */
+    private static void placeNoticeboard(ServerLevel level, String id, BlockPos corner) {
+        BlockPos pos = corner.offset(1, 0, 0);
+        if (!canPlace(level, id, pos)) {
+            return;
+        }
+        level.setBlock(pos, ModBlocks.NOTICEBOARD.defaultBlockState()
+                .setValue(NoticeboardBlock.FACING, Direction.SOUTH), 3);
     }
 
     private static void spawnAdults(ServerLevel level, SettlementSavedData data, String id, BlockPos corner) {
