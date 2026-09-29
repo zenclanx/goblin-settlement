@@ -27,6 +27,7 @@ import dev.local.goblinsettlement.construction.transport.TrafficProposalCoordina
 import dev.local.goblinsettlement.construction.transport.TrafficSampler;
 import dev.local.goblinsettlement.construction.transport.TransportCommands;
 import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
+import dev.local.goblinsettlement.construction.transport.TransportLinks;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.farming.FarmingCommands;
@@ -131,10 +132,12 @@ public final class GoblinSettlement implements ModInitializer {
                                                 data, TransportSavedData.get(level), level.getGameTime())
                                                 .map(pos -> "Next traffic target: " + pos.toShortString())
                                                 .orElse("No pending traffic target")), false);
+                                var transportFacts = TransportLinks.inspect(level,
+                                        TransportSavedData.get(level), settlement.map(s -> s.anchor()));
                                 context.getSource().sendSuccess(() -> Component.literal(
-                                        TransportCommands.trafficLine(TransportSavedData.get(level))), false);
+                                        TransportLinks.trafficLine(transportFacts)), false);
                                 context.getSource().sendSuccess(() -> Component.literal(
-                                        TransportCommands.connectivityLine(level)), false);
+                                        TransportLinks.connectivityLine(transportFacts)), false);
                                 var professions = data.assignedProfessions();
                                 StringBuilder trades = new StringBuilder();
                                 for (var profession : Profession.values()) {
