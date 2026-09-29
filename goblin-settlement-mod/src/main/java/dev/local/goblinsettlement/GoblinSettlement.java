@@ -3,7 +3,6 @@ package dev.local.goblinsettlement;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
-import dev.local.goblinsettlement.colony.Profession;
 import dev.local.goblinsettlement.colony.ProfessionCoordinator;
 import dev.local.goblinsettlement.colony.ExpansionCoordinator;
 import dev.local.goblinsettlement.colony.family.FamilyCoordinator;
@@ -12,9 +11,6 @@ import dev.local.goblinsettlement.economy.food.FoodCraftingCoordinator;
 import dev.local.goblinsettlement.economy.food.MealCoordinator;
 import dev.local.goblinsettlement.economy.tools.ToolCraftingCoordinator;
 import dev.local.goblinsettlement.economy.smelting.SmeltingCoordinator;
-import dev.local.goblinsettlement.colony.PopulationRules;
-import dev.local.goblinsettlement.colony.SettlementDemand;
-import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.economy.WarehouseRecoveryCommands;
 import dev.local.goblinsettlement.defense.DefenseCoordinator;
 import dev.local.goblinsettlement.defense.GolemEntities;
@@ -27,8 +23,6 @@ import dev.local.goblinsettlement.construction.transport.TrafficProposalCoordina
 import dev.local.goblinsettlement.construction.transport.TrafficSampler;
 import dev.local.goblinsettlement.construction.transport.TransportCommands;
 import dev.local.goblinsettlement.construction.transport.TransportCoordinator;
-import dev.local.goblinsettlement.construction.transport.TransportLinks;
-import dev.local.goblinsettlement.construction.transport.TransportSavedData;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.farming.FarmingCommands;
 import dev.local.goblinsettlement.farming.FarmingCoordinator;
@@ -39,12 +33,12 @@ import dev.local.goblinsettlement.citizen.ModEntities;
 import dev.local.goblinsettlement.interaction.ProtectedRectangle;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.mining.MiningCoordinator;
-import dev.local.goblinsettlement.housing.BedCensus;
 import dev.local.goblinsettlement.housing.BedProvisioningCoordinator;
 import dev.local.goblinsettlement.housing.HousingAssignmentCoordinator;
 import dev.local.goblinsettlement.housing.HousingBlueprints;
 import dev.local.goblinsettlement.housing.HousingCoordinator;
-import dev.local.goblinsettlement.housing.HousingSavedData;
+import dev.local.goblinsettlement.noticeboard.SettlementReport;
+import dev.local.goblinsettlement.noticeboard.SettlementText;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
 import dev.local.goblinsettlement.social.GiftTradeCommands;
 import dev.local.goblinsettlement.social.WarehouseWithdrawalObserver;
@@ -92,68 +86,9 @@ public final class GoblinSettlement implements ModInitializer {
                 dispatcher.register(Commands.literal("goblinsettlement")
                         .then(Commands.literal("status").executes(context -> {
                             ServerLevel level = context.getSource().getLevel();
-                            var data = SettlementSavedData.get(level);
-                            var settlement = data.settlement();
-                            context.getSource().sendSuccess(() -> Component.literal(settlement
-                                    .map(value -> "Settlement " + value.id() + " at " + value.anchor().toShortString()
-                                            + ", adults=" + data.adultCount()
-                                            + ", children=" + data.childCount()
-                                            + ", population slots=" + data.occupiedPopulationSlots()
-                                            + "/" + PopulationRules.MAX_RESIDENTS
-                                            + ", plots=" + data.claimedPlots().size()
-                                            + "/" + PopulationRules.maximumPlots(data.adultCount())
-                                            + ", player areas=" + data.playerAreas().size())
-                                    .orElse("No settlement in this dimension")), false);
-                            if (settlement.isPresent()) {
-                                var supply = PublicWarehouseInventory.snapshot(level, data);
-                                var demand = SettlementDemand.assess(data.adultCount(), data.childCount(),
-                                        supply, data.plans().stream().anyMatch(plan -> !plan.isComplete()),
-                                        TrafficProposalCoordinator.hasPendingTarget(
-                                                data, TransportSavedData.get(level), level.getGameTime()),
-                                        BedCensus.shortage(level, data));
-                                context.getSource().sendSuccess(() -> Component.literal("Known public stock: food="
-                                        + supply.food() + "/" + demand.foodTarget()
-                                        + ", wheat seeds=" + supply.wheatSeeds() + "/" + demand.seedTarget()
-                                        + ", hoes/axes/pickaxes=" + supply.hoes() + "/" + supply.axes()
-                                        + "/" + supply.pickaxes()
-                                        + ", containers=" + supply.accessibleContainers()
-                                        + ", stock " + (supply.complete() ? "complete" : "incomplete")
-                                        + ", next priority=" + demand.priority()), false);
-                                int beds = BedCensus.count(level, data);
-                                int occupied = data.occupiedPopulationSlots();
-                                context.getSource().sendSuccess(() -> Component.literal("Housing: beds=" + beds
-                                        + ", occupied slots=" + occupied + ", spare=" + (beds - occupied)
-                                        + ", homeless=" + HousingAssignmentCoordinator.homeless(level,
-                                                settlement.get().id(), data)), false);
-                                context.getSource().sendSuccess(() -> Component.literal(
-                                        housingReportLine(level, data)), false);
-                                context.getSource().sendSuccess(() -> Component.literal(
-                                        TrafficProposalCoordinator.nearestUnservedFacility(
-                                                data, TransportSavedData.get(level), level.getGameTime())
-                                                .map(pos -> "Next traffic target: " + pos.toShortString())
-                                                .orElse("No pending traffic target")), false);
-                                var transportFacts = TransportLinks.inspect(level,
-                                        TransportSavedData.get(level), settlement.map(s -> s.anchor()));
-                                context.getSource().sendSuccess(() -> Component.literal(
-                                        TransportLinks.trafficLine(transportFacts)), false);
-                                context.getSource().sendSuccess(() -> Component.literal(
-                                        TransportLinks.connectivityLine(transportFacts)), false);
-                                var professions = data.assignedProfessions();
-                                StringBuilder trades = new StringBuilder();
-                                for (var profession : Profession.values()) {
-                                    if (profession == Profession.UNASSIGNED) continue;
-                                    long held = professions.stream().filter(value -> value == profession).count();
-                                    if (held == 0) continue;
-                                    if (trades.length() > 0) trades.append(", ");
-                                    trades.append(profession.name().toLowerCase(java.util.Locale.ROOT)).append('=').append(held);
-                                }
-                                long unassigned = professions.stream().filter(value -> value == Profession.UNASSIGNED).count();
-                                if (unassigned > 0) {
-                                    if (trades.length() > 0) trades.append(", ");
-                                    trades.append("unassigned=").append(unassigned);
-                                }
-                                String summary = trades.length() == 0 ? "no adults" : trades.toString();
-                                context.getSource().sendSuccess(() -> Component.literal("Trades: " + summary), false);
+                            var report = SettlementReport.snapshot(level);
+                            for (String line : SettlementText.lines(report)) {
+                                context.getSource().sendSuccess(() -> Component.literal(line), false);
                             }
                             return Command.SINGLE_SUCCESS;
                         }))
@@ -304,62 +239,4 @@ public final class GoblinSettlement implements ModInitializer {
         SettlementProfiler.run("family", () -> FamilyCoordinator.tick(level));
         SettlementProfiler.run("expansion", () -> ExpansionCoordinator.tick(level));
     }
-
-    private static final int HOUSING_REPORT_LIMIT = 8;
-
-    /**
-     * Every judged home with how full it is, and why the ones that cannot start their next step are
-     * stuck. Read-only. A home whose bed sits in an inactive chunk is skipped and counted rather than
-     * judged from unloaded blocks; the counts come from HousingAssignmentCoordinator and
-     * HousingCoordinator.homeCapacity, and the reason only from HousingCoordinator.blockedReason, so
-     * this line restates no gate and counts nothing of its own.
-     */
-    private static String housingReportLine(ServerLevel level, SettlementSavedData data) {
-        var settlement = data.settlement();
-        if (settlement.isEmpty()) {
-            return "Homes: no settlement in this dimension";
-        }
-        String id = settlement.get().id();
-        if (!HousingBlueprints.available()) {
-            // Every home would otherwise report this same reason, finished ones included.
-            return "Homes: nothing can start, the blueprint data is unavailable";
-        }
-        var homes = new java.util.ArrayList<>(HousingSavedData.get(level).homes(id));
-        // Order as the scan that discovers homes walks: x, then z, then y.
-        homes.sort((left, right) -> {
-            int byX = Integer.compare(left.bed().getX(), right.bed().getX());
-            if (byX != 0) {
-                return byX;
-            }
-            int byZ = Integer.compare(left.bed().getZ(), right.bed().getZ());
-            return byZ != 0 ? byZ : Integer.compare(left.bed().getY(), right.bed().getY());
-        });
-        var entries = new java.util.ArrayList<String>();
-        int notLoaded = 0;
-        for (var home : homes) {
-            if (!HousingAssignmentCoordinator.canJudge(level, home.bed())) {
-                notLoaded++;
-                continue;
-            }
-            var reason = HousingCoordinator.blockedReason(level, data, home, id);
-            entries.add(home.bed().toShortString() + " "
-                    + HousingAssignmentCoordinator.occupancy(data, home.bed()) + "/"
-                    + HousingCoordinator.homeCapacity(level, home)
-                    + (reason.isPresent() ? " [" + reason.orElseThrow() + "]" : ""));
-        }
-        String unloaded = notLoaded == 0 ? "" : ", " + notLoaded + " not loaded";
-        if (entries.isEmpty()) {
-            return "Homes: none" + unloaded;
-        }
-        var builder = new StringBuilder("Homes: ");
-        for (int index = 0; index < Math.min(HOUSING_REPORT_LIMIT, entries.size()); index++) {
-            if (index > 0) {
-                builder.append(", ");
-            }
-            builder.append(entries.get(index));
-        }
-        if (entries.size() > HOUSING_REPORT_LIMIT) {
-            builder.append(", +").append(entries.size() - HOUSING_REPORT_LIMIT).append(" more");
-        }
-        return builder.toString() + unloaded;
-    }}
+}
