@@ -922,14 +922,10 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import net.minecraft.world.level.block.Mirror;
-import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -941,7 +937,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  */
 public final class NoticeboardBlock extends HorizontalDirectionalBlock {
     public static final MapCodec<NoticeboardBlock> CODEC = simpleCodec(NoticeboardBlock::new);
-    public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
+    // FACING is inherited from HorizontalDirectionalBlock -- do not redeclare it here, or the field
+    // would shadow the parent's and the two could drift apart.
 
     /** Wide in x, thin in z: the board faces north or south. */
     private static final VoxelShape SHAPE_NS =
@@ -971,16 +968,6 @@ public final class NoticeboardBlock extends HorizontalDirectionalBlock {
     }
 
     @Override
-    protected BlockState rotate(BlockState state, Rotation rotation) {
-        return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
-    }
-
-    @Override
-    protected BlockState mirror(BlockState state, Mirror mirror) {
-        return state.rotate(mirror.getRotation(state.getValue(FACING)));
-    }
-
-    @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos,
                                   CollisionContext context) {
         return shape(state);
@@ -998,7 +985,7 @@ public final class NoticeboardBlock extends HorizontalDirectionalBlock {
 }
 ```
 
-**`getShape` / `getCollisionShape` 的确切签名要对着本版本核实**：先写 `protected`，构建报"无法覆盖"或"参数不匹配"时按编译器提示调整（本版本的 `BlockBehaviour` 里这两个方法的参数与上面一致，但若形参名或访问修饰符不符，以编译器为准）。**不要在 `codec()` 里返回父类的 `CODEC`** —— 那会让反序列化得到普通 `Block`。
+**这一段已对着 1.21.11 的 jar 逐条核实，照抄即可**：`BlockBehaviour.getShape` 与 `getCollisionShape` 的签名正是 `(BlockState, BlockGetter, BlockPos, CollisionContext)`、访问修饰符 `protected`；`Block.getStateForPlacement(BlockPlaceContext)` 是 **`public`**（不是 protected）；`stateDefinition`、`registerDefaultState`、`createBlockStateDefinition` 都在 `Block` 上；`Shapes.box(double×6)` 在。**`HorizontalDirectionalBlock` 本身就带 `FACING` 与具体的 `rotate`/`mirror`**——所以上面既不重新声明 `FACING`，也不覆写 `rotate`/`mirror`：覆写等于把父类已给的实现抄一遍，重声明则是遮蔽。**唯一必须自己写的是 `createBlockStateDefinition`（父类不注册该属性）与构造函数里的 `registerDefaultState`。** 另外：**不要在 `codec()` 里返回父类的 `CODEC`** —— 那会让反序列化得到普通 `Block`；`HorizontalDirectionalBlock.codec()` 是抽象方法，本类必须给出自己的。
 
 - [ ] **Step 4: 写注册类**
 
