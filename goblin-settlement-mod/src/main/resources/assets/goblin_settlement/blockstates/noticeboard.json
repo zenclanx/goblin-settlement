@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "goblin_settlement:block/noticeboard",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "goblin_settlement:block/noticeboard",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "goblin_settlement:block/noticeboard",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "goblin_settlement:block/noticeboard",
+      "y": 270
+    }
+  }
+}

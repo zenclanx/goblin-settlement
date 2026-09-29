@@ -1,3 +1,4 @@
 {
-  "entity.goblin_settlement.goblin": "Goblin Resident"
+  "entity.goblin_settlement.goblin": "Goblin Resident",
+  "block.goblin_settlement.noticeboard": "Settlement Noticeboard"
 }

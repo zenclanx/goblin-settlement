@@ -37,6 +37,7 @@ import dev.local.goblinsettlement.housing.BedProvisioningCoordinator;
 import dev.local.goblinsettlement.housing.HousingAssignmentCoordinator;
 import dev.local.goblinsettlement.housing.HousingBlueprints;
 import dev.local.goblinsettlement.housing.HousingCoordinator;
+import dev.local.goblinsettlement.noticeboard.ModBlocks;
 import dev.local.goblinsettlement.noticeboard.SettlementReport;
 import dev.local.goblinsettlement.noticeboard.SettlementText;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
@@ -64,6 +65,7 @@ public final class GoblinSettlement implements ModInitializer {
     public void onInitialize() {
         ModEntities.initialize();
         GolemEntities.initialize();
+        ModBlocks.initialize();
         RelationshipCoordinator.initialize();
         WarehouseWithdrawalObserver.initialize();
         ServerLifecycleEvents.SERVER_STARTING.register(server -> HousingBlueprints.load());
