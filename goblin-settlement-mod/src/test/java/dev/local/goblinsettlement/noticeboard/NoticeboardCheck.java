@@ -57,6 +57,14 @@ public final class NoticeboardCheck {
                 "connectivity line, got: " + lines.get(6));
         check(lines.get(7).equals("Trades: farmer=3, unassigned=2"), "trades line, got: " + lines.get(7));
 
+        // The empty-target branch, which the sample cannot reach: the prefix lives inside the map, so a
+        // report with no pending target prints the fallback alone, with no "Next traffic target:" head.
+        var noTarget = new SettlementReport(sample.header(), sample.stock(), sample.housing(),
+                sample.traffic(), Optional.empty(), sample.trades());
+        var noTargetLine = SettlementText.lines(Optional.of(noTarget)).get(4);
+        check(noTargetLine.equals("No pending traffic target"),
+                "no pending traffic target line, got: " + noTargetLine);
+
         System.out.println("NoticeboardCheck passed");
     }
 

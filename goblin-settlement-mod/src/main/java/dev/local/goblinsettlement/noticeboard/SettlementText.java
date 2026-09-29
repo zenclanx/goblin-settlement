@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import net.minecraft.core.BlockPos;
 
 /** Renders a settlement report the way the status command prints it. Pure: no world, no level. */
 public final class SettlementText {
@@ -44,7 +43,7 @@ public final class SettlementText {
                 + ", spare=" + housing.spare()
                 + ", homeless=" + housing.homeless());
         lines.add(homesLine(housing));
-        lines.add("Next traffic target: " + value.nextTarget().map(BlockPos::toShortString)
+        lines.add(value.nextTarget().map(pos -> "Next traffic target: " + pos.toShortString())
                 .orElse("No pending traffic target"));
         lines.add(TransportLinks.trafficLine(value.traffic()));
         lines.add(TransportLinks.connectivityLine(value.traffic()));
