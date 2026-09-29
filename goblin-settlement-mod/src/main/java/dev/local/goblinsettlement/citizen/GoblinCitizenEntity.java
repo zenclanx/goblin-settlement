@@ -155,6 +155,7 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         super.die(source);
         if (level() instanceof ServerLevel serverLevel) {
             releasePersistedWork(serverLevel);
+            rescueUndroppedGoods(serverLevel);
         }
     }
 
@@ -2404,6 +2405,44 @@ public final class GoblinCitizenEntity extends PathfinderMob {
                 continue;
             }
             if (spawnAtLocation(level, stack.copy()) != null) {
+                goods.remove(index);
+            } else {
+                LOGGER.warn("Goblin {} could not drop {} goods {} on death at {}; material remains on dying entity",
+                        getUUID(), source, stack, blockPosition());
+            }
+        }
+    }
+
+    /**
+     * The loot path clears each stack it managed to place, so anything still held after death never
+     * reached the ground. That material was withdrawn from the settlement, so return it to storage
+     * instead of losing property that never left the settlement's ownership.
+     */
+    private void rescueUndroppedGoods(ServerLevel level) {
+        var data = SettlementSavedData.get(level);
+        if (!carried.isEmpty()) {
+            if (PublicWarehouseInventory.storeInAccessible(level, data, carried)) {
+                carried = ItemStack.EMPTY;
+            } else {
+                LOGGER.warn("Goblin {} could not drop carried {} on death at {}; material remains on dying entity",
+                        getUUID(), carried, blockPosition());
+            }
+        }
+        rescueGoodsList(level, data, farmGoods, "farm");
+        rescueGoodsList(level, data, toolGoods, "tool");
+        rescueGoodsList(level, data, foodGoods, "food");
+        rescueGoodsList(level, data, forestryGoods, "forestry");
+    }
+
+    private void rescueGoodsList(ServerLevel level, SettlementSavedData data, List<ItemStack> goods,
+            String source) {
+        for (int index = goods.size() - 1; index >= 0; index--) {
+            ItemStack stack = goods.get(index);
+            if (stack.isEmpty()) {
+                goods.remove(index);
+                continue;
+            }
+            if (PublicWarehouseInventory.storeInAccessible(level, data, stack)) {
                 goods.remove(index);
             } else {
                 LOGGER.warn("Goblin {} could not drop {} goods {} on death at {}; material remains on dying entity",

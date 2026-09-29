@@ -11,7 +11,6 @@ import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
-import net.minecraft.world.level.block.Blocks;
 
 /**
  * Runs one real furnace next to a registered warehouse. The module never places the furnace itself,
@@ -89,21 +88,21 @@ public final class SmeltingCoordinator {
         return worker.isPresent() && worker.orElseThrow().assignSmelting(settlementId, warehouse, furnace, ore);
     }
 
-    /** Bounded scan for a real furnace close enough for both feeding and collecting. */
+    /**
+     * Bounded scan for an empty, real furnace close enough for both feeding and collecting. An
+     * occupied furnace is skipped: its contents belong to whoever filled it, not to a new batch.
+     */
     private static Optional<BlockPos> nearbyFurnace(ServerLevel level, String settlementId, BlockPos warehouse) {
         for (BlockPos candidate : BlockPos.betweenClosed(
                 warehouse.offset(-4, -2, -4), warehouse.offset(4, 2, 4))) {
             if (candidate.distSqr(warehouse) > 16.0) {
                 continue;
             }
-            if (WorldModificationPermission.check(level, settlementId, candidate)
-                    != WorldModificationPermission.Decision.ALLOWED
-                    || !level.shouldTickBlocksAt(candidate)) {
+            if (!level.shouldTickBlocksAt(candidate)
+                    || FurnaceWorksite.emptyFurnace(level, settlementId, candidate).isEmpty()) {
                 continue;
             }
-            if (level.getBlockState(candidate).is(Blocks.FURNACE)) {
-                return Optional.of(candidate.immutable());
-            }
+            return Optional.of(candidate.immutable());
         }
         return Optional.empty();
     }

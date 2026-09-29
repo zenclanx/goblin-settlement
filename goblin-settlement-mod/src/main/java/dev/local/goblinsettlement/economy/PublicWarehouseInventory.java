@@ -8,6 +8,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /** Reads live containers; registered positions never cache item counts. */
@@ -94,6 +95,22 @@ public final class PublicWarehouseInventory {
             }
         }
         return new WarehouseSupply(food, seeds, hoes, axes, pickaxes, planks, containers, complete);
+    }
+
+    /**
+     * Places as much of {@code stack} as fits into accessible registered warehouses, shrinking it by the
+     * amount moved. Returns true only once the stack is empty, so callers can tell a full or partial fit.
+     */
+    public static boolean storeInAccessible(ServerLevel level, SettlementSavedData data, ItemStack stack) {
+        for (BlockPos pos : data.warehouses()) {
+            if (stack.isEmpty()) break;
+            if (!isAccessible(level, data, pos)) continue;
+            Container container = (Container) level.getBlockEntity(pos);
+            int before = stack.getCount();
+            ContainerStorage.insert(container, stack);
+            if (stack.getCount() != before) container.setChanged();
+        }
+        return stack.isEmpty();
     }
 
     private static int countAt(ServerLevel level, SettlementSavedData data, BlockPos pos, Item item) {

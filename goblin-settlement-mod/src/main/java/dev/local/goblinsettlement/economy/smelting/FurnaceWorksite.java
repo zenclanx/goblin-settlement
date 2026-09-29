@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.economy.smelting;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.economy.ContainerStorage;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
@@ -62,6 +63,22 @@ public final class FurnaceWorksite {
         return Optional.empty();
     }
 
+    /**
+     * The shared furnace contract for feeding and selection: the permitted, real furnace at this
+     * position with all three slots empty, or empty when it is occupied, missing or protected. An
+     * occupied furnace belongs to whoever filled it, so callers skip it rather than touch it.
+     */
+    public static Optional<Container> emptyFurnace(ServerLevel level, String settlementId, BlockPos furnacePos) {
+        if (!allowed(level, settlementId, furnacePos)
+                || !level.getBlockState(furnacePos).is(Blocks.FURNACE)
+                || !(level.getBlockEntity(furnacePos) instanceof Container furnace)
+                || !furnace.getItem(0).isEmpty() || !furnace.getItem(1).isEmpty()
+                || !furnace.getItem(2).isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(furnace);
+    }
+
     /** A resident task calls this only after reaching both the registered chest and furnace. */
     public static boolean feed(ServerLevel level, GoblinCitizenEntity worker, String settlementId,
             BlockPos warehousePos, BlockPos furnacePos, Ore ore) {
@@ -71,22 +88,19 @@ public final class FurnaceWorksite {
                 || worker.distanceToSqr(furnacePos.getX() + 0.5, furnacePos.getY() + 0.5,
                         furnacePos.getZ() + 0.5) > 9.0
                 || SmeltingSavedData.get(level).batch().isPresent()
-                || !allowed(level, settlementId, warehousePos)
-                || !allowed(level, settlementId, furnacePos)
-                || !level.getBlockState(furnacePos).is(Blocks.FURNACE)) {
+                || !allowed(level, settlementId, warehousePos)) {
             return false;
         }
         Optional<Container> warehouse = warehouse(level, settlementId, warehousePos);
-        if (warehouse.isEmpty() || !(level.getBlockEntity(furnacePos) instanceof Container furnace)
-                || !furnace.getItem(0).isEmpty() || !furnace.getItem(1).isEmpty()
-                || !furnace.getItem(2).isEmpty()
+        Optional<Container> furnace = emptyFurnace(level, settlementId, furnacePos);
+        if (warehouse.isEmpty() || furnace.isEmpty()
                 || countAll(level, settlementId, ore.ingot) >= ore.stockLimit) {
             return false;
         }
         int rawSlot = slotWith(warehouse.get(), ore.raw);
         int coalSlot = slotWith(warehouse.get(), Items.COAL);
-        if (rawSlot < 0 || coalSlot < 0 || !furnace.canPlaceItem(0, new ItemStack(ore.raw))
-                || !furnace.canPlaceItem(1, new ItemStack(Items.COAL))) {
+        if (rawSlot < 0 || coalSlot < 0 || !furnace.get().canPlaceItem(0, new ItemStack(ore.raw))
+                || !furnace.get().canPlaceItem(1, new ItemStack(Items.COAL))) {
             return false;
         }
         // Raw ore and fuel must be separate item types; both remain real items throughout.
@@ -102,9 +116,9 @@ public final class FurnaceWorksite {
             restore(warehouse.get(), raw, coal);
             return false;
         }
-        furnace.setItem(0, raw);
-        furnace.setItem(1, coal);
-        furnace.setChanged();
+        furnace.get().setItem(0, raw);
+        furnace.get().setItem(1, coal);
+        furnace.get().setChanged();
         warehouse.get().setChanged();
         return true;
     }
@@ -176,17 +190,7 @@ public final class FurnaceWorksite {
     }
 
     private static void insert(Container container, ItemStack incoming) {
-        for (int slot = 0; slot < container.getContainerSize(); slot++) {
-            if (!container.canPlaceItem(slot, incoming)) continue;
-            ItemStack held = container.getItem(slot);
-            if (held.isEmpty()) container.setItem(slot, incoming.copy());
-            else if (ItemStack.isSameItemSameComponents(held, incoming)
-                    && held.getCount() < Math.min(held.getMaxStackSize(), container.getMaxStackSize(held))) {
-                held.grow(incoming.getCount());
-            } else continue;
-            incoming.setCount(0);
-            return;
-        }
+        ContainerStorage.insert(container, incoming);
     }
 
     private static int countAll(ServerLevel level, String id, Item item) {

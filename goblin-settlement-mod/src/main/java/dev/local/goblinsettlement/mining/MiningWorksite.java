@@ -2,6 +2,7 @@ package dev.local.goblinsettlement.mining;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
+import dev.local.goblinsettlement.economy.ContainerStorage;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import java.util.ArrayList;
 import java.util.List;
@@ -218,17 +219,7 @@ public final class MiningWorksite {
     }
 
     private static void insert(Container container, ItemStack stack) {
-        for (int slot = 0; slot < container.getContainerSize() && !stack.isEmpty(); slot++) {
-            if (!container.canPlaceItem(slot, stack)) continue;
-            ItemStack held = container.getItem(slot);
-            if (!held.isEmpty() && !ItemStack.isSameItemSameComponents(held, stack)) continue;
-            int capacity = Math.min(stack.getMaxStackSize(), container.getMaxStackSize(stack));
-            int move = Math.min(stack.getCount(), capacity - held.getCount());
-            if (move <= 0) continue;
-            if (held.isEmpty()) container.setItem(slot, stack.copyWithCount(move));
-            else held.grow(move);
-            stack.shrink(move);
-        }
+        ContainerStorage.insert(container, stack);
     }
 
     private static int countStored(ServerLevel level, String id, Item item) {
