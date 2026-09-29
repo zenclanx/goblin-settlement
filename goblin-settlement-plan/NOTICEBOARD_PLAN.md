@@ -565,7 +565,8 @@ public final class SettlementText {
                 + ", spare=" + housing.spare()
                 + ", homeless=" + housing.homeless());
         lines.add(homesLine(housing));
-        lines.add("Next traffic target: " + value.nextTarget().map(BlockPos::toShortString)
+        lines.add(value.nextTarget()
+                .map(pos -> "Next traffic target: " + pos.toShortString())
                 .orElse("No pending traffic target"));
         lines.add(TransportLinks.trafficLine(value.traffic()));
         lines.add(TransportLinks.connectivityLine(value.traffic()));
@@ -661,6 +662,14 @@ public final class SettlementText {
                 "homes line, got: " + lines.get(3));
         check(lines.get(4).equals("Next traffic target: 12, 64, -30"),
                 "next target line, got: " + lines.get(4));
+        // The empty case is its own assertion. Without it the prefix could sit outside the map and
+        // render "Next traffic target: No pending traffic target" — which is exactly the bug this
+        // task's first implementation shipped, because this assertion was missing.
+        var noTarget = new SettlementReport(sample.header(), sample.stock(), sample.housing(),
+                sample.traffic(), Optional.empty(), sample.trades());
+        check(SettlementText.lines(Optional.of(noTarget)).get(4).equals("No pending traffic target"),
+                "an absent target prints only the sentence, got: "
+                        + SettlementText.lines(Optional.of(noTarget)).get(4));
         check(lines.get(5).equals("Road traffic: 1 road(s), 1 ready to widen (*); 1a2b3c4d=512 L3*"),
                 "traffic line, got: " + lines.get(5));
         check(lines.get(6).equals("Links: all 3 loaded verified, 1 not loaded"),
