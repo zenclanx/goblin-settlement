@@ -856,7 +856,7 @@ git commit -m "Have status render the shared report, so the command and the boar
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/GoblinSettlement.java`（`onInitialize` 加一行）
 
 **Interfaces:**
-- Produces: `ModBlocks.NOTICEBOARD`（`Block`）、`ModBlocks.NOTICEBOARD_BLOCK`（`BlockItem`）、`ModBlocks.initialize()`；`NoticeboardBlock`（四向 `facing`、两个碰撞形状）
+- Produces: `ModBlocks.NOTICEBOARD`（`NoticeboardBlock`）、`ModBlocks.NOTICEBOARD_ITEM`（`BlockItem`）、`ModBlocks.initialize()`；`NoticeboardBlock`（四向 `facing`、两个碰撞形状）
 
 - [ ] **Step 1: 复制美术资源**
 
@@ -922,7 +922,6 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -1013,12 +1012,18 @@ public final class ModBlocks {
     private static final ResourceKey<Block> NOTICEBOARD_KEY = ResourceKey.create(Registries.BLOCK,
             Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, "noticeboard"));
 
+    // setId is NOT optional: BlockBehaviour's own constructor calls effectiveDrops(), which is
+    // drops.get(Objects.requireNonNull(id, "Block id not set")). Without it the block throws NPE
+    // during class-init and the mod never loads -- and the build cannot see it. It is also what makes
+    // the loot table resolvable: effectiveDrops() builds the key as Registries.LOOT_TABLE +
+    // id.withPrefix("blocks/").
     public static final NoticeboardBlock NOTICEBOARD = Registry.register(BuiltInRegistries.BLOCK,
             NOTICEBOARD_KEY,
             new NoticeboardBlock(BlockBehaviour.Properties.of()
                     .noOcclusion()
                     .strength(1.0F)
-                    .sound(SoundType.WOOD)));
+                    .sound(SoundType.WOOD)
+                    .setId(NOTICEBOARD_KEY)));
 
     public static final BlockItem NOTICEBOARD_ITEM = Registry.register(BuiltInRegistries.ITEM,
             Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, "noticeboard"),
