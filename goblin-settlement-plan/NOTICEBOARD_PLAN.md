@@ -140,11 +140,19 @@ public final class FoodForecast {
         if (diners == 0) {
             return OptionalInt.empty();
         }
-        long minutes = (food / diners) * (MealClock.MEAL_INTERVAL_TICKS / TICKS_PER_MINUTE);
-        return OptionalInt.of((int) Math.min(Integer.MAX_VALUE, minutes));
+        // Clamp on the meal count before multiplying: meals * 20 can overflow a long for an absurd
+        // stock, and an overflowed negative would slip past the Math.min below.
+        long minutesPerMeal = MealClock.MEAL_INTERVAL_TICKS / TICKS_PER_MINUTE;
+        long meals = food / diners;
+        if (meals > Integer.MAX_VALUE / minutesPerMeal) {
+            return OptionalInt.of(Integer.MAX_VALUE);
+        }
+        return OptionalInt.of((int) Math.min(Integer.MAX_VALUE, meals * minutesPerMeal));
     }
 }
 ```
+
+**这段方法是 Task 1 实现时更正过的**：初稿写的是先乘再钳（`(food / diners) * 20` 后 `Math.min`），而 `Long.MAX_VALUE` 下这个乘法会溢出成负数、**反而绕过了钳制**——与它自己上面那条"钳到 `Integer.MAX_VALUE`"的断言直接矛盾。**先钳餐数再乘**才是对的（`Integer.MAX_VALUE / 20` 这道闸保证乘积落在 int 内）。实现者发现了并报了上来，已按此更正。
 
 - [ ] **Step 5: 跑一次，确认它通过**
 
