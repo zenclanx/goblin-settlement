@@ -235,10 +235,23 @@ public final class TransportCoordinator {
         }
         TransportSavedData traffic = TransportSavedData.get(level);
         SettlementSavedData settlement = SettlementSavedData.get(level);
-        // A fixed inspection budget prevents a growing bridge network from
+        // A fixed inspection budget prevents a growing bridge and road network from
         // making one world tick scan every completed structure.
-        for (TransportPlan plan : traffic.nextOpenBridgeInspections(4)) {
+        for (TransportPlan plan : traffic.nextStructureInspections(4)) {
             FootprintAccess access = footprintAccess(level, plan);
+            if (!plan.isBridge()) {
+                // A road is rewound only when the builder could re-lay the missing cell, judged by the
+                // builder's own readiness predicate. A cell mined to air is not buildable ground, so
+                // rewinding it would strand the road incomplete forever and freeze new work; the hole
+                // is left for the connectivity report instead. Land no longer ours is left alone too.
+                int missing = access == FootprintAccess.ALLOWED
+                        ? firstMissingStructuralStep(level, plan) : -1;
+                if (missing >= 0
+                        && siteReady(level, plan.settlementId(), plan.steps().get(missing))) {
+                    traffic.replace(plan.rewind(missing));
+                }
+                continue;
+            }
             if (access == FootprintAccess.REVOKED) {
                 traffic.replace(plan.rewind(0));
             } else if (access == FootprintAccess.ALLOWED

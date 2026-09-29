@@ -48,7 +48,8 @@ public final class TransportSavedData extends SavedData {
     private List<DeferredTarget> deferredTargets;
     private Map<String, Integer> traffic;
     private int revision;
-    private final List<TransportPlan> openBridges = new ArrayList<>();
+    /** Open bridges and completed roads share one inspection rotation and one per-tick budget. */
+    private final List<TransportPlan> inspectedStructures = new ArrayList<>();
     private final Map<BlockPos, Integer> closedFeet = new HashMap<>();
     private final Map<String, TransportPlan> incompletePlans = new LinkedHashMap<>();
     private int inspectionCursor;
@@ -323,19 +324,19 @@ public final class TransportSavedData extends SavedData {
     }
 
     /**
-     * Inspect at most limit completed bridges in saved order. The cursor is
+     * Inspect at most limit completed bridges and roads in saved order. The cursor is
      * transient: a reload starts another full rotation without loading chunks.
      */
-    public List<TransportPlan> nextOpenBridgeInspections(int limit) {
-        if (limit <= 0 || openBridges.isEmpty()) {
+    public List<TransportPlan> nextStructureInspections(int limit) {
+        if (limit <= 0 || inspectedStructures.isEmpty()) {
             return List.of();
         }
-        int count = Math.min(limit, openBridges.size());
+        int count = Math.min(limit, inspectedStructures.size());
         List<TransportPlan> batch = new ArrayList<>(count);
         for (int offset = 0; offset < count; offset++) {
-            batch.add(openBridges.get((inspectionCursor + offset) % openBridges.size()));
+            batch.add(inspectedStructures.get((inspectionCursor + offset) % inspectedStructures.size()));
         }
-        inspectionCursor = (inspectionCursor + count) % openBridges.size();
+        inspectionCursor = (inspectionCursor + count) % inspectedStructures.size();
         return batch;
     }
 
@@ -387,38 +388,49 @@ public final class TransportSavedData extends SavedData {
         if (!plan.isComplete()) {
             incompletePlans.put(plan.id(), plan);
         }
-        if (!plan.isBridge()) {
+        if (plan.isBridge()) {
+            if (plan.open()) {
+                inspectedStructures.add(plan);
+            } else {
+                for (BlockPos foot : plan.closedFootprint()) {
+                    closedFeet.merge(foot, 1, Integer::sum);
+                }
+            }
             return;
         }
-        if (plan.open()) {
-            openBridges.add(plan);
-        } else {
-            for (BlockPos foot : plan.closedFootprint()) {
-                closedFeet.merge(foot, 1, Integer::sum);
-            }
+        if (plan.isComplete()) {
+            inspectedStructures.add(plan);
         }
     }
 
     private void unindex(TransportPlan plan) {
         incompletePlans.remove(plan.id());
-        if (!plan.isBridge()) {
+        if (plan.isBridge()) {
+            if (plan.open()) {
+                removeInspected(plan);
+            } else {
+                for (BlockPos foot : plan.closedFootprint()) {
+                    closedFeet.computeIfPresent(foot, (key, count) -> count == 1 ? null : count - 1);
+                }
+            }
             return;
         }
-        if (plan.open()) {
-            int removedAt = openBridges.indexOf(plan);
-            if (removedAt >= 0) {
-                openBridges.remove(removedAt);
-                if (removedAt < inspectionCursor) {
-                    inspectionCursor--;
-                }
-                if (inspectionCursor >= openBridges.size()) {
-                    inspectionCursor = 0;
-                }
-            }
-        } else {
-            for (BlockPos foot : plan.closedFootprint()) {
-                closedFeet.computeIfPresent(foot, (key, count) -> count == 1 ? null : count - 1);
-            }
+        if (plan.isComplete()) {
+            removeInspected(plan);
+        }
+    }
+
+    private void removeInspected(TransportPlan plan) {
+        int removedAt = inspectedStructures.indexOf(plan);
+        if (removedAt < 0) {
+            return;
+        }
+        inspectedStructures.remove(removedAt);
+        if (removedAt < inspectionCursor) {
+            inspectionCursor--;
+        }
+        if (inspectionCursor >= inspectedStructures.size()) {
+            inspectionCursor = 0;
         }
     }
 
@@ -427,7 +439,7 @@ public final class TransportSavedData extends SavedData {
      * widening chain are kept: the busiest roads are also the oldest, so retiring one would drop both
      * its samples and its only chance of ever being widened.
      */
-    private static void trimCompletedRoads(List<TransportPlan> updated) {
+    private void trimCompletedRoads(List<TransportPlan> updated) {
         long retirable = updated.stream().filter(plan -> isRetirable(plan, updated)).count();
         if (retirable <= MAX_COMPLETED_ROADS) {
             return;
@@ -437,6 +449,7 @@ public final class TransportSavedData extends SavedData {
             TransportPlan plan = iterator.next();
             if (isRetirable(plan, updated)) {
                 iterator.remove();
+                unindex(plan);
                 retirable--;
             }
         }

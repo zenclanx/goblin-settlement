@@ -2,8 +2,10 @@ package dev.local.goblinsettlement.defense;
 
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -123,9 +125,41 @@ public final class GolemWorkshop {
         return convertToVanillaIron(level, previous, roster, Optional.empty());
     }
 
+    /**
+     * The vanilla iron belonging to a custom iron golem is named from the golem it replaces, so the
+     * replacement is uniquely determined by the original. A crash between spawning it and updating the
+     * roster then cannot spawn a second one: the derived id is looked up before any new entity is made.
+     */
+    static UUID vanillaIronId(UUID golemId) {
+        return UUID.nameUUIDFromBytes(
+                ("goblinsettlement:vanilla-iron:" + golemId).getBytes(StandardCharsets.UTF_8));
+    }
+
     private static boolean convertToVanillaIron(ServerLevel level, GoblinGolemEntity previous,
             DefenseSavedData roster, Optional<GolemMaterials.Snapshot> paid) {
+        UUID convertedId = vanillaIronId(previous.getUUID());
+        String convertedKey = convertedId.toString();
+        // The roster already names the replacement: the replace landed but the discard did not, so
+        // only the stale custom golem is left. Its entry is bogus now and would hold a quota slot, so
+        // release it the way a death does, then discard the entity.
+        if (roster.contains(convertedKey)) {
+            roster.markDead(previous.getUUID().toString(), previous.settlementId());
+            previous.discard();
+            return true;
+        }
+        // The derived entity is already in the world: a previous attempt spawned it and was interrupted
+        // before the roster update, so finish that update instead of spawning a duplicate.
+        if (level.getEntity(convertedId) instanceof IronGolem) {
+            if (!roster.replace(previous.getUUID().toString(), convertedKey,
+                    previous.settlementId(), GolemTier.IRON, previous.home())) {
+                paid.ifPresent(GolemMaterials.Snapshot::restore);
+                return false;
+            }
+            previous.discard();
+            return true;
+        }
         IronGolem iron = new IronGolem(EntityType.IRON_GOLEM, level);
+        iron.setUUID(convertedId);
         iron.setPos(previous.getX(), previous.getY(), previous.getZ());
         iron.setCustomName(previous.getCustomName());
         iron.setCustomNameVisible(previous.isCustomNameVisible());
