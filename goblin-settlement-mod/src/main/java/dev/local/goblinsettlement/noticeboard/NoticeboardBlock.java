@@ -1,15 +1,22 @@
 package dev.local.goblinsettlement.noticeboard;
 
 import com.mojang.serialization.MapCodec;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -65,5 +72,20 @@ public final class NoticeboardBlock extends HorizontalDirectionalBlock {
 
     private static VoxelShape shape(BlockState state) {
         return state.getValue(FACING).getAxis() == Direction.Axis.Z ? SHAPE_NS : SHAPE_EW;
+    }
+
+    /**
+     * The server computes the snapshot and pushes it; the client only opens the screen when it arrives.
+     * There is no client-to-server request, because the click already happened on the server and there
+     * is nothing to ask for.
+     */
+    @Override
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
+                                               Player player, BlockHitResult hit) {
+        if (!level.isClientSide() && player instanceof ServerPlayer server) {
+            var report = SettlementReport.snapshot((ServerLevel) level);
+            ServerPlayNetworking.send(server, new NoticeboardPayload(report));
+        }
+        return InteractionResult.SUCCESS;
     }
 }

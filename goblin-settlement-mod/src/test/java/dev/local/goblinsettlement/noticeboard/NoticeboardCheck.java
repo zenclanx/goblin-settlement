@@ -3,11 +3,13 @@ package dev.local.goblinsettlement.noticeboard;
 import dev.local.goblinsettlement.colony.Profession;
 import dev.local.goblinsettlement.construction.transport.TransportFacts;
 import dev.local.goblinsettlement.economy.food.FoodForecast;
+import io.netty.buffer.Unpooled;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.FriendlyByteBuf;
 
 /** Standalone checks for the noticeboard: food forecast, snapshot text, and the panel sections. */
 public final class NoticeboardCheck {
@@ -64,6 +66,13 @@ public final class NoticeboardCheck {
         var noTargetLine = SettlementText.lines(Optional.of(noTarget)).get(4);
         check(noTargetLine.equals("No pending traffic target"),
                 "no pending traffic target line, got: " + noTargetLine);
+
+        // The payload codec: write the same sample the text assertions use into a real buffer, read it
+        // back, compare. A field written but never read, or read in the wrong order, shows up here.
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        SettlementReport.CODEC.encode(buffer, sample);
+        check(SettlementReport.CODEC.decode(buffer).equals(sample),
+                "a report survives the wire round trip");
 
         System.out.println("NoticeboardCheck passed");
     }

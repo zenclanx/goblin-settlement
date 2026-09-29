@@ -3,8 +3,11 @@ package dev.local.goblinsettlement.client;
 import dev.local.goblinsettlement.GoblinSettlement;
 import dev.local.goblinsettlement.citizen.ModEntities;
 import dev.local.goblinsettlement.client.model.GoblinBodies;
+import dev.local.goblinsettlement.client.noticeboard.NoticeboardScreen;
 import dev.local.goblinsettlement.defense.GolemRenderer;
+import dev.local.goblinsettlement.noticeboard.NoticeboardPayload;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.renderer.entity.EntityRenderers;
@@ -18,6 +21,11 @@ public final class GoblinSettlementClient implements ClientModInitializer {
         }
         EntityRenderers.register(ModEntities.GOBLIN, GoblinRenderer::new);
         GolemRenderer.initializeClient();
+        // The snapshot is pushed, never requested: opening the screen is all the client does, and it
+        // has to happen on the client's own thread.
+        ClientPlayNetworking.registerGlobalReceiver(NoticeboardPayload.TYPE,
+                (payload, context) -> context.client().execute(
+                        () -> context.client().setScreen(new NoticeboardScreen(payload.report()))));
     }
 
     /** The layer a body is baked under. The crop id is the geometry's identity, so it names the layer. */

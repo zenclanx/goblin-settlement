@@ -38,6 +38,7 @@ import dev.local.goblinsettlement.housing.HousingAssignmentCoordinator;
 import dev.local.goblinsettlement.housing.HousingBlueprints;
 import dev.local.goblinsettlement.housing.HousingCoordinator;
 import dev.local.goblinsettlement.noticeboard.ModBlocks;
+import dev.local.goblinsettlement.noticeboard.NoticeboardPayload;
 import dev.local.goblinsettlement.noticeboard.SettlementReport;
 import dev.local.goblinsettlement.noticeboard.SettlementText;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
@@ -47,6 +48,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
@@ -63,6 +65,8 @@ public final class GoblinSettlement implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        // First: a payload type must be registered before anything sends it.
+        PayloadTypeRegistry.playS2C().register(NoticeboardPayload.TYPE, NoticeboardPayload.CODEC);
         ModEntities.initialize();
         GolemEntities.initialize();
         ModBlocks.initialize();
