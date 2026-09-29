@@ -24,7 +24,8 @@ public final class ModBlocks {
             new NoticeboardBlock(BlockBehaviour.Properties.of()
                     .noOcclusion()
                     .strength(1.0F)
-                    .sound(SoundType.WOOD)));
+                    .sound(SoundType.WOOD)
+                    .setId(NOTICEBOARD_KEY)));
 
     public static final BlockItem NOTICEBOARD_ITEM = Registry.register(BuiltInRegistries.ITEM,
             Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, "noticeboard"),
