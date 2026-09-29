@@ -1,6 +1,7 @@
 package dev.local.goblinsettlement.noticeboard;
 
 import dev.local.goblinsettlement.colony.Profession;
+import dev.local.goblinsettlement.construction.transport.TransportFacts;
 import dev.local.goblinsettlement.construction.transport.TransportLinks;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +11,12 @@ import java.util.Optional;
 /** Turns a report into titled sections of translatable rows. Pure: no world, no language, no text. */
 public final class NoticeboardText {
     private static final String ROOT = "noticeboard.goblin_settlement.";
-    private static final int HOME_LIMIT = 8;
+
+    /**
+     * How many per-item rows any section shows, as design §4 requires ("上限同为 8"): the same cap the
+     * status command puts on the housing report and on the two traffic lines.
+     */
+    private static final int ROW_LIMIT = 8;
 
     /**
      * A row has two columns; an empty key means "nothing here" and the screen draws nothing for it. A
@@ -67,7 +73,12 @@ public final class NoticeboardText {
         homeRows.add(raw(ROOT + "row.occupied", String.valueOf(housing.occupied())));
         homeRows.add(raw(ROOT + "row.spare", String.valueOf(housing.spare())));
         homeRows.add(raw(ROOT + "row.homeless", String.valueOf(housing.homeless())));
-        for (int index = 0; index < Math.min(HOME_LIMIT, housing.homes().size()); index++) {
+        // Design §9: when the blueprint data is unavailable the panel says what status says, word for
+        // word, and invents no second phrasing. The English entry in en_us.json is that sentence.
+        if (housing.blueprintUnavailable()) {
+            homeRows.add(new Row(BLANK, ROOT + "row.blueprint_unavailable", List.of()));
+        }
+        for (int index = 0; index < Math.min(ROW_LIMIT, housing.homes().size()); index++) {
             SettlementReport.HomeRow home = housing.homes().get(index);
             var args = new ArrayList<String>();
             args.add(home.bed().toShortString());
@@ -82,24 +93,71 @@ public final class NoticeboardText {
                 homeRows.add(new Row(ROOT + "row.home", ROOT + "value.home", List.copyOf(args)));
             }
         }
-        if (housing.homes().size() > HOME_LIMIT) {
+        if (housing.homes().size() > ROW_LIMIT) {
             homeRows.add(note(ROOT + "row.more_homes",
-                    String.valueOf(housing.homes().size() - HOME_LIMIT)));
+                    String.valueOf(housing.homes().size() - ROW_LIMIT)));
         }
         if (housing.notLoaded() > 0) {
             homeRows.add(note(ROOT + "row.not_loaded", String.valueOf(housing.notLoaded())));
         }
         sections.add(new Section(ROOT + "section.housing", List.copyOf(homeRows)));
 
-        Row nextTargetRow = value.nextTarget()
+        // Built from the facts, never from the command's finished lines. Two rows used to carry
+        // `TransportLinks.trafficLine(...)` / `connectivityLine(...)` as a single raw argument, which put
+        // the command's English sentence on a Chinese panel and its literal 受阻/缺口 on an English one;
+        // design §4.1 wants keys plus raw arguments, so every figure here is a key and every id, count and
+        // boolean is an argument.
+        var trafficRows = new ArrayList<Row>();
+        trafficRows.add(value.nextTarget()
                 .map(pos -> raw(ROOT + "row.next_target", pos.toShortString()))
-                .orElseGet(() -> new Row(ROOT + "row.next_target", ROOT + "value.none", List.of()));
-        sections.add(new Section(ROOT + "section.traffic", List.of(
-                nextTargetRow,
-                new Row(ROOT + "row.road_traffic", ROOT + "value.raw",
-                        List.of(TransportLinks.trafficLine(value.traffic()))),
-                new Row(ROOT + "row.links", ROOT + "value.raw",
-                        List.of(TransportLinks.connectivityLine(value.traffic()))))));
+                .orElseGet(() -> new Row(ROOT + "row.next_target", ROOT + "value.none", List.of())));
+        var traffic = value.traffic();
+        var roads = traffic.roads();
+        if (roads.isEmpty()) {
+            trafficRows.add(new Row(ROOT + "row.road_traffic", ROOT + "value.road_traffic_none", List.of()));
+        } else {
+            long ready = roads.stream().filter(TransportFacts.RoadRow::wideningReady).count();
+            trafficRows.add(new Row(ROOT + "row.road_traffic", ROOT + "value.road_traffic",
+                    List.of(String.valueOf(roads.size()), String.valueOf(ready))));
+            for (int index = 0; index < Math.min(ROW_LIMIT, roads.size()); index++) {
+                TransportFacts.RoadRow road = roads.get(index);
+                // The star is punctuation only the ready branch has, so that branch needs its own row key,
+                // the same reason value.home and value.home_blocked are two keys.
+                trafficRows.add(new Row(ROOT + "row.road",
+                        road.wideningReady() ? ROOT + "value.road_ready" : ROOT + "value.road",
+                        List.of(TransportLinks.shortId(road.id()), String.valueOf(road.traffic()),
+                                String.valueOf(road.lanes()))));
+            }
+            if (roads.size() > ROW_LIMIT) {
+                trafficRows.add(note(ROOT + "row.more_roads", String.valueOf(roads.size() - ROW_LIMIT)));
+            }
+        }
+        var links = traffic.links();
+        if (!traffic.hasSettlement()) {
+            trafficRows.add(new Row(ROOT + "row.links", ROOT + "value.links_no_settlement", List.of()));
+        } else if (links.loaded() == 0 && links.skipped() == 0) {
+            trafficRows.add(new Row(ROOT + "row.links", ROOT + "value.links_none", List.of()));
+        } else if (links.brokenLinks().isEmpty()) {
+            trafficRows.add(new Row(ROOT + "row.links", ROOT + "value.links_verified",
+                    List.of(String.valueOf(links.loaded()))));
+        } else {
+            trafficRows.add(new Row(ROOT + "row.links", ROOT + "value.links_broken",
+                    List.of(String.valueOf(links.brokenLinks().size()),
+                            String.valueOf(links.loaded()))));
+            for (int index = 0; index < Math.min(ROW_LIMIT, links.brokenLinks().size()); index++) {
+                TransportFacts.BrokenLink link = links.brokenLinks().get(index);
+                trafficRows.add(new Row(ROOT + "row.link", linkValueKey(link),
+                        List.of(TransportLinks.shortId(link.id()))));
+            }
+            if (links.brokenLinks().size() > ROW_LIMIT) {
+                trafficRows.add(note(ROOT + "row.more_links",
+                        String.valueOf(links.brokenLinks().size() - ROW_LIMIT)));
+            }
+        }
+        if (links.skipped() > 0) {
+            trafficRows.add(note(ROOT + "row.links_not_loaded", String.valueOf(links.skipped())));
+        }
+        sections.add(new Section(ROOT + "section.traffic", List.copyOf(trafficRows)));
 
         sections.add(new Section(ROOT + "section.materials", List.of(
                 new Row(ROOT + "row.tools", ROOT + "value.tools", List.of(
@@ -127,6 +185,18 @@ public final class NoticeboardText {
 
     private static Row raw(String labelKey, String value) {
         return new Row(labelKey, ROOT + "value.raw", List.of(value));
+    }
+
+    /**
+     * Four whole phrases rather than "road"/"bridge" and a reason argument, because the row carries plain
+     * strings: the two words the command writes around this fact (受阻/缺口) cannot be handed to the client
+     * as an argument and translated there, so each combination is a key of its own.
+     */
+    private static String linkValueKey(TransportFacts.BrokenLink link) {
+        if (link.bridge()) {
+            return link.blocked() ? ROOT + "value.link_bridge_blocked" : ROOT + "value.link_bridge_gap";
+        }
+        return link.blocked() ? ROOT + "value.link_road_blocked" : ROOT + "value.link_road_gap";
     }
 
     private static Row pair(String labelKey, String first, String second) {

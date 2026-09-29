@@ -27,7 +27,7 @@ public final class TransportLinks {
             int byCount = Integer.compare(right.traffic(), left.traffic());
             return byCount != 0 ? byCount : left.id().compareTo(right.id());
         });
-        return new TransportFacts(settlementAnchor.isPresent(), rows,
+        return new TransportFacts(settlementAnchor.isPresent(), List.copyOf(rows),
                 links(level, traffic, settlementAnchor));
     }
 
@@ -49,7 +49,7 @@ public final class TransportLinks {
             if (!TransportCoordinator.roadConnects(level, traffic, road, anchor)
                     || !chainIntact(level, traffic, road)) {
                 broken.add(new TransportFacts.BrokenLink(road.id(), false,
-                        blockedWord(level, traffic, road)));
+                        blocked(level, traffic, road)));
             }
         }
         for (TransportPlan plan : traffic.plans()) {
@@ -63,11 +63,11 @@ public final class TransportLinks {
             loaded++;
             if (!TransportCoordinator.bridgeConnects(level, plan, anchor)) {
                 broken.add(new TransportFacts.BrokenLink(plan.id(), true,
-                        blockedWord(level, traffic, plan)));
+                        blocked(level, traffic, plan)));
             }
         }
         broken.sort((left, right) -> left.id().compareTo(right.id()));
-        return new TransportFacts.Links(loaded, skipped, broken);
+        return new TransportFacts.Links(loaded, skipped, List.copyOf(broken));
     }
 
     /** Whether every declared walking cell of these plans sits in a ticking chunk. */
@@ -85,9 +85,13 @@ public final class TransportLinks {
         return true;
     }
 
-    /** 缺口 = a declared cell is missing and the rebuild path will fix it; 受阻 = something foreign is in the way. */
-    private static String blockedWord(ServerLevel level, TransportSavedData traffic, TransportPlan plan) {
-        return chainIntact(level, traffic, plan) ? "受阻" : "缺口";
+    /**
+     * True (受阻) when something foreign is in the way of a walkable cell; false (缺口) when a declared
+     * cell is simply missing and the rebuild path will fix it. The fact, not the word: the two words are
+     * written by each presenter, so the panel can send a translation key where the command sends 受阻.
+     */
+    private static boolean blocked(ServerLevel level, TransportSavedData traffic, TransportPlan plan) {
+        return chainIntact(level, traffic, plan);
     }
 
     /** Every member of the road must still be structurally whole; a chain is one road. */
@@ -105,7 +109,11 @@ public final class TransportLinks {
                 traffic.roadTraffic(road.id()));
     }
 
-    private static String shortId(String id) {
+    /**
+     * The display form of a plan id, shared by both presenters so the panel and the command name a road
+     * the same way. Ids are random UUIDs; eight characters is enough to tell two apart on one screen.
+     */
+    public static String shortId(String id) {
         return id.length() <= 8 ? id : id.substring(0, 8);
     }
 
@@ -166,7 +174,7 @@ public final class TransportLinks {
             }
             builder.append(shortId(link.id())).append(' ')
                     .append(link.bridge() ? "bridge" : "road")
-                    .append('(').append(link.blocked()).append(')');
+                    .append('(').append(link.blocked() ? "受阻" : "缺口").append(')');
         }
         if (links.brokenLinks().size() > shown) {
             builder.append(", +").append(links.brokenLinks().size() - shown).append(" more");

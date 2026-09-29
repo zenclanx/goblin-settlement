@@ -132,7 +132,7 @@ public record SettlementReport(Header header, Stock stock, Housing housing, Tran
         for (var link : traffic.links().brokenLinks()) {
             buf.writeUtf(link.id());
             buf.writeBoolean(link.bridge());
-            buf.writeUtf(link.blocked());
+            buf.writeBoolean(link.blocked());
         }
         buf.writeBoolean(report.nextTarget().isPresent());
         report.nextTarget().ifPresent(pos -> {
@@ -185,10 +185,10 @@ public record SettlementReport(Header header, Stock stock, Housing housing, Tran
         int brokenCount = buf.readVarInt();
         var broken = new ArrayList<TransportFacts.BrokenLink>(brokenCount);
         for (int index = 0; index < brokenCount; index++) {
-            broken.add(new TransportFacts.BrokenLink(buf.readUtf(), buf.readBoolean(), buf.readUtf()));
+            broken.add(new TransportFacts.BrokenLink(buf.readUtf(), buf.readBoolean(), buf.readBoolean()));
         }
-        var traffic = new TransportFacts(hasSettlement, roads,
-                new TransportFacts.Links(loaded, skipped, broken));
+        var traffic = new TransportFacts(hasSettlement, List.copyOf(roads),
+                new TransportFacts.Links(loaded, skipped, List.copyOf(broken)));
         var nextTarget = buf.readBoolean()
                 ? Optional.of(new BlockPos(buf.readVarInt(), buf.readVarInt(), buf.readVarInt()))
                 : Optional.<BlockPos>empty();
@@ -198,7 +198,7 @@ public record SettlementReport(Header header, Stock stock, Housing housing, Tran
             trades.put(Profession.valueOf(buf.readUtf()), buf.readVarInt());
         }
         return new SettlementReport(header, stock,
-                new Housing(beds, occupied, spare, homeless, homes, notLoaded, unavailable),
+                new Housing(beds, occupied, spare, homeless, List.copyOf(homes), notLoaded, unavailable),
                 traffic, nextTarget, Map.copyOf(trades));
     }
 
