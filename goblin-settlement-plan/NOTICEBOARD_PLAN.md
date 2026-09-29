@@ -1702,12 +1702,12 @@ git commit -m "Lay the snapshot out in sections, with the client doing nothing b
      * ever took its spot.
      */
     private static void placeNoticeboard(ServerLevel level, String id, BlockPos corner) {
-        BlockPos pos = corner.offset(0, 0, 4);
+        BlockPos pos = corner.offset(1, 0, 0);
         if (!canPlace(level, id, pos)) {
             return;
         }
         level.setBlock(pos, ModBlocks.NOTICEBOARD.defaultBlockState()
-                .setValue(NoticeboardBlock.FACING, Direction.EAST), 3);
+                .setValue(NoticeboardBlock.FACING, Direction.SOUTH), 3);
     }
 ```
 
@@ -1720,7 +1720,11 @@ Expected: **BUILD SUCCESSFUL**，23 项 `*Check passed`。
 
 - [ ] **Step 4: 人工核对不挡路**
 
-对着 `placeCamp`（约 `:146-170`）逐格核对：`(0, 0, 4)` 相对角落 = 世界格 `corner.x + 0`、`corner.z + 4`。营地在 `z ∈ {1,2}` 与 `{5,6}` 铺床、`z=3` 有箱子(1)与营火(3)、`y=3` 的木板盖住 `z ∈ {1,2,5,6}`。**确认 `z=4` 那条不在木板覆盖内、也不与床重叠**。若发现 `(0,0,4)` 会挡路或与既有方块冲突，**换到同一列上确认空着的格子**（候选：`corner.offset(0, 0, 3)` 但必须避开箱子与营火），并在 UpdateLog 里写清换了哪个格与为什么。
+**这一步在实现时被更正过，实现（提交 `a810393`）才是权威。** 计划初稿选的 `corner.offset(0, 0, 4)` **是 8 个居民生成位之一**（`spawnAdults` 的 `spaces` 表第 5 项），而牌子在居民生成**之前**放、且只放一次——于是第 8 个人永远生不出来，`initialAdultCount == 8` 永不成立，营地**永久卡在 7 人**。初稿给的备用格 `(0, 0, 3)` 是同一张表的第 1 项，**一样中招**；整列 `x=0` 根本没有既空闲又不占生成位的格子。
+
+现改为 `corner.offset(1, 0, 0)`、`FACING = SOUTH`：`z=0` 那条只立着两个角柱（`x=0` 与 `x=7`），所以该格是空气、不在生成位表里、也不在走道（走道是 `z=3`/`z=4`）；紧贴西北角柱、正面朝营地内，只封住一个没有床、没有箱子、没有生成位的死角。审查者独立重推了这张生成位表并确认上述结论。
+
+**这条要写进 UpdateLog**：换格与原因（`(0,0,4)/EAST` → `(1,0,0)/SOUTH`），由 Task 8 记录。
 
 - [ ] **Step 5: 提交**
 
