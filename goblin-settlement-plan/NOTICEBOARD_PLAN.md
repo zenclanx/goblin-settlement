@@ -1416,6 +1416,15 @@ git commit -m "Open the mod's first network channel, server snapshot to client s
 
 ### Task 6: 面板分区 presenter 与 Screen 排版
 
+> **⚠️ 本节的代码片段已被实现更正过五处，实现（提交 `6a0d971`）才是权威。** 本节的 Step 2 presenter 与 Step 4 语言 JSON **互相矛盾**，实现者逐条发现并改对，审查者逐条验证为"真实的缺陷、且改动保住了设计意图"：
+> 1. **住房行数断言写错**：片段写 `rows().size() == 5`，但样例里 `notLoaded = 2` 会让 presenter 追加一行 `not_loaded`，实际是 **6** 行。断言改为 `== 6`。
+> 2. **`value.home` 的可选原因会渲染出字面量 `%s`**：一个键同时承担"有原因"与"无原因"两种参数个数（3 或 4），必然有一边对不上。拆成 `value.home`（3 参）与 **新增的 `value.home_blocked`**（4 参，自带设计 §4 要求的方括号）。
+> 3. **`row.stock` 把翻译键当参数**塞进 `value.raw`——这正是本节自己那条注释所禁止的。改为直接给取值键。
+> 4. **空的 `foodMinutes` 给一个占位符的键传了 0 个参数**。按设计 §5.3"居民数为 0 显示 `—`"新增 `value.dash`（0 参）。
+> 5. **`row.more_homes` / `row.not_loaded` 把占位符放在了标签列**。改记到取值列。
+>
+> 结论：Step 4 的语言 JSON 需补 `value.dash` 与 `value.home_blocked` 两个键（两个语言文件都要），其余键如本节所列。
+
 **Files:**
 - Create: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/noticeboard/NoticeboardText.java`
 - Modify: `goblin-settlement-mod/src/client/java/dev/local/goblinsettlement/client/noticeboard/NoticeboardScreen.java`
