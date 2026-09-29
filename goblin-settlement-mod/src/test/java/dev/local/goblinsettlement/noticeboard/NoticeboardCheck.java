@@ -74,6 +74,27 @@ public final class NoticeboardCheck {
         check(SettlementReport.CODEC.decode(buffer).equals(sample),
                 "a report survives the wire round trip");
 
+        // The panel sections: the presenter turns the same sample into titled rows of translation keys,
+        // and the screen only lays them out. The counts below are pinned so a section silently losing or
+        // gaining a row fails here.
+        var sections = NoticeboardText.sections(Optional.of(sample));
+        check(sections.size() == 6, "six sections, got " + sections.size());
+        check(sections.get(0).titleKey().equals("noticeboard.goblin_settlement.section.population"),
+                "population comes first");
+        check(sections.get(0).rows().size() == 5, "adults, children, slots, plots, player areas");
+        check(sections.get(1).titleKey().equals("noticeboard.goblin_settlement.section.food"), "food second");
+        check(sections.get(1).rows().get(1).valueKey().equals("noticeboard.goblin_settlement.value.minutes")
+                && sections.get(1).rows().get(1).args().equals(List.of("40")),
+                "the food forecast is the second row of food");
+        // The sample has two homes that could not be judged, so the housing section carries that row as
+        // well: beds, occupied, spare, homeless, one home row and the not-loaded note.
+        check(sections.get(2).rows().size() == 6, "beds, occupied, spare, homeless, one home row, not loaded");
+        check(sections.get(2).rows().get(4).args().contains("oak_planks missing"), "the stuck reason is carried");
+        check(sections.get(3).titleKey().equals("noticeboard.goblin_settlement.section.traffic")
+                && sections.get(3).rows().size() == 3, "next target, traffic, links");
+        check(sections.get(5).titleKey().equals("noticeboard.goblin_settlement.section.trades"),
+                "trades come last");
+
         System.out.println("NoticeboardCheck passed");
     }
 
