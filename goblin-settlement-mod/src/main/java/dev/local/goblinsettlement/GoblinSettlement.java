@@ -21,6 +21,8 @@ import dev.local.goblinsettlement.defense.GolemEntities;
 import dev.local.goblinsettlement.defense.PatrolCoordinator;
 import dev.local.goblinsettlement.construction.ConstructionCommands;
 import dev.local.goblinsettlement.construction.ConstructionCoordinator;
+import dev.local.goblinsettlement.diagnostics.ProfileCommands;
+import dev.local.goblinsettlement.diagnostics.SettlementProfiler;
 import dev.local.goblinsettlement.construction.transport.TrafficProposalCoordinator;
 import dev.local.goblinsettlement.construction.transport.TrafficSampler;
 import dev.local.goblinsettlement.construction.transport.TransportCommands;
@@ -83,6 +85,8 @@ public final class GoblinSettlement implements ModInitializer {
                 WarehouseRecoveryCommands.register(dispatcher));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 GiftTradeCommands.register(dispatcher));
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+                ProfileCommands.register(dispatcher));
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 dispatcher.register(Commands.literal("goblinsettlement")
                         .then(Commands.literal("status").executes(context -> {
@@ -269,32 +273,33 @@ public final class GoblinSettlement implements ModInitializer {
     private static void tickSettlement(ServerLevel level) {
         // Runs before the settlement gate below: an alert must be able to lift even while the anchor's
         // chunk is unloaded, or a resident would stay indoors forever.
-        DefenseCoordinator.tickAlert(level);
-        CampGenerationCoordinator.tick(level);
-        ProfessionCoordinator.tick(level);
+        SettlementProfiler.run("defense-alert", () -> DefenseCoordinator.tickAlert(level));
+        SettlementProfiler.run("camp-generation", () -> CampGenerationCoordinator.tick(level));
+        SettlementProfiler.run("profession", () -> ProfessionCoordinator.tick(level));
         var founded = SettlementSavedData.get(level).settlement();
         if (founded.isEmpty() || !level.shouldTickBlocksAt(founded.get().anchor())) {
             return;
         }
-        MealCoordinator.tick(level);
-        FoodCraftingCoordinator.tick(level);
-        FarmDiscoveryCoordinator.tick(level);
-        FarmingCoordinator.tick(level);
-        ToolCraftingCoordinator.tick(level);
-        ConstructionCoordinator.tick(level);
-        TrafficProposalCoordinator.tick(level);   // propose first: saved plans reach the worker tick below
-        TransportCoordinator.tick(level);
-        TrafficSampler.tick(level);
-        ForestryCoordinator.tick(level);
-        MiningCoordinator.tick(level);
-        SmeltingCoordinator.tick(level);
-        HousingCoordinator.tick(level);
-        BedProvisioningCoordinator.tick(level);
-        HousingAssignmentCoordinator.tick(level);
-        PatrolCoordinator.tick(level);
-        DefenseCoordinator.tick(level);
-        FamilyCoordinator.tick(level);
-        ExpansionCoordinator.tick(level);
+        SettlementProfiler.run("meal", () -> MealCoordinator.tick(level));
+        SettlementProfiler.run("food-crafting", () -> FoodCraftingCoordinator.tick(level));
+        SettlementProfiler.run("farm-discovery", () -> FarmDiscoveryCoordinator.tick(level));
+        SettlementProfiler.run("farming", () -> FarmingCoordinator.tick(level));
+        SettlementProfiler.run("tool-crafting", () -> ToolCraftingCoordinator.tick(level));
+        SettlementProfiler.run("construction", () -> ConstructionCoordinator.tick(level));
+        // propose first: saved plans reach the worker tick below
+        SettlementProfiler.run("traffic-proposal", () -> TrafficProposalCoordinator.tick(level));
+        SettlementProfiler.run("transport", () -> TransportCoordinator.tick(level));
+        SettlementProfiler.run("traffic-sampler", () -> TrafficSampler.tick(level));
+        SettlementProfiler.run("forestry", () -> ForestryCoordinator.tick(level));
+        SettlementProfiler.run("mining", () -> MiningCoordinator.tick(level));
+        SettlementProfiler.run("smelting", () -> SmeltingCoordinator.tick(level));
+        SettlementProfiler.run("housing", () -> HousingCoordinator.tick(level));
+        SettlementProfiler.run("bed-provisioning", () -> BedProvisioningCoordinator.tick(level));
+        SettlementProfiler.run("housing-assignment", () -> HousingAssignmentCoordinator.tick(level));
+        SettlementProfiler.run("patrol", () -> PatrolCoordinator.tick(level));
+        SettlementProfiler.run("defense", () -> DefenseCoordinator.tick(level));
+        SettlementProfiler.run("family", () -> FamilyCoordinator.tick(level));
+        SettlementProfiler.run("expansion", () -> ExpansionCoordinator.tick(level));
     }
 
     private static final int HOUSING_REPORT_LIMIT = 8;

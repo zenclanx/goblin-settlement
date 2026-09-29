@@ -234,6 +234,14 @@ tasks.register('housingAssignmentCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.housing.HousingAssignmentCheck'
 }
 
+tasks.register('profileCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks the session-only profiler accumulation, ordering and report text.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.diagnostics.SettlementProfilerCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -255,5 +263,6 @@ tasks.named('check') {
     dependsOn tasks.named('constructionMaterialCheck')
     dependsOn tasks.named('bridgeMaterialsCheck')
     dependsOn tasks.named('housingAssignmentCheck')
+    dependsOn tasks.named('profileCheck')
     dependsOn tasks.named('artModelCheck')
 }
