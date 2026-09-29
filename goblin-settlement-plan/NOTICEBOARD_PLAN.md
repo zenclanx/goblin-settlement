@@ -1388,14 +1388,15 @@ public final class NoticeboardScreen extends Screen {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos,
                                                Player player, BlockHitResult hit) {
-        if (!level.isClientSide() && player instanceof net.minecraft.server.level.ServerPlayer server) {
-            var report = SettlementReport.snapshot((net.minecraft.server.level.ServerLevel) level);
+        if (!level.isClientSide() && player instanceof ServerPlayer server) {
             net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(server,
-                    new NoticeboardPayload(report.orElse(null)));
+                    new NoticeboardPayload(SettlementReport.snapshot((ServerLevel) level)));
         }
         return InteractionResult.SUCCESS;
     }
 ```
+
+**`snapshot` 本来就返回 `Optional<SettlementReport>`，payload 的分量也正是它——直接透传即可。** 计划初稿这里写的是 `report.orElse(null)`，与它自己在 Step 3 定下的 payload 签名**直接矛盾、编译不过**；实现者当场发现并改成透传。**这里再强调一遍那条语义**：`Optional.empty()` 是一个正常载荷（"这个维度没有聚落"），不是错误——所以**没有解包这一步**。补 `import net.minecraft.server.level.ServerLevel;`、`net.minecraft.server.level.ServerPlayer;`。
 
 **`SettlementReport.OPTIONAL_CODEC` 在 Task 5 Step 2 里一并定义**（见那一节末尾），这里直接用。整条链路的分量类型是 `Optional<SettlementReport>`：`snapshot` 返回它、payload 承载它、Screen 接收它。**"这个维度没有聚落"是一个正常的载荷，不是错误**——面板要能打开并说明这一点（设计 §9）。
 
