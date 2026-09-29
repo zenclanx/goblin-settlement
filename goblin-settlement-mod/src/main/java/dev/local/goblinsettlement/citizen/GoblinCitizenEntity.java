@@ -240,6 +240,23 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     }
 
     /**
+     * True while this resident still legitimately holds the given construction step. Both recovery-leg
+     * stages (RECOVERING and RETURNING) carry the dropped item in buildPos rather than the build site,
+     * so those two are matched on the settlement alone. FETCHING and DELIVERING come straight from
+     * beginConstruction, which sets buildPos = site, so they are safe to compare against the site.
+     */
+    public boolean hasConstructionWork(String id, BlockPos site) {
+        if (!settlementId.equals(id)) {
+            return false;
+        }
+        return switch (workStage) {
+            case RECOVERING, RETURNING -> true;
+            case FETCHING, DELIVERING -> buildPos.equals(site);
+            default -> false;
+        };
+    }
+
+    /**
      * Mining keeps no persisted reservation: the site is re-derived from the world every tick, so the
      * work clears itself back to IDLE instead of using the *_COMPLETE and acknowledge pattern.
      */

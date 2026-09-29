@@ -2,8 +2,10 @@ package dev.local.goblinsettlement.construction;
 
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.ProfessionRules;
+import dev.local.goblinsettlement.colony.ResidentRecord;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.colony.WorkKind;
+import dev.local.goblinsettlement.colony.WorkerAssignmentRules;
 import dev.local.goblinsettlement.economy.DroppedMaterialLookup;
 import dev.local.goblinsettlement.economy.PublicWarehouseInventory;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
@@ -45,21 +47,29 @@ public final class ConstructionCoordinator {
         }
         if (plan.workerId().isPresent()) {
             String workerId = plan.workerId().orElseThrow();
+            GoblinCitizenEntity goblin = null;
             try {
-                var entity = level.getEntity(UUID.fromString(workerId));
-                if (entity instanceof GoblinCitizenEntity goblin
-                        && goblin.completedConstruction(settlementId, site)
-                        && level.getBlockState(site).is(plan.material().block())) {
-                    data.finishStep(workerId, site);
-                } else if (entity instanceof GoblinCitizenEntity goblin && goblin.recoveryEnded(settlementId)) {
-                    if (goblin.recoverySucceeded()) {
-                        data.finishRecovery(workerId);
-                    } else {
-                        data.abandonRecovery(workerId);
-                    }
-                    goblin.acknowledgeRecovery();
+                if (level.getEntity(UUID.fromString(workerId)) instanceof GoblinCitizenEntity loaded) {
+                    goblin = loaded;
                 }
-            } catch (IllegalArgumentException ignored) {
+            } catch (IllegalArgumentException exception) {
+                goblin = null; // An unusable id is not in the roster either, so the rule below releases it.
+            }
+            if (goblin != null && goblin.completedConstruction(settlementId, site)
+                    && level.getBlockState(site).is(plan.material().block())) {
+                data.finishStep(workerId, site);
+            } else if (goblin != null && goblin.recoveryEnded(settlementId)) {
+                if (goblin.recoverySucceeded()) {
+                    data.finishRecovery(workerId);
+                } else {
+                    data.abandonRecovery(workerId);
+                }
+                goblin.acknowledgeRecovery();
+            } else if (WorkerAssignmentRules.decide(
+                    data.resident(workerId).map(ResidentRecord::stage),
+                    goblin != null,
+                    goblin != null && goblin.hasConstructionWork(settlementId, site))
+                    == WorkerAssignmentRules.Decision.RELEASE) {
                 data.releaseWorker(workerId);
             }
             return;
