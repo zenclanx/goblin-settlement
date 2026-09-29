@@ -454,7 +454,7 @@ git commit -m "Split reading the traffic facts from rendering them, so two calle
 
 ---
 
-### Task 3: `SettlementReport` 与状态文本 presenter（纯）
+### Task 3: `SettlementReport`、状态文本 presenter 与 `status` 改造
 
 把 `status` 今天现算的那份聚落状态定义成一个不可变快照，并写出**纯**的文本 presenter。本任务**不读世界、不改 `status`**——只建立形状并用检查把八行文本钉死。
 
@@ -684,19 +684,17 @@ git commit -m "Give the settlement state a shape both the command and the panel 
 
 ---
 
-### Task 4: 从报告渲染 `status`
+**同一个任务的后半：把聚合搬进快照，并让 `status` 从报告渲染。** 输出文本必须与今天逐字相同——由 Step 3 钉死的断言保证。**这正是文本断言要排在接线之前的原因**：先有断言，搬迁才有证据，而不是靠人眼看 diff。
 
-把聚合搬进 `SettlementReport.snapshot(level)`，`status` 改成渲染报告。**输出文本必须与今天逐字相同**——由 Task 3 钉死的断言保证。
-
-**Files:**
-- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/noticeboard/SettlementReport.java`（加 `snapshot` 与 `CODEC` 的**静态**部分推迟到 Task 6，本任务只加 `snapshot`）
+**Files（后半）：**
+- Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/noticeboard/SettlementReport.java`（加 `snapshot` 与 `CODEC` 的**静态**部分推迟到 Task 5，本任务只加 `snapshot`）
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/GoblinSettlement.java`（`status` 分支 + 删 `housingReportLine` 与 `HOUSING_REPORT_LIMIT`）
 
 **Interfaces:**
 - Consumes: `SettlementSavedData.get/adultCount/childCount/occupiedPopulationSlots/claimedPlots/playerAreas/plans/assignedProfessions/settlement`；`PopulationRules.MAX_RESIDENTS` / `maximumPlots(int)`；`PublicWarehouseInventory.snapshot(ServerLevel, SettlementSavedData) -> WarehouseSupply`；`SettlementDemand.assess(int, int, WarehouseSupply, boolean, boolean, boolean) -> Assessment`；`BedCensus.count/shortage`；`HousingAssignmentCoordinator.homeless/canJudge/occupancy`；`HousingCoordinator.homeCapacity/blockedReason`；`HousingSavedData.get(level).homes(String)`；`HousingBlueprints.available()`；`TrafficProposalCoordinator.nearestUnservedFacility(SettlementSavedData, TransportSavedData, long)`；`TransportLinks.inspect`；`FoodForecast.minutes`
 - Produces: `SettlementReport.snapshot(ServerLevel) -> Optional<SettlementReport>`
 
-- [ ] **Step 1: 写 `snapshot`**
+- [ ] **Step 7: 写 `snapshot`**
 
 在 `SettlementReport` 里加（**逐条对照 `GoblinSettlement.java:91-156` 与 `:305-362`，把每一处取值搬过来，不改算法**）：
 
@@ -786,7 +784,7 @@ git commit -m "Give the settlement state a shape both the command and the panel 
 
 写完后**把这些全限定名整理成正常 import**（本节为了让你能一眼对上"哪一处取值来自哪个现有类"才写成全限定；提交前统一成 import，保持与仓库其余文件同一风格）。
 
-- [ ] **Step 2: 把 `status` 改成渲染报告**
+- [ ] **Step 8: 把 `status` 改成渲染报告**
 
 把 `GoblinSettlement.java` 里 `Commands.literal("status").executes(...)` 的整个 lambda 体，连同 `housingReportLine` 方法与 `HOUSING_REPORT_LIMIT` 常量，替换为：
 
@@ -803,17 +801,17 @@ git commit -m "Give the settlement state a shape both the command and the panel 
 
 删掉随之不再使用的 import（`BedCensus`、`HousingAssignmentCoordinator`、`HousingBlueprints`、`HousingCoordinator`、`HousingSavedData`、`PublicWarehouseInventory`、`SettlementDemand`、`TrafficProposalCoordinator` 若在别处不用就一并删）。补 `import ...noticeboard.SettlementReport;` 与 `import ...noticeboard.SettlementText;`。**`PopulationRules`、`Profession`、`TransportSavedData` 等若仍有其他使用者则保留。**
 
-- [ ] **Step 3: 全量构建与检查**
+- [ ] **Step 9: 全量构建与检查**
 
 Run: `./gradlew build --offline --no-daemon`
 Expected: **BUILD SUCCESSFUL**，23 项 `*Check passed`（`NoticeboardCheck` 里 Task 3 钉死的八行断言仍然通过——**这就是"文本逐字未变"的证据**）。
 
-- [ ] **Step 4: 定向 diff 人工复核**
+- [ ] **Step 10: 定向 diff 人工复核**
 
 Run: `git diff -- goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/GoblinSettlement.java`
 核对：被删的每一处取值都在 `snapshot` 里有对应，且**没有任何一处改了算法**（尤其是 `Housing` 的排序（x→z→y）、`homes` 的上限 8、`notLoaded` 的跳过口径、`occupiedSlots`/`spare` 的算式）。`status` 现在不再直接调用任何协调器。
 
-- [ ] **Step 5: 提交**
+- [ ] **Step 11: 提交**
 
 ```bash
 git add goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/noticeboard/ \
@@ -823,7 +821,7 @@ git commit -m "Have status render the shared report, so the command and the boar
 
 ---
 
-### Task 5: 方块、物品、资源与创造栏
+### Task 4: 方块、物品、资源与创造栏
 
 本模组的第一个方块与第一个物品。资源全部来自美术交付包，**只复制不修改**。
 
@@ -1000,8 +998,9 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 
@@ -1027,14 +1026,22 @@ public final class ModBlocks {
     private ModBlocks() {
     }
 
+    /**
+     * The vanilla tab's key is private in this version, so it is rebuilt here exactly the way
+     * CreativeModeTabs builds it (verified by decompiling its own createKey).
+     */
+    private static final ResourceKey<CreativeModeTab> FUNCTIONAL_BLOCKS =
+            ResourceKey.create(Registries.CREATIVE_MODE_TAB,
+                    Identifier.withDefaultNamespace("functional_blocks"));
+
     public static void initialize() {
-        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS)
+        ItemGroupEvents.modifyEntriesEvent(FUNCTIONAL_BLOCKS)
                 .register(entries -> entries.accept(NOTICEBOARD_ITEM));
     }
 }
 ```
 
-**三处要对编译器核实，不要照抄记忆**：① `Block` 的 import（上面漏了，补 `import net.minecraft.world.level.block.Block;`）；② `Item.Properties` 在本版本是否需要 `setId(ResourceKey<Item>)`（1.21.2 起物品堆叠组件要求 id，若编译提示缺 id 就按上面写，若提示重复设置就删掉）；③ `entries.accept(...)` 的参数类型在本版本 Fabric API 里可能是 `ItemLike` 或 `ItemStack`——按编译器提示调整。**目标只有一个：构建通过，且创造模式「功能方块」页里能拿到它。**
+**这一段的三处 API 已对着 1.21.11 的 jar 逐个核实过，照抄即可**：`Item$Properties.setId(ResourceKey<Item>)` 与 `useBlockDescriptionPrefix()` 都存在（物品 id 在本版本是必需的）；`FabricItemGroupEntries` 继承的 `CreativeModeTab.Output.accept(ItemLike)` 存在，`BlockItem` 是 `ItemLike`；**`CreativeModeTabs.FUNCTIONAL_BLOCKS` 是 `private static final`、模组代码够不到**——所以上面自己造 key，命名空间用 `Identifier.withDefaultNamespace("functional_blocks")`（tab 的真实 id 就是从字节码常量池里读出来的这个字符串）。**验收目标：构建通过，且创造模式「功能方块」页里能拿到它。**
 
 - [ ] **Step 5: 接进主类**
 
@@ -1066,7 +1073,7 @@ public final class ModBlocks {
 }
 ```
 
-（面板用到的其余翻译键在 Task 7 一并加。）
+（面板用到的其余翻译键在 Task 6 一并加。）
 
 - [ ] **Step 7: 构建**
 
@@ -1084,7 +1091,7 @@ git commit -m "Register the noticeboard, the mod's first block and first item"
 
 ---
 
-### Task 6: 打通通道（快照 → payload → 空面板）
+### Task 5: 打通通道（快照 → payload → 空面板）
 
 **Files:**
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/noticeboard/SettlementReport.java`（加 `CODEC` 与编解码）
@@ -1381,7 +1388,7 @@ public final class NoticeboardScreen extends Screen {
     }
 ```
 
-**`SettlementReport.OPTIONAL_CODEC` 在 Task 6 Step 2 里一并定义**（见那一节末尾），这里直接用。整条链路的分量类型是 `Optional<SettlementReport>`：`snapshot` 返回它、payload 承载它、Screen 接收它。**"这个维度没有聚落"是一个正常的载荷，不是错误**——面板要能打开并说明这一点（设计 §9）。
+**`SettlementReport.OPTIONAL_CODEC` 在 Task 5 Step 2 里一并定义**（见那一节末尾），这里直接用。整条链路的分量类型是 `Optional<SettlementReport>`：`snapshot` 返回它、payload 承载它、Screen 接收它。**"这个维度没有聚落"是一个正常的载荷，不是错误**——面板要能打开并说明这一点（设计 §9）。
 
 - [ ] **Step 7: 构建**
 
@@ -1397,7 +1404,7 @@ git commit -m "Open the mod's first network channel, server snapshot to client s
 
 ---
 
-### Task 7: 面板分区 presenter 与 Screen 排版
+### Task 6: 面板分区 presenter 与 Screen 排版
 
 **Files:**
 - Create: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/noticeboard/NoticeboardText.java`
@@ -1639,13 +1646,13 @@ git commit -m "Lay the snapshot out in sections, with the client doing nothing b
 
 ---
 
-### Task 8: 营地自动摆放
+### Task 7: 营地自动摆放
 
 **Files:**
 - Modify: `goblin-settlement-mod/src/main/java/dev/local/goblinsettlement/camp/CampGenerationCoordinator.java`
 
 **Interfaces:**
-- Consumes: Task 5 的 `ModBlocks.NOTICEBOARD`
+- Consumes: Task 4 的 `ModBlocks.NOTICEBOARD`
 
 - [ ] **Step 1: 先确认硬闸的位置**
 
@@ -1705,7 +1712,7 @@ git commit -m "Stand a noticeboard in the camp, after the gate that guards the r
 
 ---
 
-### Task 9: 文档收尾
+### Task 8: 文档收尾
 
 **Files:**
 - Modify: `goblin-settlement-plan/CURRENT_STATUS.md`
@@ -1756,31 +1763,31 @@ git push origin main
 
 | 设计节 | 落在哪个任务 |
 | --- | --- |
-| §0 范围（方块/物品/唯一计算处/payload/面板/营地/食物） | Task 1（食物）、2–4（唯一计算处）、5（方块物品）、6（通道）、7（面板）、8（营地） |
-| §2 架构与数据流（单向 S2C、无方块实体、无权限判定） | Task 5（无 BE）、6（单向） |
+| §0 范围（方块/物品/唯一计算处/payload/面板/营地/食物） | Task 1（食物）、2–3（唯一计算处）、4（方块物品）、5（通道）、6（面板）、7（营地） |
+| §2 架构与数据流（单向 S2C、无方块实体、无权限判定） | Task 4（无 BE）、5（单向） |
 | §3.1 报告形状 | Task 3 |
-| §3.2 `status` 文本逐字不变 | Task 3（断言钉死）+ Task 4（定向 diff） |
+| §3.2 `status` 文本逐字不变 | Task 3（断言钉死 + 定向 diff，同一任务内） |
 | §3.3 交通与连通结构化 | Task 2 |
-| §4 面板六区 | Task 7 |
-| §4.1 翻译键 | Task 7 Step 4 |
-| §5 食物算式与三个限定 | Task 1、Task 7（`value.minutes` 的措辞） |
-| §6 方块本身 | Task 5 |
-| §7 营地两条约束 | Task 8 |
-| §8 资源与注册清单 | Task 5 |
-| §9 错误与边界 | Task 3（无聚落一行）、Task 4（蓝图不可用、不可 tick 沿用旧口径）、Task 7（无聚落分区） |
-| §10.1 可纯测四项 | Task 1（食物）、Task 3（文本）、Task 6（codec 往返）、Task 7（分区） |
-| §10.2 只能进游戏 | Task 9 Step 2 |
+| §4 面板六区 | Task 6 |
+| §4.1 翻译键 | Task 6 Step 4 |
+| §5 食物算式与三个限定 | Task 1、Task 6（`value.minutes` 的措辞） |
+| §6 方块本身 | Task 4 |
+| §7 营地两条约束 | Task 7 |
+| §8 资源与注册清单 | Task 4 |
+| §9 错误与边界 | Task 3（无聚落一行、蓝图不可用、不可 tick 沿用旧口径）、Task 6（无聚落分区） |
+| §10.1 可纯测四项 | Task 1（食物）、Task 3（文本）、Task 5（codec 往返）、Task 6（分区） |
+| §10.2 只能进游戏 | Task 8 Step 2 |
 | §11 明确未做 | 不建任务（是"不做"清单） |
 
 **2. Placeholder scan**
 
-Task 7 Step 5（画面板）与 Task 5 Step 4（`Item.Properties` / 创造栏 API）**按设计是"照编译器提示调整"，不是留空**——两处都写明了目标（"能滚动到底"、"创造栏里拿得到"）与核实方法。这是本计划里唯一允许的模糊处，因为这两处 API 的形状无法在计划期一次性确定而不写一整份 Screen。**其余步骤都有可直接粘贴的代码或命令。**
+Task 6 Step 5（画面板）**是"按实现所见调整排版细节"，不是留空**——它写明了六个分区的内容、行高与两列布局的要求、滚动的做法与验收方式（长行不溢出、能滚到底），但没有逐行代码，因为一个 Screen 的排版要在真机上看着调，把坐标写死在计划里反而会误导。**这是全计划唯一一处没有可粘贴代码的步骤；其余每一步都有代码或命令。**（原先还有一处——Task 4 的创造栏 API——已在开工前的核查中逐条对着 jar 确认并写死，见该步。）
 
 **3. Type consistency**
 
-- `FoodForecast.minutes(long, int) -> OptionalInt`：Task 1 定义，Task 4 使用（`Stock.foodMinutes`），Task 7 读（`.getAsInt()`）——一致。
-- `TransportFacts` / `RoadRow` / `Links` / `BrokenLink`：Task 2 定义并在 Task 3 的 `SettlementReport.traffic`、Task 6 的 codec、Task 7 的 presenter 中使用——字段名 `wideningReady` / `brokenLinks` / `blocked` 全文一致。
-- `SettlementReport` 的六个分量：`header`、`stock`、`housing`、`traffic`、`nextTarget`、`trades`。Task 3 定义，Task 4 的 `snapshot` 构造、Task 6 的 codec、Task 7 的 presenter 全部按这六个写。
-- 编解码的缓冲区类型是 `FriendlyByteBuf`（不是 `RegistryFriendlyByteBuf`）：`SettlementReport.CODEC` / `OPTIONAL_CODEC`、`NoticeboardPayload.CODEC`、`encode` / `decode` 的形参、以及 Task 6 Step 1 里 `new FriendlyByteBuf(Unpooled.buffer())` 的往返断言，四处一致。
-- `SettlementReport.snapshot` 返回 `Optional<SettlementReport>`；`NoticeboardPayload` 的分量类型是 `Optional<SettlementReport>`，codec 走 `OPTIONAL_CODEC`——Task 6 已统一。
-- `NoticeboardText.Section` / `Row` 的字段名 `titleKey` / `labelKey` / `valueKey` / `args` 在 Task 7 的断言、presenter 与 Screen 中一致。
+- `FoodForecast.minutes(long, int) -> OptionalInt`：Task 1 定义，Task 3 使用（`Stock.foodMinutes`），Task 6 读（`.getAsInt()`）——一致。
+- `TransportFacts` / `RoadRow` / `Links` / `BrokenLink`：Task 2 定义并在 Task 3 的 `SettlementReport.traffic`、Task 5 的 codec、Task 6 的 presenter 中使用——字段名 `wideningReady` / `brokenLinks` / `blocked` 全文一致。
+- `SettlementReport` 的六个分量：`header`、`stock`、`housing`、`traffic`、`nextTarget`、`trades`。Task 3 定义，Task 3 的 `snapshot` 构造、Task 5 的 codec、Task 6 的 presenter 全部按这六个写。
+- 编解码的缓冲区类型是 `FriendlyByteBuf`（不是 `RegistryFriendlyByteBuf`）：`SettlementReport.CODEC` / `OPTIONAL_CODEC`、`NoticeboardPayload.CODEC`、`encode` / `decode` 的形参、以及 Task 5 Step 1 里 `new FriendlyByteBuf(Unpooled.buffer())` 的往返断言，四处一致。
+- `SettlementReport.snapshot` 返回 `Optional<SettlementReport>`；`NoticeboardPayload` 的分量类型是 `Optional<SettlementReport>`，codec 走 `OPTIONAL_CODEC`——Task 5 已统一。
+- `NoticeboardText.Section` / `Row` 的字段名 `titleKey` / `labelKey` / `valueKey` / `args` 在 Task 6 的断言、presenter 与 Screen 中一致。
