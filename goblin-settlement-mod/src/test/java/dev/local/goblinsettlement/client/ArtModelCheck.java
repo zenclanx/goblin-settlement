@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.local.goblinsettlement.client.model.GoblinBodies;
+import dev.local.goblinsettlement.client.model.GoblinBodyModel;
 import dev.local.goblinsettlement.client.model.GolemBodies;
 import dev.local.goblinsettlement.defense.GolemTier;
 import java.awt.image.BufferedImage;
@@ -46,17 +47,22 @@ import net.minecraft.server.Bootstrap;
  *
  * <p>The second half bakes the generated mesh each crop maps to and checks the baked parts against
  * that same crop: each of the six names exists, and its {@code PartPose} position is exactly what the
- * crop's group origin implies. That position check is the one assertion the round's top risk -- "the
- * generator is wrong, so both models are wrong" -- actually needs: a generator that scaled about
- * y = 0 instead of the ground line would float every model 0.75 blocks, and the {@code SCALE = 1}
- * cross-check is structurally blind to it (the two rules coincide at {@code SCALE = 1}). Nothing else
- * in the build would notice: a mispositioned mesh compiles and renders somewhere wrong.
+ * crop's group origin implies. That position check is what guards the generator's art-space-to-model-
+ * space mapping -- a generator that mirrored an axis or dropped the ground offset would move every
+ * part, and nothing else in the build reads a baked pose.
+ *
+ * <p>It deliberately does <b>not</b> guard the ground line. Since the 0.5 the art is built at moved
+ * to render time, that transform lives on the root pose in {@code GoblinBodyModel} and these
+ * assertions -- which read the six child groups -- never see it. A wrong root translate (scaling
+ * about y = 0 rather than the ground line) would float every model 0.75 blocks and ship silently;
+ * see the root-pose assertion below, which is the one that watches it.
  */
 public final class ArtModelCheck {
     private static final Set<String> REQUIRED = Set.of(
             "head", "body", "left_arm", "right_arm", "left_leg", "right_leg");
-    /** Mirrors generate_models.py: art space -> model space, scaled about the ground line at y = 24. */
-    private static final double SCALE = 0.5;
+    /** Mirrors generate_models.py: art space -> model space, one art unit to one model unit. The 0.5
+     * the art is built at is applied at render time by GoblinBodyModel, not here. */
+    private static final double SCALE = 1.0;
     private static final double GROUND = 24.0;
     private static final float TOLERANCE = 1e-3F;
     /** One crop directory per table: the goblin bodies in the first, the custom golems in the second. */
@@ -88,7 +94,7 @@ public final class ArtModelCheck {
             require(body != null, name + ": no renderable body is mapped to this crop -- add it to"
                     + " GoblinBodies.BODIES so the baked half checks it too");
             checkTexture(name, root, body.texture());
-            checkBaked(name, body.layer().get(), root);
+            checkBaked(name, body.layer().get(), root, body.model());
         }
         for (Path crop : golemCrops) {
             JsonObject root = checkCrop(crop, MAX_GOLEM_ART_HEIGHT);
@@ -98,7 +104,7 @@ public final class ArtModelCheck {
                     + " GolemBodies.BODIES so the baked half checks it too");
             checkTexture(name, root, body.texture());
             checkEmissive(name, root, body.emissive());
-            checkBaked(name, body.layer().get(), root);
+            checkBaked(name, body.layer().get(), root, body.model());
         }
         System.out.println("ArtModelCheck passed (" + crops.size() + " goblin crops, "
                 + golemCrops.size() + " golem crops, " + (crops.size() + golemCrops.size())
@@ -378,7 +384,8 @@ public final class ArtModelCheck {
      * getInitialPose()} holds the pose the mesh was baked with and cannot be perturbed by a later
      * {@code setupAnim}.
      */
-    private static void checkBaked(String label, LayerDefinition layer, JsonObject crop) {
+    private static void checkBaked(String label, LayerDefinition layer, JsonObject crop,
+                                   Function<ModelPart, ?> modelFactory) {
         ModelPart root = layer.bakeRoot();
         require(root != null, label + ": bakeRoot() returns a root");
         require(!root.hasChild("no_such_part"), label + ": hasChild discriminates (negative control)");
@@ -405,6 +412,25 @@ public final class ArtModelCheck {
         }
         require(root.getAllParts().stream().anyMatch(part -> !part.isEmpty()),
                 label + ": the baked mesh carries cube geometry");
+
+        // The six assertions above read the child groups, which the generator's art-space mapping sets.
+        // The 0.5 the art is built at is applied at RENDER time instead, on the root pose -- and a pose
+        // the assertions above never see. Guard it: the root must scale the art-scale mesh about the
+        // ground line, so the feet stay planted. Scaling about y = 0 instead floats every model 0.75
+        // blocks, and nothing else in the build would notice.
+        Object built = modelFactory.apply(root);
+        require(built instanceof GoblinBodyModel, label + ": the row builds a GoblinBodyModel");
+        PartPose pose = ((GoblinBodyModel) built).root().getInitialPose();
+        float expectedY = GoblinBodyModel.GROUND * (1.0F - GoblinBodyModel.RENDER_SCALE);
+        require(Math.abs(pose.x()) <= TOLERANCE && Math.abs(pose.z()) <= TOLERANCE
+                        && Math.abs(pose.y() - expectedY) <= TOLERANCE
+                        && Math.abs(pose.xScale() - GoblinBodyModel.RENDER_SCALE) <= TOLERANCE
+                        && Math.abs(pose.yScale() - GoblinBodyModel.RENDER_SCALE) <= TOLERANCE
+                        && Math.abs(pose.zScale() - GoblinBodyModel.RENDER_SCALE) <= TOLERANCE,
+                label + ": the root pose is (" + pose.x() + ", " + pose.y() + ", " + pose.z()
+                        + ") scale " + pose.xScale() + ", but halving the art-scale mesh about the"
+                        + " ground line needs y = " + expectedY + " and scale "
+                        + GoblinBodyModel.RENDER_SCALE);
     }
 
     /**

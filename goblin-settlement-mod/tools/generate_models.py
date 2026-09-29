@@ -15,8 +15,8 @@ They are separate because Models/ is the art team's live workspace and is NOT in
 (the repository root .gitignore allows only .gitignore, README.md, goblin-settlement-mod/ and
 goblin-settlement-plan/). The committed crop is what this module's geometry is regenerated from.
 
-The transform is not a guess. At SCALE = 1 the forms below reproduce, number for number, the Java
-candidate the art team adapted by hand (Models/goblin_male_a_final/GoblinModelCandidate.java):
+The transform is not a guess. The forms below reproduce, number for number, the Java candidate the art
+team adapted by hand (Models/goblin_male_a_final/GoblinModelCandidate.java):
 
   * a part's model-space position is (-origin.x, GROUND - origin.y, origin.z) -- x mirrored, y
     measured downward from the ground line at GROUND;
@@ -25,7 +25,12 @@ candidate the art team adapted by hand (Models/goblin_male_a_final/GoblinModelCa
   * a nested part's PartPose is relative to its parent's model-space position;
   * a single-axis Blockbench rotation keeps its sign, converted to radians.
 
-Scaling happens here and only here: it is a scaling about the ground line, so the feet stay put.
+The emitted geometry is at art scale -- positions, box dimensions and texOffs are all the crop's own
+numbers. That is what the art atlas is laid out for: a box's uv footprint is computed from the
+dimensions handed to addBox, so halving the dimensions here would sample a quarter of each painted
+region. The 0.5 the art's 2x grid wants is applied at render time instead, about the ground line, in
+client/model/GoblinBodyModel. That is the one counterpart of this module's geometry; keep the two in
+step.
 
 See ART_INTEGRATION_DESIGN.md sections 3.1-3.3 before changing any of it.
 """
@@ -35,7 +40,6 @@ import math
 import os
 import re
 
-SCALE = 0.5     # the art is built on a 2x grid; see the delivery READMEs
 GROUND = 24.0   # the model-space y the renderer stands the entity's feet on
 REQUIRED_GROUPS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"]
 
@@ -210,20 +214,14 @@ def model_position(origin):
     return (-origin[0], GROUND - origin[1], origin[2])
 
 
-def scaled(point):
-    """Unscaled model space -> rendered model space. A scaling about the ground line, so a point on
-    the ground line (y == GROUND) stays there and the feet do not move."""
-    return (point[0] * SCALE, GROUND + (point[1] - GROUND) * SCALE, point[2] * SCALE)
-
-
 def cube_box(element, origin):
     fx, fy, fz = element["from"]
     tx, ty, tz = element["to"]
     width, height, depth = tx - fx, ty - fy, tz - fz
-    return ((-(fx - origin[0]) - width) * SCALE,
-            (-(ty - origin[1])) * SCALE,
-            (fz - origin[2]) * SCALE,
-            width * SCALE, height * SCALE, depth * SCALE)
+    return ((-(fx - origin[0]) - width),
+            (-(ty - origin[1])),
+            (fz - origin[2]),
+            width, height, depth)
 
 
 def cube_chain(elements, origin, indent):
@@ -252,15 +250,13 @@ def rotations(element):
 
 
 def pose(absolute, parent, rotation=None):
-    """A part's PartPose, from its unscaled model-space position and a parent that is already in
-    rendered model space. The mesh root of a Minecraft model is (0, 0, 0) and the ground line lives
-    at y = GROUND inside it, so a top-level part has to carry the whole ground-line offset itself;
-    below that, only the difference matters, and the difference of two scaled points is SCALE times
-    the difference of the unscaled ones."""
-    point = scaled(absolute)
-    x = point[0] - parent[0]
-    y = point[1] - parent[1]
-    z = point[2] - parent[2]
+    """A part's PartPose, from its art-scale model-space position and a parent in the same space. The
+    mesh root of a Minecraft model is (0, 0, 0) and the ground line lives at y = GROUND inside it, so
+    a top-level part has to carry the whole ground-line offset itself; below that, only the difference
+    matters."""
+    x = absolute[0] - parent[0]
+    y = absolute[1] - parent[1]
+    z = absolute[2] - parent[2]
     if rotation is None:
         return "PartPose.offset(%s, %s, %s)" % (number(x), number(y), number(z))
     return "PartPose.offsetAndRotation(%s, %s, %s, %s, %s, %s)" % (
@@ -295,7 +291,7 @@ class Emitter:
             fail("outliner node has no matching entry in groups")
         origin = group["origin"]
         absolute = model_position(origin)
-        anchor = scaled(absolute)
+        anchor = absolute
         flat, turned, nested = [], [], []
         for child in node.get("children", []):
             if isinstance(child, dict):
