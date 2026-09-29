@@ -242,6 +242,14 @@ tasks.register('profileCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.diagnostics.SettlementProfilerCheck'
 }
 
+tasks.register('noticeboardCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks the food forecast, the settlement snapshot text and the noticeboard panel sections.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.noticeboard.NoticeboardCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -264,5 +272,6 @@ tasks.named('check') {
     dependsOn tasks.named('bridgeMaterialsCheck')
     dependsOn tasks.named('housingAssignmentCheck')
     dependsOn tasks.named('profileCheck')
+    dependsOn tasks.named('noticeboardCheck')
     dependsOn tasks.named('artModelCheck')
 }
