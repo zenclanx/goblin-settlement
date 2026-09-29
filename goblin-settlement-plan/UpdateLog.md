@@ -881,6 +881,13 @@
   - `TRAFFIC_CONNECTIVITY_DESIGN.md` §7/§8 原文"**玩家拆路仍会重修**：走既有的 `firstMissingStructuralStep` → `rewind` 路径"——**该路径对路根本不可达**（路一完工即离开未完成表，当时也没有巡检）。已更正为第七十三轮的实际行为，并写明**被挖成空气的格子不可能重铺**（`ROAD_GROUND` 要求格子本身是可建地面）。
 - [2026-09-29 20:05:00 +08:00] 验证：**本轮无代码改动，故无需构建**；改动面为 4 个 `.md`（`ART_INTEGRATION_DESIGN.md`、`TRAFFIC_CONNECTIVITY_DESIGN.md`、`CURRENT_STATUS.md`、`TEST_CHECKLIST.md`）。**未完成**：审计余下各条与第七十一/七十三轮修的四条**同样尚未在游戏中验证**；付费转铁重复扣料仍未修；美术交付的女哨卫/音效/物品图标/公告牌接入仍待另排。
 
+## [2026-09-29 20:08:00 +08:00 – 2026-09-29 20:15:00 +08:00] 第七十五轮：接入女哨卫（美术 2026-09-29 交付的最后一处缺口）
+
+- [2026-09-29 20:08:00 +08:00] 接第七十二轮的美术交付。女哨卫是那批交付里**唯一一处"美术已修好、只差代码接入"**的缺口（第六十三轮因贴图缺行被扣下，运行时一直回落基础女体型）。按其 `handoff/README.md` 的接入要点执行，**五步全走通**：①把修好的 `goblin_sentry_female_p07.png` 复制进模组资源，命名 `goblin_sentry_female.png`——**1024×1024，与男哨卫同尺寸、符合"PNG 恰为声明分辨率两倍"的既有约定**；②`generate_models.py` 的 `MODELS` 表补一行（`goblin_sentry_female_p07` → `GoblinSentryFemaleModel`）；③跑 `--crop`；④跑生成器；⑤`GoblinBodies.BODIES` 补一行 `GoblinSentryFemaleModel.body(false, true, Optional.of(Profession.SENTRY))`（运行时纹理名由生成类自带的 `TEXTURE` 常量供给，即 `goblin_sentry_female`，**未手打任何字符串**）。**模型、几何、UV、骨骼与动画一字未改，贴图断言一条未放宽。**
+- [2026-09-29 20:12:00 +08:00] **验证（由我本人执行整条管线，非仅采信报告）**：`./gradlew build --offline --no-daemon` → **BUILD SUCCESSFUL**（54 秒），**22 项**独立检查全部通过，`ArtModelCheck passed (**18** goblin crops, 5 golem crops, **23** baked models)`（原 17 / 22）。**这条通过有特别的分量**：`ArtModelCheck` 里"每个元素的盒式 UV 展开矩形必须落在贴图的已上色区域内"那条断言，**正是第六十三轮抓出女哨卫贴图缺行、导致她被扣下的那一条**——**美术的修复由当初报错的那个判据亲自验过**，不是靠人工目测。
+- [2026-09-29 20:13:00 +08:00] **顺带得到一条可复现性证据**：整条管线重跑后，**既有的 22 个生成类与 17 份裁剪件逐字节未变**（`git status` 只列出两个新文件与两处一行改动）。这同时坐实了美术那句"本批几何、UV、骨骼及动画不变"——他们只改了贴图像素，几何没动。改动面：`GoblinBodies.java`（+1 行）、`generate_models.py`（+1 行）、新增 `GoblinSentryFemaleModel.java` / `goblin_sentry_female_p07.json` / `goblin_sentry_female.png`。
+- [2026-09-29 20:15:00 +08:00] 未完成/边界：**尚未在游戏里看过女哨卫**——专用测试世界里恰好有一名女性哨卫（第七十轮排阵时凑齐的那套），她**此前回落基础女体型、现在应当穿上哨卫装**，这是开一次游戏就能直接确认的事。**美术交付仍未接入的**：40 段音效与 20 个事件/字幕（注册、选择与循环控制由代码侧）、九张物品图标与物品显示入口、公告牌方块（含四向 facing 状态与动态信息）、七类设施标识——均为功能轮，另排。
+
 
 
 

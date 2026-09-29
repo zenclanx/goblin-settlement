@@ -68,6 +68,7 @@ MODELS = {
     "goblin_artisan_male_p06": ("goblin_professions_a/goblin_artisan_male_p06.bbmodel", "GoblinArtisanMaleModel"),
     "goblin_artisan_female_p06": ("goblin_professions_a/goblin_artisan_female_p06.bbmodel", "GoblinArtisanFemaleModel"),
     "goblin_sentry_male_p07": ("goblin_professions_a/goblin_sentry_male_p07.bbmodel", "GoblinSentryMaleModel"),
+    "goblin_sentry_female_p07": ("goblin_professions_a/goblin_sentry_female_p07.bbmodel", "GoblinSentryFemaleModel"),
     "goblin_child_boy_a": ("goblin_children_a/goblin_child_boy_a.bbmodel", "GoblinChildBoyModel"),
     "goblin_child_girl_a": ("goblin_children_a/goblin_child_girl_a.bbmodel", "GoblinChildGirlModel"),
 }

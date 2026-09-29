@@ -51,7 +51,8 @@ public final class GoblinBodies {
             GoblinHaulerFemaleModel.body(false, true, Optional.of(Profession.HAULER)),
             GoblinArtisanMaleModel.body(false, false, Optional.of(Profession.ARTISAN)),
             GoblinArtisanFemaleModel.body(false, true, Optional.of(Profession.ARTISAN)),
-            GoblinSentryMaleModel.body(false, false, Optional.of(Profession.SENTRY)));
+            GoblinSentryMaleModel.body(false, false, Optional.of(Profession.SENTRY)),
+            GoblinSentryFemaleModel.body(false, true, Optional.of(Profession.SENTRY)));
 
     private GoblinBodies() {
     }
