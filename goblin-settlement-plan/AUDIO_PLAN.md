@@ -61,17 +61,21 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import net.minecraft.SharedConstants;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.sounds.SoundEvent;
 
 /**
  * Standalone checks for the delivered sound set: the manifest's ids, the audio files behind them, the
  * lookup helpers, and the subtitles.
  *
- * <p>Deliberately touches no Minecraft registry. An earlier draft bootstrapped and asserted the events
- * were registered; that cannot work here, because Bootstrap.bootStrap() freezes BuiltInRegistries and
- * loading ModSounds afterwards throws. Reading registries after bootstrap is fine (ConstructionMaterialCheck
- * does it) but registering is not, and this check does not need to: the lookup helpers can only return
- * objects the registrations produced, so assertion 3 already fails if an id drifts away from the manifest.
+ * <p>Never registers anything. An earlier draft bootstrapped and asserted the events were in
+ * BuiltInRegistries; that cannot work, because Bootstrap.bootStrap() freezes the registries and
+ * loading a class that registers afterwards throws. Reading registries after bootstrap is fine
+ * (ConstructionMaterialCheck does it) but registering is not, and this check does not need to:
+ * the lookup helpers can only return objects the registrations produced, so assertion 3 already
+ * fails if an id drifts away from the manifest. ModSounds is shaped to make that possible -- see
+ * the note on its factory.
  */
 public final class SoundsCheck {
     private static final String SOUNDS_JSON = "/assets/goblin_settlement/sounds.json";
@@ -79,6 +83,14 @@ public final class SoundsCheck {
     private static final String SUBTITLE_PREFIX = "subtitles." + GoblinSettlement.MOD_ID + ".";
 
     public static void main(String[] args) {
+        // Read-only bootstrap, and it is required: assertion 3 walks GolemTier, whose constants name
+        // vanilla Items, which forces Blocks and then SoundEvents. This check never *registers*
+        // anything -- see ModSounds, where creating an event and registering it are two separate steps,
+        // so loading that class here touches no registry. ConstructionMaterialCheck bootstraps the same
+        // way for the same reason.
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+
         JsonObject manifest = readJson(SOUNDS_JSON);
 
         // 1. The manifest declares the twenty events the design says it does.
@@ -246,26 +258,26 @@ public final class ModSounds {
     /** The five things an adult goblin says. Children use the same set; the art team kept theirs back. */
     public enum Voice { GREETING, RESPONSE, WORK, HURT, DEATH }
 
-    private static final SoundEvent GOBLIN_MALE_GREETING = register("entity.goblin.male.greeting");
-    private static final SoundEvent GOBLIN_MALE_RESPONSE = register("entity.goblin.male.response");
-    private static final SoundEvent GOBLIN_MALE_WORK = register("entity.goblin.male.work");
-    private static final SoundEvent GOBLIN_MALE_HURT = register("entity.goblin.male.hurt");
-    private static final SoundEvent GOBLIN_MALE_DEATH = register("entity.goblin.male.death");
-    private static final SoundEvent GOBLIN_FEMALE_GREETING = register("entity.goblin.female.greeting");
-    private static final SoundEvent GOBLIN_FEMALE_RESPONSE = register("entity.goblin.female.response");
-    private static final SoundEvent GOBLIN_FEMALE_WORK = register("entity.goblin.female.work");
-    private static final SoundEvent GOBLIN_FEMALE_HURT = register("entity.goblin.female.hurt");
-    private static final SoundEvent GOBLIN_FEMALE_DEATH = register("entity.goblin.female.death");
-    private static final SoundEvent GOLEM_WOOD_MOVE = register("entity.golem.wood.move");
-    private static final SoundEvent GOLEM_WOOD_CORE = register("entity.golem.wood.core");
-    private static final SoundEvent GOLEM_STONE_MOVE = register("entity.golem.stone.move");
-    private static final SoundEvent GOLEM_STONE_CORE = register("entity.golem.stone.core");
-    private static final SoundEvent GOLEM_GOLD_MOVE = register("entity.golem.gold.move");
-    private static final SoundEvent GOLEM_GOLD_CORE = register("entity.golem.gold.core");
-    private static final SoundEvent GOLEM_DIAMOND_MOVE = register("entity.golem.diamond.move");
-    private static final SoundEvent GOLEM_DIAMOND_CORE = register("entity.golem.diamond.core");
-    private static final SoundEvent GOLEM_OBSIDIAN_MOVE = register("entity.golem.obsidian.move");
-    private static final SoundEvent GOLEM_OBSIDIAN_CORE = register("entity.golem.obsidian.core");
+    private static final SoundEvent GOBLIN_MALE_GREETING = delivered("entity.goblin.male.greeting");
+    private static final SoundEvent GOBLIN_MALE_RESPONSE = delivered("entity.goblin.male.response");
+    private static final SoundEvent GOBLIN_MALE_WORK = delivered("entity.goblin.male.work");
+    private static final SoundEvent GOBLIN_MALE_HURT = delivered("entity.goblin.male.hurt");
+    private static final SoundEvent GOBLIN_MALE_DEATH = delivered("entity.goblin.male.death");
+    private static final SoundEvent GOBLIN_FEMALE_GREETING = delivered("entity.goblin.female.greeting");
+    private static final SoundEvent GOBLIN_FEMALE_RESPONSE = delivered("entity.goblin.female.response");
+    private static final SoundEvent GOBLIN_FEMALE_WORK = delivered("entity.goblin.female.work");
+    private static final SoundEvent GOBLIN_FEMALE_HURT = delivered("entity.goblin.female.hurt");
+    private static final SoundEvent GOBLIN_FEMALE_DEATH = delivered("entity.goblin.female.death");
+    private static final SoundEvent GOLEM_WOOD_MOVE = delivered("entity.golem.wood.move");
+    private static final SoundEvent GOLEM_WOOD_CORE = delivered("entity.golem.wood.core");
+    private static final SoundEvent GOLEM_STONE_MOVE = delivered("entity.golem.stone.move");
+    private static final SoundEvent GOLEM_STONE_CORE = delivered("entity.golem.stone.core");
+    private static final SoundEvent GOLEM_GOLD_MOVE = delivered("entity.golem.gold.move");
+    private static final SoundEvent GOLEM_GOLD_CORE = delivered("entity.golem.gold.core");
+    private static final SoundEvent GOLEM_DIAMOND_MOVE = delivered("entity.golem.diamond.move");
+    private static final SoundEvent GOLEM_DIAMOND_CORE = delivered("entity.golem.diamond.core");
+    private static final SoundEvent GOLEM_OBSIDIAN_MOVE = delivered("entity.golem.obsidian.move");
+    private static final SoundEvent GOLEM_OBSIDIAN_CORE = delivered("entity.golem.obsidian.core");
 
     private ModSounds() {
     }
@@ -315,16 +327,31 @@ public final class ModSounds {
         });
     }
 
-    private static SoundEvent register(String path) {
+    /**
+     * Creates one event and remembers it for {@link #initialize()} to register. The two steps are
+     * separate on purpose: creating an event touches no registry, so a standalone check can load this
+     * class and read the ids, while registering can only happen at mod init, before Fabric freezes the
+     * registries. Doing both in the initialiser would make this class unloadable from a check.
+     */
+    private static SoundEvent delivered(String path) {
         Identifier id = Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, path);
-        return Registry.register(BuiltInRegistries.SOUND_EVENT, id, SoundEvent.createVariableRangeEvent(id));
+        SoundEvent event = SoundEvent.createVariableRangeEvent(id);
+        DELIVERED.add(event);
+        return event;
     }
 
-    /** Touches the class so the static registrations above run during mod init. */
+    /** Registers everything {@link #delivered} collected. Called once, from mod init. */
     public static void initialize() {
+        for (SoundEvent event : DELIVERED) {
+            Registry.register(BuiltInRegistries.SOUND_EVENT, event.location(), event);
+        }
     }
 }
 ```
+
+**并在常量区最前面加一行** `private static final java.util.List<SoundEvent> DELIVERED = new java.util.ArrayList<>();`（`delivered` 要往它里面收）。
+
+**这一段与初稿不同，是 Task 1 实现时更正过的**：初稿把注册写在静态初始化器里（`register(...)` 直接 `Registry.register`）。那样一来**独立检查根本加载不了这个类** —— 类初始化就会注册，而 bootstrap 之前注册不可用、bootstrap 之后注册表已冻结，两边都是异常。拆成"造对象"与"注册"两步之后，类的初始化不碰注册表，`SoundsCheck` 才取得到那 20 个 id。
 
 **注意 switch 里的 `default`**：`GolemTier` 有六个值而这里只列五个，Java 的穷尽 switch 因此需要一个 `default`；写 `throw` 而不是兜底返回某个音，是为了让"漏了一阶"响亮地失败而不是静默发错声。
 
