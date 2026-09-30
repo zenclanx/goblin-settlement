@@ -82,9 +82,30 @@ public final class SoundsCheck {
         check(english.equals(wanted), "the language files carry a subtitle for every declared event and no "
                 + "orphans, missing: " + difference(wanted, english) + ", orphaned: " + difference(english, wanted));
 
+        // 6. Every core is buffered in memory rather than streamed. The round's central claim -- no seam,
+        //    zero packets -- rests on the four second core being decoded once: a streamed sound is pulled
+        //    off disk in pieces while it plays, which is where a loop seam would come from. This is worth
+        //    pinning because sounds.json is copied verbatim from a file this mod does not own, so if the
+        //    art team re-delivered the cores as streamed, nothing else here would notice. The field has to
+        //    be present and false, not merely absent: an explicit false is what the delivery says.
+        List<String> streamed = new ArrayList<>();
+        for (String key : declared) {
+            if (!key.endsWith(".core")) {
+                continue;
+            }
+            for (var element : manifest.getAsJsonObject(key).getAsJsonArray("sounds")) {
+                JsonObject sound = element.getAsJsonObject();
+                if (!sound.has("stream") || sound.get("stream").getAsBoolean()) {
+                    streamed.add(key + " -> " + sound.get("name").getAsString());
+                }
+            }
+        }
+        check(streamed.isEmpty(), "every core is buffered rather than streamed, but: " + streamed);
+
         // The meet rule: nothing to say when nobody is close enough, or when everyone is still in
-        // cooldown; otherwise the lower id greets and the other answers. Every tie is broken by id so
-        // the same input always gives the same pair -- otherwise nothing here could be pinned.
+        // cooldown; otherwise the first in-reach pair in roster order speaks, and inside that pair the
+        // lower id greets. The pair follows roster order, the roles follow id order -- the last two
+        // assertions say so, so the javadoc cannot drift stronger than the rule it describes.
         //
         // Every call passes "now" explicitly, so the cooldown is a function of the arguments rather
         // than of when the check happened to run.
@@ -122,6 +143,22 @@ public final class SoundsCheck {
                         new GreetingRules.Resident("a", 0.0, 0.0, 0L),
                         new GreetingRules.Resident("b", 1.0, 0.0, 0L)), 3.0, 100L).isEmpty(),
                 "a settlement younger than the cooldown stays quiet");
+        // Three residents in one cluster, which is where "the lower id greets" and "the answer does not
+        // depend on roster order" part company: the pair is whichever in-reach pair the walk reaches
+        // first, so the roster decides the pair while the ids decide the roles inside it. Both readings
+        // are pinned here, because a claim stronger than the rule is how the javadoc got wrong before.
+        var clustered = GreetingRules.pick(List.of(
+                        new GreetingRules.Resident("a", 0.0, 0.0, cooled),
+                        new GreetingRules.Resident("b", 1.0, 0.0, cooled),
+                        new GreetingRules.Resident("c", 2.0, 0.0, cooled)), 3.0, now).orElseThrow();
+        check(clustered.greeterId().equals("a") && clustered.answererId().equals("b"),
+                "three in one cluster: the first pair in roster order greets, got " + clustered);
+        var reversedCluster = GreetingRules.pick(List.of(
+                        new GreetingRules.Resident("c", 2.0, 0.0, cooled),
+                        new GreetingRules.Resident("b", 1.0, 0.0, cooled),
+                        new GreetingRules.Resident("a", 0.0, 0.0, cooled)), 3.0, now).orElseThrow();
+        check(reversedCluster.greeterId().equals("b") && reversedCluster.answererId().equals("c"),
+                "the pair follows roster order, not id order, got " + reversedCluster);
 
         System.out.println("SoundsCheck passed");
     }

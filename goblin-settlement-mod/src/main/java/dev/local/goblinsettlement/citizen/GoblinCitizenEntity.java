@@ -131,7 +131,11 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private String waitReason = "";
     /** Index into the patrol route. Deliberately not persisted: the route is re-derived from the world. */
     private int patrolIndex;
-    /** The tick this resident last chanted; 0 means "not yet". Transient: not saved, gone with the entity. */
+    /**
+     * The tick this resident last chanted; 0 means "has not chanted since it appeared". Transient: not
+     * saved, gone with the entity -- and that is exactly why {@link #maybeChant} treats 0 as "seed the
+     * clock", rather than reading it as a very old timestamp.
+     */
     private long lastChantTick = 0L;
     private int retaliationTicks;
     private boolean sheltering;
@@ -891,6 +895,18 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         // throttle let through, so a countdown would spend one unit per *throttled* tick -- "1200 ticks"
         // would stretch to ten minutes for a profession on the 10-tick cadence, not the sixty seconds the
         // constant is meant to say. Comparing absolute ticks means the number means what it says.
+        //
+        // The first work tick since this entity appeared seeds the clock and stays quiet. That has to come
+        // first: lastChantTick is transient, so a freshly spawned or reloaded resident arrives with it at
+        // 0, and on any world older than the cooldown -- every world past its first minute -- 0 would read
+        // as "overdue by hours" and a whole roster returning from a chunk reload would chant on its first
+        // work tick at once. Waiting one cooldown costs a resident its first chant and keeps the thing the
+        // throttle is for. (Greetings need no equivalent: LAST_GREETING is keyed by UUID, so it outlives a
+        // chunk reload.)
+        if (lastChantTick == 0L) {
+            lastChantTick = now;
+            return;
+        }
         if (now - lastChantTick < WORK_CHANT_COOLDOWN_TICKS) {
             return;
         }

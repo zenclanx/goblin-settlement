@@ -23,8 +23,14 @@ public final class GreetingRules {
     }
 
     /**
-     * The first pair that may greet, or empty. The lower id greets, so the answer does not depend on
-     * the order the roster happened to be walked in.
+     * The first pair that may greet, or empty.
+     *
+     * <p>"First" is roster order, not id order: the walk takes the first ready resident that has a ready
+     * resident in reach, and the first such neighbour, so a differently ordered roster can pick a
+     * different pair when three or more residents stand within one radius. The ids decide only which of
+     * the two speaks -- the lower one greets. Both halves are pinned by SoundsCheck. In the settlement
+     * the roster arrives in a fixed order (the saved resident list), so the same crowd still answers the
+     * same way every visit.
      */
     public static Optional<Pair> pick(List<Resident> residents, double radius, long nowTick) {
         Resident greeter = null;
@@ -58,6 +64,7 @@ public final class GreetingRules {
         return nowTick - resident.lastGreetTick() >= GREETING_COOLDOWN_TICKS;
     }
 
+    /** Horizontal distance: y is ignored, so a resident upstairs meets one standing on the ground below. */
     private static double distance(Resident left, Resident right) {
         double dx = left.x() - right.x();
         double dz = left.z() - right.z();

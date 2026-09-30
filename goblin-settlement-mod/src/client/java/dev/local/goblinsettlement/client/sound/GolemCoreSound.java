@@ -27,6 +27,13 @@ final class GolemCoreSound extends AbstractTickableSoundInstance {
         this.looping = true;
         this.relative = false;
         this.attenuation = SoundInstance.Attenuation.LINEAR;
+        // Positioned here as well as in tick(): AbstractSoundInstance starts at the world origin, and the
+        // engine reads the position when it starts the sound, so without this a golem near (0, 0, 0) hums
+        // from the origin for its first tick. Vanilla's entity-bound loops do the same -- see
+        // EntityBoundSoundInstance, which copies x/y/z out of its entity in the constructor.
+        this.x = golem.getX();
+        this.y = golem.getY();
+        this.z = golem.getZ();
     }
 
     /** True when this instance is still the right sound for that golem -- a tier change needs a new one. */

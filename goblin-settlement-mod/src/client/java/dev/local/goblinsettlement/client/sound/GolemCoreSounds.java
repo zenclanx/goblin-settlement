@@ -38,7 +38,14 @@ public final class GolemCoreSounds {
             int id = golem.getId();
             present.add(id);
             GolemCoreSound existing = PLAYING.get(id);
-            if (existing != null && existing.suits(tier.orElseThrow())) {
+            // isActive is the load-bearing third clause, and it is there for the volume slider. With the
+            // Neutral or Master slider at zero, SoundEngine.play answers NOT_STARTED *without registering
+            // the instance*, so the table would keep an instance the engine never took and unmuting would
+            // never bring the hum back. "The engine does not have it" therefore has to read as "not
+            // humming", or the golem stays silent until it unloads or changes tier. One-shot sounds do not
+            // need this: each is a fresh instance, so each heals itself.
+            if (existing != null && existing.suits(tier.orElseThrow())
+                    && client.getSoundManager().isActive(existing)) {
                 continue;
             }
             // Either the first sighting of this golem, or it changed tier: a tier's core is its own

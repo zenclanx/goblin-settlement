@@ -76,6 +76,12 @@ public final class GoblinGolemEntity extends PathfinderMob {
     /**
      * The tier's own footfall instead of the generic one. Iron has no custom sound, so it falls through
      * to the vanilla step sound rather than going silent.
+     *
+     * <p>For the five custom tiers this deliberately *replaces* the material-dependent vanilla step
+     * sound, which is what the design asked for: a vanilla mob's step sound comes from the block
+     * underfoot, so a custom golem no longer sounds different on grass, stone or gravel -- the tier is
+     * the thing you hear. That is a behaviour change to an entity that already existed, so it is stated
+     * here: a reader looking for the old sound will otherwise take its absence for a defect.
      */
     @Override
     protected void playStepSound(BlockPos pos, BlockState state) {
@@ -84,6 +90,9 @@ public final class GoblinGolemEntity extends PathfinderMob {
             super.playStepSound(pos, state);
             return;
         }
+        // 0.6F is an invented value with no basis -- vanilla plays step sounds at about 0.15F, so this is
+        // roughly four times louder, on the sound this round fires more often than any other. Re-tune once
+        // it can be heard in game.
         playSound(move.orElseThrow(), 0.6F, 1.0F);
     }
 
