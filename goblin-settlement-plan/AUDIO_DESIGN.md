@@ -94,7 +94,7 @@
 
 ### 7.1 可纯测（新增一项独立检查 `soundsCheck`，检查项 23 → 24）
 
-1. **20 个事件都注册上了**：逐个断言 `BuiltInRegistries.SOUND_EVENT` 里有该 id。
+1. **清单声明的 20 个事件正好是二十个，且每个都取得到**：断言 `sounds.json` 的键数，并断言**查找辅助方法能取到的 id 集合与清单一模一样**（多一个少一个都失败）。**这一条刻意不碰 Minecraft 注册表**——`Bootstrap.bootStrap()` 会**冻结** `BuiltInRegistries`，之后再加载 `ModSounds` 会抛 "Registry is already frozen"（读注册表可以，注册不行；`ConstructionMaterialCheck` 只读）。注册本身是 Fabric 在模组初始化时保证的；能在这里钉住的是**id 不许漂移**，而辅助方法只可能返回注册产出的对象，所以 id 一漂它就失败。
 2. **资源与清单一致**：`sounds.json` 里引用的每一个音档路径，在模组资源里都存在。这条读的是**随 jar 发布的真实资源**（与 `BlueprintCheck` 直接解码发布数据文件同形）。
 3. **字幕键全覆盖、且无多余**：`sounds.json` 里每个 `subtitles.*` 键，**中英两个语言文件里都必须有**；反过来，语言文件里也不该有 `subtitles.goblin_settlement.*` 的孤儿键。**这条是本轮最有价值的** —— 它是"翻译缺口在构建期就报错"的第一条机械检查，而上一次同类毛病（`FOOD`）是只能在游戏里被用户看到。
 4. **`GreetingRules.pick`**：冷却内不选、距离外不选、并列时按 id 确定性破序、无人合格时返回空。

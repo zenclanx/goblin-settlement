@@ -61,32 +61,29 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import net.minecraft.SharedConstants;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.sounds.SoundEvent;
 
-/** Standalone checks for the delivered sound set: registration, resources, subtitles and the meet rule. */
+/**
+ * Standalone checks for the delivered sound set: the manifest's ids, the audio files behind them, the
+ * lookup helpers, and the subtitles.
+ *
+ * <p>Deliberately touches no Minecraft registry. An earlier draft bootstrapped and asserted the events
+ * were registered; that cannot work here, because Bootstrap.bootStrap() freezes BuiltInRegistries and
+ * loading ModSounds afterwards throws. Reading registries after bootstrap is fine (ConstructionMaterialCheck
+ * does it) but registering is not, and this check does not need to: the lookup helpers can only return
+ * objects the registrations produced, so assertion 3 already fails if an id drifts away from the manifest.
+ */
 public final class SoundsCheck {
     private static final String SOUNDS_JSON = "/assets/goblin_settlement/sounds.json";
     private static final String LANG = "/assets/goblin_settlement/lang/";
     private static final String SUBTITLE_PREFIX = "subtitles." + GoblinSettlement.MOD_ID + ".";
 
     public static void main(String[] args) {
-        // Registries must be bootstrapped before anything here touches BuiltInRegistries.
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-
         JsonObject manifest = readJson(SOUNDS_JSON);
 
-        // 1. Every event the manifest declares is registered, under exactly the id the manifest names.
+        // 1. The manifest declares the twenty events the design says it does.
         Set<String> declared = new LinkedHashSet<>(manifest.keySet());
         check(declared.size() == 20, "the manifest declares twenty events, got " + declared.size());
-        for (String key : declared) {
-            Identifier id = Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, key);
-            check(BuiltInRegistries.SOUND_EVENT.containsKey(id), "registered: " + id);
-        }
 
         // 2. Every audio file the manifest references exists in the mod's own resources.
         List<String> missing = new ArrayList<>();
