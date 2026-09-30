@@ -1,6 +1,7 @@
 package dev.local.goblinsettlement.noticeboard;
 
 import dev.local.goblinsettlement.colony.Profession;
+import dev.local.goblinsettlement.colony.SettlementDemand;
 import dev.local.goblinsettlement.construction.transport.TransportFacts;
 import dev.local.goblinsettlement.economy.food.FoodForecast;
 import io.netty.buffer.Unpooled;
@@ -35,7 +36,7 @@ public final class NoticeboardCheck {
         var sample = new SettlementReport(
                 new SettlementReport.Header("s1", new BlockPos(8, 70, -30), 14, 5, 19, 64, 3, 20, 1),
                 new SettlementReport.Stock(32, 48, OptionalInt.of(40), 12, 25, 2, 2, 2, 4,
-                        true, "READY"),
+                        true, SettlementDemand.Priority.READY),
                 new SettlementReport.Housing(18, 19, -1, 1,
                         List.of(new SettlementReport.HomeRow(new BlockPos(10, 64, 10), 2, 3,
                                         Optional.of("oak_planks missing"))),
@@ -81,7 +82,8 @@ public final class NoticeboardCheck {
         // and "no adults" at once.
         var empty = new SettlementReport(
                 new SettlementReport.Header("s2", new BlockPos(0, 64, 0), 0, 0, 0, 64, 0, 0, 0),
-                new SettlementReport.Stock(0, 0, OptionalInt.empty(), 0, 0, 0, 0, 0, 0, false, "READY"),
+                new SettlementReport.Stock(0, 0, OptionalInt.empty(), 0, 0, 0, 0, 0, 0, false,
+                        SettlementDemand.Priority.READY),
                 new SettlementReport.Housing(0, 0, 0, 0, List.of(), 0, true),
                 new TransportFacts(true, List.of(), new TransportFacts.Links(0, 0, List.of())),
                 Optional.empty(), Map.of());
@@ -174,6 +176,12 @@ public final class NoticeboardCheck {
         check(sections.get(2).rows().get(4).args().contains("oak_planks missing"), "the stuck reason is carried");
         check(sections.get(3).titleKey().equals(ROOT + "section.traffic")
                 && sections.get(3).rows().size() == 5, "next target, road summary, one road, verdict, not loaded");
+        // The priority names a value key rather than shipping Priority.name(): sending the raw constant
+        // as an argument left "FOOD" untranslated in the middle of an otherwise Chinese panel. This was
+        // found in game and not by any check, so it gets a net here.
+        var priorityRow = sections.get(4).rows().get(3);
+        check(priorityRow.valueKey().equals(ROOT + "value.priority.ready") && priorityRow.args().isEmpty(),
+                "the priority names a value key, not the raw enum, got: " + priorityRow.valueKey());
         check(sections.get(5).titleKey().equals(ROOT + "section.trades"), "trades come last");
 
         // The traffic section is built from the facts, so every figure is a key and every id, count and

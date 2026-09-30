@@ -168,7 +168,12 @@ public final class NoticeboardText {
                 // key as an argument would print the key itself on the panel.
                 new Row(ROOT + "row.stock", stock.complete()
                         ? ROOT + "value.complete" : ROOT + "value.incomplete", List.of()),
-                raw(ROOT + "row.priority", stock.priority()))));
+                // The priority is an enum, so the panel names a value key rather than shipping the raw
+                // constant. Sending Priority.name() as an argument left "FOOD" sitting untranslated in
+                // the middle of an otherwise Chinese panel -- seen in game, not in the build.
+                new Row(ROOT + "row.priority",
+                        ROOT + "value.priority." + stock.priority().name().toLowerCase(java.util.Locale.ROOT),
+                        List.of()))));
 
         var tradeRows = new ArrayList<Row>();
         for (Profession profession : Profession.values()) {

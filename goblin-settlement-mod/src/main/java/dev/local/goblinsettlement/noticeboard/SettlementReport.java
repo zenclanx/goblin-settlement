@@ -41,7 +41,7 @@ public record SettlementReport(Header header, Stock stock, Housing housing, Tran
     /** The known public stock. foodMinutes is empty when nobody eats; the counts are a lower bound. */
     public record Stock(int food, int foodTarget, OptionalInt foodMinutes, int seeds,
                         int seedTarget, int hoes, int axes, int pickaxes, int containers,
-                        boolean complete, String priority) {
+                        boolean complete, SettlementDemand.Priority priority) {
     }
 
     /** Beds, occupancy, and one row per judged home with the reason it cannot advance. */
@@ -99,7 +99,7 @@ public record SettlementReport(Header header, Stock stock, Housing housing, Tran
         buf.writeVarInt(stock.pickaxes());
         buf.writeVarInt(stock.containers());
         buf.writeBoolean(stock.complete());
-        buf.writeUtf(stock.priority());
+        buf.writeUtf(stock.priority().name());
         var housing = report.housing();
         buf.writeVarInt(housing.beds());
         buf.writeVarInt(housing.occupied());
@@ -157,7 +157,7 @@ public record SettlementReport(Header header, Stock stock, Housing housing, Tran
         var stock = new Stock(food, foodTarget,
                 foodMinutes < 0 ? OptionalInt.empty() : OptionalInt.of(foodMinutes),
                 buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
-                buf.readVarInt(), buf.readBoolean(), buf.readUtf());
+                buf.readVarInt(), buf.readBoolean(), SettlementDemand.Priority.valueOf(buf.readUtf()));
         int beds = buf.readVarInt();
         int occupied = buf.readVarInt();
         int spare = buf.readVarInt();
@@ -225,7 +225,7 @@ public record SettlementReport(Header header, Stock stock, Housing housing, Tran
                 FoodForecast.minutes(supply.food(), diners),
                 supply.wheatSeeds(), (int) demand.seedTarget(), supply.hoes(), supply.axes(),
                 supply.pickaxes(), supply.accessibleContainers(), supply.complete(),
-                demand.priority().name());
+                demand.priority());
         var nextTarget = TrafficProposalCoordinator.nearestUnservedFacility(
                 data, trafficData, level.getGameTime());
         var traffic = TransportLinks.inspect(level, trafficData, Optional.of(value.anchor()));

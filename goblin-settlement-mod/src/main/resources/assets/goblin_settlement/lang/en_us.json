@@ -66,5 +66,15 @@
   "noticeboard.goblin_settlement.row.trade.hauler": "Haulers",
   "noticeboard.goblin_settlement.row.trade.artisan": "Artisans",
   "noticeboard.goblin_settlement.row.trade.sentry": "Sentries",
-  "noticeboard.goblin_settlement.row.trade.unassigned": "Unassigned"
+  "noticeboard.goblin_settlement.row.trade.unassigned": "Unassigned",
+  "noticeboard.goblin_settlement.value.priority.no_workforce": "No workforce",
+  "noticeboard.goblin_settlement.value.priority.stock_unknown": "Stock unknown",
+  "noticeboard.goblin_settlement.value.priority.warehouse_required": "Warehouse required",
+  "noticeboard.goblin_settlement.value.priority.food": "Food",
+  "noticeboard.goblin_settlement.value.priority.seeds": "Seeds",
+  "noticeboard.goblin_settlement.value.priority.basic_tools": "Basic tools",
+  "noticeboard.goblin_settlement.value.priority.transport": "Transport",
+  "noticeboard.goblin_settlement.value.priority.housing": "Housing",
+  "noticeboard.goblin_settlement.value.priority.construction": "Construction",
+  "noticeboard.goblin_settlement.value.priority.ready": "Ready"
 }

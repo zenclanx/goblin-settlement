@@ -66,5 +66,15 @@
   "noticeboard.goblin_settlement.row.trade.hauler": "搬运工",
   "noticeboard.goblin_settlement.row.trade.artisan": "工匠",
   "noticeboard.goblin_settlement.row.trade.sentry": "哨卫",
-  "noticeboard.goblin_settlement.row.trade.unassigned": "未分配"
+  "noticeboard.goblin_settlement.row.trade.unassigned": "未分配",
+  "noticeboard.goblin_settlement.value.priority.no_workforce": "没有劳动力",
+  "noticeboard.goblin_settlement.value.priority.stock_unknown": "库存未知",
+  "noticeboard.goblin_settlement.value.priority.warehouse_required": "需要仓库",
+  "noticeboard.goblin_settlement.value.priority.food": "食物",
+  "noticeboard.goblin_settlement.value.priority.seeds": "种子",
+  "noticeboard.goblin_settlement.value.priority.basic_tools": "基础工具",
+  "noticeboard.goblin_settlement.value.priority.transport": "交通",
+  "noticeboard.goblin_settlement.value.priority.housing": "住房",
+  "noticeboard.goblin_settlement.value.priority.construction": "施工",
+  "noticeboard.goblin_settlement.value.priority.ready": "就绪"
 }
