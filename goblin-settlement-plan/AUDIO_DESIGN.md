@@ -67,7 +67,9 @@
 
 **新增 `dev.local.goblinsettlement.social.GreetingCoordinator`**，接线照 `tickSettlement` 里既有的形状（`SettlementProfiler.run("greeting", () -> GreetingCoordinator.tick(level))`）。
 
-**行为**：每 `GREETING_INTERVAL_TICKS = 100`（5 秒）扫一遍**已加载居民**（走 `ResidentWorkLookup.loaded`，与避难、巡逻同一口径），在 `GREETING_RADIUS = 3.0` 格内找**第一对双方都不在冷却里**的居民，按 id 序取第一对；**id 小的一方招呼**，另一方在 `RESPONSE_DELAY_TICKS = 12`（约 0.6 秒）后**应答**。每人招呼后进入 `GREETING_COOLDOWN_TICKS = 600`（30 秒）冷却。
+**行为**：每 `INTERVAL_TICKS = 100`（5 秒）扫一遍**已加载居民**（走 `ResidentWorkLookup.loaded`，与避难、巡逻同一口径），在 `RADIUS = 3.0` 格内找**第一对双方都不在冷却里**的居民，按 id 序取第一对；**id 小的一方招呼**，另一方在 `RESPONSE_DELAY_TICKS = 12`（约 0.6 秒）后**应答**。每人招呼后进入 `GREETING_COOLDOWN_TICKS = 600`（30 秒）冷却。
+
+**（常量名以源码为准）**：`INTERVAL_TICKS` 与 `RADIUS` 是 `GreetingCoordinator` 的**私有**常量，`GREETING_COOLDOWN_TICKS` 在 `GreetingRules` 上，`RESPONSE_DELAY_TICKS` 在 `GreetingCoordinator` 上，`WORK_CHANT_COOLDOWN_TICKS` 在 `GoblinCitizenEntity` 上。本文档初稿曾把它们写成带 `GREETING_` 前缀的名字，源码里并不存在，已更正。
 
 - **不看工作状态**：戴着东西路过打个招呼是正常的，而且刻意**不去碰施工/派工那条链**（项目在那上面栽过两次）。招呼只发声，不动导航、不动工作阶段。
 - **应答需要一点延迟**：两声同一 tick 起会听着像互相抢话。协调器为此记住"谁该在 12 tick 后应一声"。这份表是**会话内内存态、不落盘**（与 `SettlementProfiler`、取物目击观察表同类）。

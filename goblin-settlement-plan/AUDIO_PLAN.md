@@ -18,7 +18,7 @@
 - **不新增方块、不新增物品、不升 schema 版本。**
 - **原版铁傀儡一行不动**（美术明确"沿用原版"）；**儿童用成年声音按性别**（美术留待后续）；不做表情动作；不做台词。
 - **复用一个既有判据**：傀儡"是不是五个自定义阶之一"用 `GolemTier.hasCustomArt()`（美术那轮已有），**不要另写一份 tier 清单** —— 两张清单会各自漂移。
-- **发明值都要标注**：`GREETING_RADIUS = 3.0`、`GREETING_INTERVAL_TICKS = 100`、`GREETING_COOLDOWN_TICKS = 600`、`RESPONSE_DELAY_TICKS = 12`、`WORK_CHANT_COOLDOWN_TICKS = 1200` 全是**没有依据的发明值**，源码注释照项目惯例写明"待实测重定"。
+- **发明值都要标注**：`GreetingCoordinator.RADIUS = 3.0`、`GreetingCoordinator.INTERVAL_TICKS = 100`、`GreetingRules.GREETING_COOLDOWN_TICKS = 600`、`GreetingCoordinator.RESPONSE_DELAY_TICKS = 12`、`GoblinCitizenEntity.WORK_CHANT_COOLDOWN_TICKS = 1200` 全是**没有依据的发明值**，源码注释照项目惯例写明"待实测重定"。（**名字以源码为准**：前两个在 `GreetingCoordinator` 上是 `private`，没有 `GREETING_` 前缀——本计划初稿曾写成 `GREETING_RADIUS`/`GREETING_INTERVAL_TICKS`，源码里不存在，已更正。）
 - 检查项数由 **23 增至 24**（新增 `soundsCheck`）。构建结束时 24 项必须全部 `*Check passed`。
 - 交付包 `Models/handoff/art_handoff_20260929.zip` **只读**，不要修改 `Models/` 下任何东西。
 - `goblin-settlement-plan/` 下可能有并行 agent 的未提交改动：文档任务先跑 `git status`。`UpdateLog.md` **只许在末尾追加**。
@@ -997,7 +997,7 @@ git commit -m "Let residents greet each other when they meet, which is the only 
 
 - [ ] **Step 2: 追加测试清单第 11 组**
 
-内容：**只能进游戏听**的那些 —— 傀儡核心有没有接缝、被移除/死亡时是否真的停、招呼是不是太频繁、五阶移动音认不认得出、整体会不会太吵、男女声音听不听得出区别。**并把这轮的发明值列进第 9 组**：`GREETING_RADIUS = 3.0`、`GREETING_INTERVAL_TICKS = 100`、`GREETING_COOLDOWN_TICKS = 600`、`RESPONSE_DELAY_TICKS = 12`、`WORK_CHANT_COOLDOWN_TICKS = 1200`。
+内容：**只能进游戏听**的那些 —— 傀儡核心有没有接缝、被移除/死亡时是否真的停、招呼是不是太频繁、五阶移动音认不认得出、整体会不会太吵、男女声音听不听得出区别。**并把这轮的发明值列进第 9 组**：`GreetingCoordinator.RADIUS = 3.0`、`GreetingCoordinator.INTERVAL_TICKS = 100`、`GreetingRules.GREETING_COOLDOWN_TICKS = 600`、`GreetingCoordinator.RESPONSE_DELAY_TICKS = 12`、`GoblinCitizenEntity.WORK_CHANT_COOLDOWN_TICKS = 1200`。**另加一条冒烟步骤**：进游戏实际播一次某个音（例如 `/playsound goblin_settlement:entity.goblin.male.greeting`）——**24 项检查里没有任何一条覆盖 `ModSounds.initialize()` 这个调用本身**，删掉它所有检查仍然全绿。
 
 - [ ] **Step 3: 更新 `CURRENT_STATUS.md`**
 
