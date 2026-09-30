@@ -42,6 +42,7 @@ import dev.local.goblinsettlement.noticeboard.NoticeboardPayload;
 import dev.local.goblinsettlement.noticeboard.SettlementReport;
 import dev.local.goblinsettlement.noticeboard.SettlementText;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
+import dev.local.goblinsettlement.social.GreetingCoordinator;
 import dev.local.goblinsettlement.social.GiftTradeCommands;
 import dev.local.goblinsettlement.social.WarehouseWithdrawalObserver;
 import dev.local.goblinsettlement.sound.ModSounds;
@@ -246,5 +247,7 @@ public final class GoblinSettlement implements ModInitializer {
         SettlementProfiler.run("defense", () -> DefenseCoordinator.tick(level));
         SettlementProfiler.run("family", () -> FamilyCoordinator.tick(level));
         SettlementProfiler.run("expansion", () -> ExpansionCoordinator.tick(level));
+        // Last: greeting is flavour with no coordination role, so it never sits in front of real work.
+        SettlementProfiler.run("greeting", () -> GreetingCoordinator.tick(level));
     }
 }

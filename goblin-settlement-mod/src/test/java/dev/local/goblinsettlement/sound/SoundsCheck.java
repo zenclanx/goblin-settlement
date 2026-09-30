@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import dev.local.goblinsettlement.GoblinSettlement;
 import dev.local.goblinsettlement.defense.GolemTier;
+import dev.local.goblinsettlement.social.GreetingRules;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -80,6 +81,47 @@ public final class SoundsCheck {
         }
         check(english.equals(wanted), "the language files carry a subtitle for every declared event and no "
                 + "orphans, missing: " + difference(wanted, english) + ", orphaned: " + difference(english, wanted));
+
+        // The meet rule: nothing to say when nobody is close enough, or when everyone is still in
+        // cooldown; otherwise the lower id greets and the other answers. Every tie is broken by id so
+        // the same input always gives the same pair -- otherwise nothing here could be pinned.
+        //
+        // Every call passes "now" explicitly, so the cooldown is a function of the arguments rather
+        // than of when the check happened to run.
+        final long now = 10_000L;
+        final long cooled = now - GreetingRules.GREETING_COOLDOWN_TICKS - 1;
+
+        check(GreetingRules.pick(List.of(), 3.0, now).isEmpty(), "an empty crowd greets nobody");
+        check(GreetingRules.pick(List.of(new GreetingRules.Resident("a", 0.0, 0.0, cooled)), 3.0, now)
+                .isEmpty(), "one resident has nobody to greet");
+        check(GreetingRules.pick(List.of(
+                        new GreetingRules.Resident("a", 0.0, 0.0, cooled),
+                        new GreetingRules.Resident("b", 100.0, 0.0, cooled)), 3.0, now).isEmpty(),
+                "a resident out of reach is not greeted");
+        var pair = GreetingRules.pick(List.of(
+                        new GreetingRules.Resident("b", 1.0, 0.0, cooled),
+                        new GreetingRules.Resident("a", 0.0, 0.0, cooled)), 3.0, now).orElseThrow();
+        check(pair.greeterId().equals("a") && pair.answererId().equals("b"),
+                "the lower id greets, whatever order the list came in, got " + pair);
+        check(GreetingRules.pick(List.of(
+                        new GreetingRules.Resident("a", 0.0, 0.0, now),
+                        new GreetingRules.Resident("b", 1.0, 0.0, cooled)), 3.0, now).isEmpty(),
+                "a resident who greeted just now is not picked again");
+        // Exactly on the radius counts as in reach; a hair outside does not.
+        check(GreetingRules.pick(List.of(
+                        new GreetingRules.Resident("a", 0.0, 0.0, cooled),
+                        new GreetingRules.Resident("b", 3.0, 0.0, cooled)), 3.0, now).isPresent(),
+                "a resident exactly on the radius is in reach");
+        check(GreetingRules.pick(List.of(
+                        new GreetingRules.Resident("a", 0.0, 0.0, cooled),
+                        new GreetingRules.Resident("b", 3.01, 0.0, cooled)), 3.0, now).isEmpty(),
+                "a resident just past the radius is not");
+        // lastGreetTick 0 means "has never greeted"; a settlement younger than the cooldown therefore
+        // stays quiet, so a group born together does not all speak at once.
+        check(GreetingRules.pick(List.of(
+                        new GreetingRules.Resident("a", 0.0, 0.0, 0L),
+                        new GreetingRules.Resident("b", 1.0, 0.0, 0L)), 3.0, 100L).isEmpty(),
+                "a settlement younger than the cooldown stays quiet");
 
         System.out.println("SoundsCheck passed");
     }
