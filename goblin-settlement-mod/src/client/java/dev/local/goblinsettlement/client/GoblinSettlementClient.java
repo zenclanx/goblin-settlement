@@ -4,9 +4,11 @@ import dev.local.goblinsettlement.GoblinSettlement;
 import dev.local.goblinsettlement.citizen.ModEntities;
 import dev.local.goblinsettlement.client.model.GoblinBodies;
 import dev.local.goblinsettlement.client.noticeboard.NoticeboardScreen;
+import dev.local.goblinsettlement.client.sound.GolemCoreSounds;
 import dev.local.goblinsettlement.defense.GolemRenderer;
 import dev.local.goblinsettlement.noticeboard.NoticeboardPayload;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
 import net.minecraft.client.model.geom.ModelLayerLocation;
@@ -21,6 +23,9 @@ public final class GoblinSettlementClient implements ClientModInitializer {
         }
         EntityRenderers.register(ModEntities.GOBLIN, GoblinRenderer::new);
         GolemRenderer.initializeClient();
+        // The cores are one looping client-side sound per loaded custom golem: the tick hook is what
+        // starts them, moves them with their golem and lets go of the ones whose golem is gone.
+        ClientTickEvents.END_CLIENT_TICK.register(client -> GolemCoreSounds.tick());
         // The snapshot is pushed, never requested: opening the screen is all the client does, and it
         // has to happen on the client's own thread.
         ClientPlayNetworking.registerGlobalReceiver(NoticeboardPayload.TYPE,
