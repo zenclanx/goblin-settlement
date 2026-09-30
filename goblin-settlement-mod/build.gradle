@@ -250,6 +250,14 @@ tasks.register('noticeboardCheck', JavaExec) {
     mainClass = 'dev.local.goblinsettlement.noticeboard.NoticeboardCheck'
 }
 
+tasks.register('soundsCheck', JavaExec) {
+    group = 'verification'
+    description = 'Checks the delivered sound set: registration, resources, subtitles and the meet rule.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'dev.local.goblinsettlement.sound.SoundsCheck'
+}
+
 tasks.named('check') {
     dependsOn tasks.named('settlementDemandCheck')
     dependsOn tasks.named('populationRulesCheck')
@@ -273,5 +281,6 @@ tasks.named('check') {
     dependsOn tasks.named('housingAssignmentCheck')
     dependsOn tasks.named('profileCheck')
     dependsOn tasks.named('noticeboardCheck')
+    dependsOn tasks.named('soundsCheck')
     dependsOn tasks.named('artModelCheck')
 }

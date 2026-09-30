@@ -1,0 +1,262 @@
+{
+  "entity.goblin.male.greeting": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.male.greeting",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/male/greeting_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/male/greeting_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.female.greeting": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.female.greeting",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/female/greeting_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/female/greeting_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.wood.move": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.wood.move",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/wood/move_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/wood/move_02",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/wood/move_03",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.wood.core": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.wood.core",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/wood/core_01",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.male.response": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.male.response",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/male/response_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/male/response_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.male.work": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.male.work",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/male/work_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/male/work_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.male.hurt": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.male.hurt",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/male/hurt_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/male/hurt_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.male.death": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.male.death",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/male/death_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/male/death_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.female.response": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.female.response",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/female/response_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/female/response_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.female.work": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.female.work",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/female/work_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/female/work_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.female.hurt": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.female.hurt",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/female/hurt_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/female/hurt_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.goblin.female.death": {
+    "subtitle": "subtitles.goblin_settlement.entity.goblin.female.death",
+    "sounds": [
+      {
+        "name": "goblin_settlement:goblin/female/death_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:goblin/female/death_02",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.stone.move": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.stone.move",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/stone/move_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/stone/move_02",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/stone/move_03",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.stone.core": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.stone.core",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/stone/core_01",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.gold.move": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.gold.move",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/gold/move_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/gold/move_02",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/gold/move_03",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.gold.core": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.gold.core",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/gold/core_01",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.diamond.move": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.diamond.move",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/diamond/move_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/diamond/move_02",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/diamond/move_03",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.diamond.core": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.diamond.core",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/diamond/core_01",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.obsidian.move": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.obsidian.move",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/obsidian/move_01",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/obsidian/move_02",
+        "stream": false
+      },
+      {
+        "name": "goblin_settlement:golem/obsidian/move_03",
+        "stream": false
+      }
+    ]
+  },
+  "entity.golem.obsidian.core": {
+    "subtitle": "subtitles.goblin_settlement.entity.golem.obsidian.core",
+    "sounds": [
+      {
+        "name": "goblin_settlement:golem/obsidian/core_01",
+        "stream": false
+      }
+    ]
+  }
+}

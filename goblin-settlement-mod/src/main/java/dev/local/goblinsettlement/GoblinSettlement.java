@@ -44,6 +44,7 @@ import dev.local.goblinsettlement.noticeboard.SettlementText;
 import dev.local.goblinsettlement.social.RelationshipCoordinator;
 import dev.local.goblinsettlement.social.GiftTradeCommands;
 import dev.local.goblinsettlement.social.WarehouseWithdrawalObserver;
+import dev.local.goblinsettlement.sound.ModSounds;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -70,6 +71,7 @@ public final class GoblinSettlement implements ModInitializer {
         ModEntities.initialize();
         GolemEntities.initialize();
         ModBlocks.initialize();
+        ModSounds.initialize();
         RelationshipCoordinator.initialize();
         WarehouseWithdrawalObserver.initialize();
         ServerLifecycleEvents.SERVER_STARTING.register(server -> HousingBlueprints.load());
