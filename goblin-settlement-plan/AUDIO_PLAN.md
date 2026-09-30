@@ -474,14 +474,19 @@ git commit -m "Register the delivered sound set, and make a missing subtitle fai
      */
     private static final int WORK_CHANT_COOLDOWN_TICKS = 1200;
 
-    private int chantCooldown = 0;
+    /** The tick this resident last chanted; 0 means "not yet". Transient: not saved, gone with the entity. */
+    private long lastChantTick = 0L;
 
     private void maybeChant(ServerLevel level) {
-        if (chantCooldown > 0) {
-            chantCooldown--;
+        long now = level.getGameTime();
+        // Absolute ticks, NOT a countdown. This method is only reached on the ticks the profession's own
+        // throttle let through, so a countdown would spend one unit per *throttled* tick -- "1200 ticks"
+        // would stretch to ten minutes for a profession on the 10-tick cadence, not the sixty seconds the
+        // constant is meant to say. Comparing absolute ticks means the number means what it says.
+        if (now - lastChantTick < WORK_CHANT_COOLDOWN_TICKS) {
             return;
         }
-        chantCooldown = WORK_CHANT_COOLDOWN_TICKS;
+        lastChantTick = now;
         level.playSound(null, getX(), getY(), getZ(),
                 ModSounds.goblinVoice(femaleForRender(), ModSounds.Voice.WORK),
                 SoundSource.NEUTRAL, 0.7F, 1.0F);
@@ -490,7 +495,7 @@ git commit -m "Register the delivered sound set, and make a missing subtitle fai
 
 补 import `net.minecraft.sounds.SoundSource`。
 
-**`chantCooldown` 是瞬态字段**（与 `patrolIndex` 同类）：不入存档、随实体消失，这是有意的 —— 冷却不必跨重载记住，重载后最多早响一声。
+**`lastChantTick` 是瞬态字段**（与 `patrolIndex` 同类）：不入存档、随实体消失，这是有意的 —— 冷却不必跨重载记住，重载后最多早响一声。初值 0 的语义是"还没响过"，与 §5 的招呼冷却同一套（世界时间不足一个冷却时不会被选中）。
 
 - [ ] **Step 3: 傀儡的移动音**
 
@@ -867,11 +872,16 @@ public final class GreetingCoordinator {
         SettlementSavedData data = SettlementSavedData.get(level);
         List<GoblinCitizenEntity> residents = ResidentWorkLookup.loaded(level, data);
         var seen = new ArrayList<GreetingRules.Resident>(residents.size());
+        var present = new java.util.HashSet<String>(residents.size());
         for (GoblinCitizenEntity resident : residents) {
-            seen.add(new GreetingRules.Resident(resident.getUUID().toString(),
-                    resident.getX(), resident.getZ(),
-                    LAST_GREETING.getOrDefault(resident.getUUID().toString(), 0L)));
+            String id = resident.getUUID().toString();
+            present.add(id);
+            seen.add(new GreetingRules.Resident(id, resident.getX(), resident.getZ(),
+                    LAST_GREETING.getOrDefault(id, 0L)));
         }
+        // Drop residents who are gone, or the table would grow for the whole session: a dead resident's
+        // id is never seen again and nothing else would ever remove it.
+        LAST_GREETING.keySet().retainAll(present);
         var pair = GreetingRules.pick(seen, RADIUS, now);
         if (pair.isEmpty()) {
             return;
