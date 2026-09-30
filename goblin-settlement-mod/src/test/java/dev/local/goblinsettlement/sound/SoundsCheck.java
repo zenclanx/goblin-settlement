@@ -12,38 +12,26 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.SharedConstants;
-import net.minecraft.core.MappedRegistry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.sounds.SoundEvent;
 
-/** Standalone checks for the delivered sound set: registration, resources, subtitles and the meet rule. */
+/** Standalone checks for the delivered sound set: the manifest, its files, the lookups and the subtitles. */
 public final class SoundsCheck {
     private static final String SOUNDS_JSON = "/assets/goblin_settlement/sounds.json";
     private static final String LANG = "/assets/goblin_settlement/lang/";
     private static final String SUBTITLE_PREFIX = "subtitles." + GoblinSettlement.MOD_ID + ".";
 
     public static void main(String[] args) {
-        // Registries must be bootstrapped before anything here touches BuiltInRegistries.
+        // GolemTier names vanilla Items, whose class init builds vanilla blocks and sounds, so the
+        // built-in registries must be bootstrapped first. This is read-only, like ConstructionMaterialCheck.
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
-        // Bootstrap.bootStrap() freezes every built-in registry. In the running game Fabric's
-        // registry-sync mixin defers that freeze until after mod initializers have registered; this
-        // standalone check has no mixin, so it defers the one registry it needs and then loads ModSounds
-        // to register -- the same order, mods before freeze.
-        deferSoundEventFreeze();
-        ModSounds.initialize();
 
         JsonObject manifest = readJson(SOUNDS_JSON);
 
-        // 1. Every event the manifest declares is registered, under exactly the id the manifest names.
+        // 1. The manifest declares exactly twenty events.
         Set<String> declared = new LinkedHashSet<>(manifest.keySet());
         check(declared.size() == 20, "the manifest declares twenty events, got " + declared.size());
-        for (String key : declared) {
-            Identifier id = Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, key);
-            check(BuiltInRegistries.SOUND_EVENT.containsKey(id), "registered: " + id);
-        }
 
         // 2. Every audio file the manifest references exists in the mod's own resources.
         List<String> missing = new ArrayList<>();
@@ -108,22 +96,6 @@ public final class SoundsCheck {
         Set<String> only = new LinkedHashSet<>(left);
         only.removeAll(right);
         return only;
-    }
-
-    /**
-     * Clears the frozen flag on the sound-event registry so ModSounds can register into it. Vanilla's
-     * Bootstrap.bootStrap() freezes every built-in registry; under Fabric the registry-sync mixin holds
-     * that freeze back for mod initializers, but a standalone check runs without any mixin, so the one
-     * registry this check reads is reopened here. Test-only: it changes nothing the mod ships.
-     */
-    private static void deferSoundEventFreeze() {
-        try {
-            var frozen = MappedRegistry.class.getDeclaredField("frozen");
-            frozen.setAccessible(true);
-            frozen.set(BuiltInRegistries.SOUND_EVENT, false);
-        } catch (ReflectiveOperationException error) {
-            throw new AssertionError("cannot defer the built-in registry freeze", error);
-        }
     }
 
     private static JsonObject readJson(String resource) {

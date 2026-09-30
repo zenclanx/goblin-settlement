@@ -2,6 +2,8 @@ package dev.local.goblinsettlement.sound;
 
 import dev.local.goblinsettlement.GoblinSettlement;
 import dev.local.goblinsettlement.defense.GolemTier;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -17,26 +19,28 @@ public final class ModSounds {
     /** The five things an adult goblin says. Children use the same set; the art team kept theirs back. */
     public enum Voice { GREETING, RESPONSE, WORK, HURT, DEATH }
 
-    private static final SoundEvent GOBLIN_MALE_GREETING = register("entity.goblin.male.greeting");
-    private static final SoundEvent GOBLIN_MALE_RESPONSE = register("entity.goblin.male.response");
-    private static final SoundEvent GOBLIN_MALE_WORK = register("entity.goblin.male.work");
-    private static final SoundEvent GOBLIN_MALE_HURT = register("entity.goblin.male.hurt");
-    private static final SoundEvent GOBLIN_MALE_DEATH = register("entity.goblin.male.death");
-    private static final SoundEvent GOBLIN_FEMALE_GREETING = register("entity.goblin.female.greeting");
-    private static final SoundEvent GOBLIN_FEMALE_RESPONSE = register("entity.goblin.female.response");
-    private static final SoundEvent GOBLIN_FEMALE_WORK = register("entity.goblin.female.work");
-    private static final SoundEvent GOBLIN_FEMALE_HURT = register("entity.goblin.female.hurt");
-    private static final SoundEvent GOBLIN_FEMALE_DEATH = register("entity.goblin.female.death");
-    private static final SoundEvent GOLEM_WOOD_MOVE = register("entity.golem.wood.move");
-    private static final SoundEvent GOLEM_WOOD_CORE = register("entity.golem.wood.core");
-    private static final SoundEvent GOLEM_STONE_MOVE = register("entity.golem.stone.move");
-    private static final SoundEvent GOLEM_STONE_CORE = register("entity.golem.stone.core");
-    private static final SoundEvent GOLEM_GOLD_MOVE = register("entity.golem.gold.move");
-    private static final SoundEvent GOLEM_GOLD_CORE = register("entity.golem.gold.core");
-    private static final SoundEvent GOLEM_DIAMOND_MOVE = register("entity.golem.diamond.move");
-    private static final SoundEvent GOLEM_DIAMOND_CORE = register("entity.golem.diamond.core");
-    private static final SoundEvent GOLEM_OBSIDIAN_MOVE = register("entity.golem.obsidian.move");
-    private static final SoundEvent GOLEM_OBSIDIAN_CORE = register("entity.golem.obsidian.core");
+    private static final List<SoundEvent> DELIVERED = new ArrayList<>();
+
+    private static final SoundEvent GOBLIN_MALE_GREETING = delivered("entity.goblin.male.greeting");
+    private static final SoundEvent GOBLIN_MALE_RESPONSE = delivered("entity.goblin.male.response");
+    private static final SoundEvent GOBLIN_MALE_WORK = delivered("entity.goblin.male.work");
+    private static final SoundEvent GOBLIN_MALE_HURT = delivered("entity.goblin.male.hurt");
+    private static final SoundEvent GOBLIN_MALE_DEATH = delivered("entity.goblin.male.death");
+    private static final SoundEvent GOBLIN_FEMALE_GREETING = delivered("entity.goblin.female.greeting");
+    private static final SoundEvent GOBLIN_FEMALE_RESPONSE = delivered("entity.goblin.female.response");
+    private static final SoundEvent GOBLIN_FEMALE_WORK = delivered("entity.goblin.female.work");
+    private static final SoundEvent GOBLIN_FEMALE_HURT = delivered("entity.goblin.female.hurt");
+    private static final SoundEvent GOBLIN_FEMALE_DEATH = delivered("entity.goblin.female.death");
+    private static final SoundEvent GOLEM_WOOD_MOVE = delivered("entity.golem.wood.move");
+    private static final SoundEvent GOLEM_WOOD_CORE = delivered("entity.golem.wood.core");
+    private static final SoundEvent GOLEM_STONE_MOVE = delivered("entity.golem.stone.move");
+    private static final SoundEvent GOLEM_STONE_CORE = delivered("entity.golem.stone.core");
+    private static final SoundEvent GOLEM_GOLD_MOVE = delivered("entity.golem.gold.move");
+    private static final SoundEvent GOLEM_GOLD_CORE = delivered("entity.golem.gold.core");
+    private static final SoundEvent GOLEM_DIAMOND_MOVE = delivered("entity.golem.diamond.move");
+    private static final SoundEvent GOLEM_DIAMOND_CORE = delivered("entity.golem.diamond.core");
+    private static final SoundEvent GOLEM_OBSIDIAN_MOVE = delivered("entity.golem.obsidian.move");
+    private static final SoundEvent GOLEM_OBSIDIAN_CORE = delivered("entity.golem.obsidian.core");
 
     private ModSounds() {
     }
@@ -86,12 +90,17 @@ public final class ModSounds {
         });
     }
 
-    private static SoundEvent register(String path) {
+    private static SoundEvent delivered(String path) {
         Identifier id = Identifier.fromNamespaceAndPath(GoblinSettlement.MOD_ID, path);
-        return Registry.register(BuiltInRegistries.SOUND_EVENT, id, SoundEvent.createVariableRangeEvent(id));
+        SoundEvent event = SoundEvent.createVariableRangeEvent(id);
+        DELIVERED.add(event);
+        return event;
     }
 
-    /** Touches the class so the static registrations above run during mod init. */
+    /** Registers the twenty delivered events, once, at mod init -- before any registry freeze. */
     public static void initialize() {
+        for (SoundEvent event : DELIVERED) {
+            Registry.register(BuiltInRegistries.SOUND_EVENT, event.location(), event);
+        }
     }
 }
