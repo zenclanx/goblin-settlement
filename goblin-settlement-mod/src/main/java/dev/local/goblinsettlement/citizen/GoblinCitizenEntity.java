@@ -27,6 +27,7 @@ import dev.local.goblinsettlement.housing.HousingCoordinator;
 import dev.local.goblinsettlement.housing.HousingSavedData;
 import dev.local.goblinsettlement.interaction.WorldModificationPermission;
 import dev.local.goblinsettlement.mining.MiningWorksite;
+import dev.local.goblinsettlement.sound.ModSounds;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +38,8 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
@@ -64,6 +67,11 @@ import net.minecraft.world.level.storage.ValueOutput;
 public final class GoblinCitizenEntity extends PathfinderMob {
     private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(GoblinCitizenEntity.class);
     private static final int REGISTRATION_INTERVAL_TICKS = 10;
+    /**
+     * How long a resident stays quiet after a work chant. An invented value: the art brief asked for a
+     * work chant and gave no frequency, so this is a guess to be re-tuned once it can be heard in game.
+     */
+    private static final int WORK_CHANT_COOLDOWN_TICKS = 1200;
     private static final EntityDataAccessor<String> DATA_PROFESSION =
             SynchedEntityData.defineId(GoblinCitizenEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Boolean> DATA_FEMALE =
@@ -123,6 +131,8 @@ public final class GoblinCitizenEntity extends PathfinderMob {
     private String waitReason = "";
     /** Index into the patrol route. Deliberately not persisted: the route is re-derived from the world. */
     private int patrolIndex;
+    /** The tick this resident last chanted; 0 means "not yet". Transient: not saved, gone with the entity. */
+    private long lastChantTick = 0L;
     private int retaliationTicks;
     private boolean sheltering;
     private boolean shelterReached;
@@ -157,6 +167,16 @@ public final class GoblinCitizenEntity extends PathfinderMob {
             releasePersistedWork(serverLevel);
             rescueUndroppedGoods(serverLevel);
         }
+    }
+
+    @Override
+    protected SoundEvent getHurtSound(DamageSource source) {
+        return ModSounds.goblinVoice(femaleForRender(), ModSounds.Voice.HURT);
+    }
+
+    @Override
+    protected SoundEvent getDeathSound() {
+        return ModSounds.goblinVoice(femaleForRender(), ModSounds.Voice.DEATH);
     }
 
     @Override
@@ -768,6 +788,10 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         if (kind != null && tickCount % ProfessionRules.workIntervalTicks(kind, profession()) != 0) {
             return;
         }
+        // After the gate, on purpose: this is the tick the resident actually works, so the chant
+        // inherits the profession's own 10/20/30 throttle instead of inventing a second cadence, and
+        // ticks the gate threw away stay silent.
+        maybeChant(level);
         if (workStage == WorkStage.TRANSPORT_FETCHING
                 || workStage == WorkStage.TRANSPORT_DELIVERING
                 || workStage == WorkStage.TRANSPORT_RETURNING) {
@@ -859,6 +883,21 @@ public final class GoblinCitizenEntity extends PathfinderMob {
         } else {
             placeMaterial(level);
         }
+    }
+
+    private void maybeChant(ServerLevel level) {
+        long now = level.getGameTime();
+        // Absolute ticks, NOT a countdown. This method is only reached on the ticks the profession's own
+        // throttle let through, so a countdown would spend one unit per *throttled* tick -- "1200 ticks"
+        // would stretch to ten minutes for a profession on the 10-tick cadence, not the sixty seconds the
+        // constant is meant to say. Comparing absolute ticks means the number means what it says.
+        if (now - lastChantTick < WORK_CHANT_COOLDOWN_TICKS) {
+            return;
+        }
+        lastChantTick = now;
+        level.playSound(null, getX(), getY(), getZ(),
+                ModSounds.goblinVoice(femaleForRender(), ModSounds.Voice.WORK),
+                SoundSource.NEUTRAL, 0.7F, 1.0F);
     }
 
     private void tickTransportWork(ServerLevel level) {

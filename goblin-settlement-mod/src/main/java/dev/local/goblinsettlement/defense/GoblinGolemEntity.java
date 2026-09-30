@@ -3,12 +3,14 @@ package dev.local.goblinsettlement.defense;
 import dev.local.goblinsettlement.citizen.GoblinCitizenEntity;
 import dev.local.goblinsettlement.colony.SettlementSavedData;
 import dev.local.goblinsettlement.construction.transport.TransportSavedData;
+import dev.local.goblinsettlement.sound.ModSounds;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -21,6 +23,7 @@ import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 
@@ -68,6 +71,20 @@ public final class GoblinGolemEntity extends PathfinderMob {
         goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.0, true));
         goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 6.0F));
         goalSelector.addGoal(3, new RandomLookAroundGoal(this));
+    }
+
+    /**
+     * The tier's own footfall instead of the generic one. Iron has no custom sound, so it falls through
+     * to the vanilla step sound rather than going silent.
+     */
+    @Override
+    protected void playStepSound(BlockPos pos, BlockState state) {
+        Optional<SoundEvent> move = tierForRender().flatMap(ModSounds::golemMove);
+        if (move.isEmpty()) {
+            super.playStepSound(pos, state);
+            return;
+        }
+        playSound(move.orElseThrow(), 0.6F, 1.0F);
     }
 
     public GolemTier tier() {
