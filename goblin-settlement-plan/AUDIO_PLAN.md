@@ -966,7 +966,7 @@ public final class GreetingCoordinator {
 
 - [ ] **Step 5: 跑检查与构建**
 
-Run: `./gradlew noticeboardCheck --offline --no-daemon` 然后 `./gradlew build --offline --no-daemon`
+Run: `./gradlew soundsCheck --offline --no-daemon` 然后 `./gradlew build --offline --no-daemon`
 Expected: 前者 `SoundsCheck passed`（新断言在内），后者 **BUILD SUCCESSFUL**、24 项 `*Check passed`。
 
 - [ ] **Step 6: 证明断言会咬**
